@@ -60,6 +60,10 @@ class ConversationRepositoryInterface(ABC):
     @abstractmethod
     def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> dict:
         pass
+    
+    @abstractmethod
+    def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
+        pass
 
 
 class AIServiceInterface(ABC):

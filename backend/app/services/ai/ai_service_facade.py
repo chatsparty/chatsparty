@@ -177,3 +177,8 @@ class AIServiceFacade(AIServiceInterface):
         """Get a specific conversation by ID, including shared conversations"""
         with SessionManager.get_conversation_repository() as conv_repo:
             return conv_repo.get_conversation_by_id(conversation_id, user_id)
+    
+    def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
+        """Update the sharing status of a conversation"""
+        with SessionManager.get_conversation_repository() as conv_repo:
+            return conv_repo.update_conversation_sharing(conversation_id, is_shared, user_id)

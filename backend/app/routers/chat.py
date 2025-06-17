@@ -6,7 +6,8 @@ import asyncio
 
 from ..models.chat import (
     ChatResponse, AgentCreateRequest, AgentResponse, 
-    AgentChatRequest, MultiAgentConversationRequest, ConversationMessage
+    AgentChatRequest, MultiAgentConversationRequest, ConversationMessage,
+    ConversationShareRequest, ConversationShareResponse
 )
 from ..models.database import User
 from ..services.ai import get_ai_service, AIServiceFacade
@@ -240,19 +241,80 @@ async def get_conversation_by_id(
         raise HTTPException(status_code=500, detail=f"Failed to get conversation: {str(e)}")
 
 
-@router.put("/conversations/{conversation_id}/share")
-async def share_conversation(
+@router.put("/conversations/{conversation_id}/share", response_model=ConversationShareResponse)
+async def update_conversation_sharing(
     conversation_id: str,
+    share_request: ConversationShareRequest,
     current_user: User = Depends(get_current_user_dependency),
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
-    """Share a conversation so other users can access it by ID"""
+    """Update the sharing status of a conversation"""
     try:
-        # This would need to be implemented in the service layer
-        # For now, return a placeholder response
-        return {"message": f"Conversation {conversation_id} sharing updated", "shared": True}
+        # First check if the conversation exists and belongs to the user
+        conversation = ai_service.get_conversation_by_id(conversation_id, current_user.id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Check if user owns the conversation
+        if conversation.get("user_id") != current_user.id:
+            raise HTTPException(status_code=403, detail="You can only share your own conversations")
+        
+        # Update the sharing status
+        success = ai_service.update_conversation_sharing(
+            conversation_id, 
+            share_request.is_shared, 
+            current_user.id
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Failed to update conversation sharing")
+        
+        share_url = None
+        if share_request.is_shared:
+            # Generate the share URL
+            share_url = f"/shared/conversation/{conversation_id}"
+        
+        return ConversationShareResponse(
+            conversation_id=conversation_id,
+            is_shared=share_request.is_shared,
+            share_url=share_url
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to share conversation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update conversation sharing: {str(e)}")
+
+
+@router.get("/shared/conversations/{conversation_id}", response_model=Dict[str, Any])
+async def get_shared_conversation(
+    conversation_id: str,
+    ai_service: AIServiceFacade = Depends(get_ai_service)
+):
+    """Get a shared conversation (public access, no authentication required)"""
+    try:
+        conversation = ai_service.get_conversation_by_id(conversation_id, user_id=None)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Check if the conversation is actually shared
+        if not conversation.get("is_shared", False):
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Remove sensitive information before returning
+        shared_conversation = {
+            "id": conversation["id"],
+            "participants": conversation["participants"],
+            "messages": conversation["messages"],
+            "created_at": conversation["created_at"],
+            "updated_at": conversation["updated_at"],
+            "isActive": False
+        }
+        
+        return shared_conversation
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get shared conversation: {str(e)}")
 
 
 @router.get("/models")

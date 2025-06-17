@@ -27,4 +27,5 @@ export interface ActiveConversation {
   agents: string[];
   messages: ConversationMessage[];
   isActive: boolean;
+  is_shared?: boolean;
 }

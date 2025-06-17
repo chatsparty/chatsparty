@@ -1,16 +1,24 @@
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { FaRobot, FaUsers, FaPlug, FaSignOutAlt } from 'react-icons/fa'
-import { AgentManagerPage, MultiAgentChatPage, LandingPage } from './pages'
-import { ConnectionManagerPage } from './pages/ConnectionManager/ConnectionManagerPage'
-import { ThemeToggle } from './components/ThemeToggle'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { AuthPage } from './components/auth/AuthPage'
-import { Button } from './components/ui/button'
-import './App.css'
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
+import { FaRobot, FaUsers, FaPlug, FaSignOutAlt } from "react-icons/fa";
+import { AgentManagerPage, MultiAgentChatPage, LandingPage } from "./pages";
+import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
+import SharedConversationPage from "./pages/SharedConversation/SharedConversationPage";
+import { ThemeToggle } from "./components/ThemeToggle";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AuthPage } from "./components/auth/AuthPage";
+import { Button } from "./components/ui/button";
+import "./App.css";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth()
-  
+  const { user, loading } = useAuth();
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -19,33 +27,32 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
-  
+
   if (!user) {
-    return <AuthPage />
+    return <AuthPage />;
   }
-  
-  return <>{children}</>
-}
+
+  return <>{children}</>;
+};
 
 const Layout = () => {
-  const { user, logout } = useAuth()
-  const location = useLocation()
+  const { user, logout } = useAuth();
+  const location = useLocation();
 
   const tabs = [
-    { path: '/agents', label: 'Agents', icon: FaRobot },
-    { path: '/connections', label: 'Connections', icon: FaPlug },
-    { path: '/chat', label: 'Chat', icon: FaUsers }
-  ]
+    { path: "/agents", label: "Agents", icon: FaRobot },
+    { path: "/connections", label: "Connections", icon: FaPlug },
+    { path: "/chat", label: "Chat", icon: FaUsers },
+  ];
 
   return (
     <div className="App h-screen w-screen bg-background overflow-hidden">
       <div className="flex flex-col h-full">
-        {/* Header Menu */}
         <div className="bg-card border-b border-border px-6 py-4 shadow-sm flex-shrink-0">
           <div className="flex items-center justify-between">
-            <Link 
+            <Link
               to="/"
               className="text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
             >
@@ -58,8 +65,8 @@ const Layout = () => {
                     key={tab.path}
                     to={tab.path}
                     className={`flex items-center gap-2 text-sm font-medium transition-colors duration-200 hover:text-primary cursor-pointer ${
-                      location.pathname === tab.path 
-                        ? "text-primary" 
+                      location.pathname === tab.path
+                        ? "text-primary"
                         : "text-muted-foreground"
                     }`}
                   >
@@ -87,37 +94,44 @@ const Layout = () => {
           </div>
         </div>
 
-        {/* Content Area */}
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
-            <Route path="/agents" element={
-              <ProtectedRoute>
-                <AgentManagerPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/connections" element={
-              <ProtectedRoute>
-                <ConnectionManagerPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/chat" element={
-              <ProtectedRoute>
-                <MultiAgentChatPage />
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/agents"
+              element={
+                <ProtectedRoute>
+                  <AgentManagerPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/connections"
+              element={
+                <ProtectedRoute>
+                  <ConnectionManagerPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat"
+              element={
+                <ProtectedRoute>
+                  <MultiAgentChatPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<Navigate to="/agents" replace />} />
           </Routes>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 const MainApp = () => {
-  const { loading } = useAuth()
-  const location = useLocation()
+  const { loading } = useAuth();
+  const location = useLocation();
 
-  // Show loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -126,20 +140,27 @@ const MainApp = () => {
           <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  // Landing page is public - no authentication required
-  if (location.pathname === '/') {
+  if (location.pathname.startsWith("/shared/conversation/")) {
+    console.log(
+      "Rendering SharedConversationPage for path:",
+      location.pathname
+    );
+    return <SharedConversationPage />;
+  }
+
+  if (location.pathname === "/") {
     return (
       <div className="App h-screen w-screen bg-background overflow-auto">
         <LandingPage onGetStarted={() => {}} />
       </div>
-    )
+    );
   }
 
-  return <Layout />
-}
+  return <Layout />;
+};
 
 function App() {
   return (
@@ -148,7 +169,7 @@ function App() {
         <MainApp />
       </AuthProvider>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;

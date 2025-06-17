@@ -78,7 +78,6 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         
         conversations = []
         for conv in db_conversations:
-            # Extract agent IDs from messages for participants
             agent_ids = set()
             messages = []
             
@@ -86,14 +85,11 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 if msg.role == "assistant" and msg.agent_id:
                     agent_ids.add(msg.agent_id)
                 
-                # Convert database message to frontend format
-                # For messages with agent_id, try to get agent name from database
                 speaker_name = msg.speaker
                 if not speaker_name:
                     if msg.role == "user":
                         speaker_name = "user"
                     elif msg.agent_id:
-                        # Try to get agent name from database
                         from ....models.database import Agent as AgentModel
                         agent = self.db_session.query(AgentModel).filter(AgentModel.id == msg.agent_id).first()
                         speaker_name = agent.name if agent else msg.agent_id
@@ -107,7 +103,6 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                     "timestamp": msg.created_at.timestamp() if msg.created_at else 0
                 })
             
-            # Sort messages by timestamp
             messages.sort(key=lambda x: x["timestamp"])
             
             conversations.append({
@@ -116,7 +111,8 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 "messages": messages,
                 "created_at": conv.created_at.isoformat() if conv.created_at else None,
                 "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
-                "isActive": False  # All saved conversations are inactive
+                "is_shared": conv.is_shared,
+                "isActive": False
             })
         
         return conversations
@@ -140,7 +136,6 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         if not conv:
             return None
         
-        # Extract agent IDs from messages for participants
         agent_ids = set()
         messages = []
         
@@ -148,7 +143,6 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             if msg.role == "assistant" and msg.agent_id:
                 agent_ids.add(msg.agent_id)
             
-            # Convert database message to frontend format
             speaker_name = msg.speaker
             if not speaker_name:
                 if msg.role == "user":
@@ -167,7 +161,6 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 "timestamp": msg.created_at.timestamp() if msg.created_at else 0
             })
         
-        # Sort messages by timestamp
         messages.sort(key=lambda x: x["timestamp"])
         
         return {
@@ -180,3 +173,19 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             "user_id": conv.user_id,
             "isActive": False
         }
+    
+    def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
+        """Update the sharing status of a conversation"""
+        conversation = (
+            self.db_session.query(ConversationModel)
+            .filter(ConversationModel.id == conversation_id)
+            .filter(ConversationModel.user_id == user_id)
+            .first()
+        )
+        
+        if not conversation:
+            return False
+        
+        conversation.is_shared = is_shared
+        self.db_session.commit()
+        return True

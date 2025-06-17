@@ -104,3 +104,13 @@ class ConnectionTestResult(BaseModel):
     latency: Optional[float] = None
 
 
+class ConversationShareRequest(BaseModel):
+    is_shared: bool
+
+
+class ConversationShareResponse(BaseModel):
+    conversation_id: str
+    is_shared: bool
+    share_url: Optional[str] = None
+
+

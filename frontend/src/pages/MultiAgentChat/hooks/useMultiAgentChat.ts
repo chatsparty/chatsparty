@@ -77,6 +77,7 @@ export const useMultiAgentChat = (): UseMultiAgentChatReturn => {
     startConversation,
     stopConversation,
     handleSelectAgent,
+    loadConversations,
 
     getAgentName,
     getAgentColor,
