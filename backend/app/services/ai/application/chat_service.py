@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, AsyncGenerator
 import asyncio
+from datetime import datetime
 from ..domain.entities import Message, ConversationMessage
 from ..domain.interfaces import (
     ModelProviderInterface, 
@@ -32,7 +33,7 @@ class ChatService:
         if not self._conversation_repository.get_conversation(conversation_id):
             self._conversation_repository.create_conversation(conversation_id)
         
-        user_message = Message(role="user", content=message)
+        user_message = Message(role="user", content=message, speaker="user")
         self._conversation_repository.add_message(conversation_id, user_message)
         
         conversation_messages = self._conversation_repository.get_conversation(conversation_id)
@@ -43,7 +44,7 @@ class ChatService:
             agent.model_config
         )
         
-        assistant_message = Message(role="assistant", content=response)
+        assistant_message = Message(role="assistant", content=response, speaker=agent.name, agent_id=agent_id)
         self._conversation_repository.add_message(conversation_id, assistant_message)
         
         return response
@@ -69,6 +70,14 @@ class ChatService:
                     message=f"Agent {agent_id} not found",
                     timestamp=asyncio.get_event_loop().time()
                 )]
+        
+        # Create or get existing conversation from database
+        if not self._conversation_repository.get_conversation(conversation_id):
+            self._conversation_repository.create_conversation(conversation_id)
+        
+        # Add initial user message to database
+        user_message = Message(role="user", content=initial_message, timestamp=datetime.now(), speaker="user")
+        self._conversation_repository.add_message(conversation_id, user_message)
         
         conversation_log = []
         
@@ -101,6 +110,16 @@ class ChatService:
                 current_agent.model_config
             )
             
+            # Save agent response to database
+            agent_message = Message(
+                role="assistant", 
+                content=response, 
+                timestamp=datetime.now(),
+                agent_id=current_agent_id,
+                speaker=current_agent.name
+            )
+            self._conversation_repository.add_message(conversation_id, agent_message)
+            
             conversation_log.append(ConversationMessage(
                 speaker=current_agent.name,
                 agent_id=current_agent_id,
@@ -130,6 +149,14 @@ class ChatService:
             if not self._agent_repository.get_agent(agent_id):
                 yield {"error": f"Agent {agent_id} not found"}
                 return
+        
+        # Create or get existing conversation from database
+        if not self._conversation_repository.get_conversation(conversation_id):
+            self._conversation_repository.create_conversation(conversation_id)
+        
+        # Add initial user message to database
+        user_message = Message(role="user", content=initial_message, timestamp=datetime.now(), speaker="user")
+        self._conversation_repository.add_message(conversation_id, user_message)
         
         conversation_log = []
         
@@ -171,6 +198,16 @@ class ChatService:
                 current_agent.get_system_prompt(),
                 current_agent.model_config
             )
+            
+            # Save agent response to database
+            agent_message = Message(
+                role="assistant", 
+                content=response, 
+                timestamp=datetime.now(),
+                agent_id=current_agent_id,
+                speaker=current_agent.name
+            )
+            self._conversation_repository.add_message(conversation_id, agent_message)
             
             agent_msg = {
                 "speaker": current_agent.name,

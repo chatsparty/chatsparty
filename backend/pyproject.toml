@@ -15,4 +15,10 @@ dependencies = [
     "python-jose>=3.5.0",
     "python-multipart>=0.0.20",
     "uvicorn>=0.34.3",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "asyncpg>=0.29.0",
+    "aiosqlite>=0.20.0", 
+    "pydantic-settings>=2.0.0",
+    "greenlet>=3.0.0",
 ]

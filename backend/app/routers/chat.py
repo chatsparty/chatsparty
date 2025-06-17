@@ -65,6 +65,51 @@ async def list_agents(ai_service: AIServiceFacade = Depends(get_ai_service)):
         raise HTTPException(status_code=500, detail=f"Failed to list agents: {str(e)}")
 
 
+@router.put("/agents/{agent_id}", response_model=AgentResponse)
+async def update_agent(
+    agent_id: str,
+    agent_request: AgentCreateRequest,
+    ai_service: AIServiceFacade = Depends(get_ai_service)
+):
+    """Update an existing agent"""
+    try:
+        model_config = connection_service.get_connection_model_config(agent_request.connection_id)
+        if not model_config:
+            raise HTTPException(status_code=404, detail=f"Connection {agent_request.connection_id} not found")
+        
+        chat_style_dict = None
+        if agent_request.chat_style:
+            chat_style_dict = agent_request.chat_style.model_dump()
+        
+        model_config_dict = model_config.model_dump()
+        
+        agent = ai_service.update_agent(
+            agent_id,
+            agent_request.name,
+            agent_request.prompt,
+            agent_request.characteristics,
+            model_config_dict,
+            chat_style_dict,
+            agent_request.connection_id
+        )
+        
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        
+        return AgentResponse(
+            agent_id=agent.agent_id,
+            name=agent.name,
+            prompt=agent.prompt,
+            characteristics=agent.characteristics,
+            connection_id=agent_request.connection_id,
+            chat_style=agent_request.chat_style
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update agent: {str(e)}")
+
+
 @router.delete("/agents/{agent_id}")
 async def delete_agent(
     agent_id: str,
@@ -151,6 +196,15 @@ async def stream_multi_agent_conversation(
         }
     )
 
+
+@router.get("/conversations", response_model=List[Dict[str, Any]])
+async def list_conversations(ai_service: AIServiceFacade = Depends(get_ai_service)):
+    """Get all conversations from database"""
+    try:
+        conversations = ai_service.get_all_conversations()
+        return conversations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list conversations: {str(e)}")
 
 @router.get("/conversations/{conversation_id}", response_model=List[Dict[str, Any]])
 async def get_conversation_history(
