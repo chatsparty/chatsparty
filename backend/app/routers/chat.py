@@ -12,18 +12,6 @@ from ..services.ai_service import get_ai_service, AIService
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-@router.post("", response_model=ChatResponse)
-async def simple_chat(
-    chat_message: ChatMessage,
-    ai_service: AIService = Depends(get_ai_service)
-):
-    try:
-        messages = [{"role": "user", "content": chat_message.message}]
-        response = await ai_service.chat_completion(messages)
-        return ChatResponse(response=response, type="chat_response")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
-
 
 @router.post("/agents", response_model=AgentResponse)
 async def create_agent(
