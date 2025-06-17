@@ -3,12 +3,12 @@ from fastapi.responses import StreamingResponse
 from typing import Dict, Any, List
 import json
 import asyncio
+
 from ..models.chat import (
-    ChatMessage, ChatResponse, AgentCreateRequest, AgentResponse, 
-    AgentChatRequest, MultiAgentConversationRequest, ConversationMessage,
-    ModelConfig
+    ChatResponse, AgentCreateRequest, AgentResponse, 
+    AgentChatRequest, MultiAgentConversationRequest, ConversationMessage
 )
-from ..services.ai_service import get_ai_service, AIService
+from ..services.ai import get_ai_service, AIServiceFacade
 from ..services.unified_model_service import get_unified_model_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.post("/agents", response_model=AgentResponse)
 async def create_agent(
     agent_request: AgentCreateRequest,
-    ai_service: AIService = Depends(get_ai_service)
+    ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
         chat_style_dict = None
@@ -50,7 +50,7 @@ async def create_agent(
 
 
 @router.get("/agents", response_model=List[AgentResponse])
-async def list_agents(ai_service: AIService = Depends(get_ai_service)):
+async def list_agents(ai_service: AIServiceFacade = Depends(get_ai_service)):
     try:
         agents_data = ai_service.list_agents()
         return [AgentResponse(**agent) for agent in agents_data]
@@ -61,7 +61,7 @@ async def list_agents(ai_service: AIService = Depends(get_ai_service)):
 @router.post("/agents/chat", response_model=ChatResponse)
 async def chat_with_agent(
     chat_request: AgentChatRequest,
-    ai_service: AIService = Depends(get_ai_service)
+    ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
         response = await ai_service.agent_chat(
@@ -77,7 +77,7 @@ async def chat_with_agent(
 @router.post("/agents/conversation", response_model=List[ConversationMessage])
 async def start_multi_agent_conversation(
     conversation_request: MultiAgentConversationRequest,
-    ai_service: AIService = Depends(get_ai_service)
+    ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
         conversation_log = await ai_service.multi_agent_conversation(
@@ -94,7 +94,7 @@ async def start_multi_agent_conversation(
 @router.post("/agents/conversation/stream")
 async def stream_multi_agent_conversation(
     conversation_request: MultiAgentConversationRequest,
-    ai_service: AIService = Depends(get_ai_service)
+    ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     """Stream a multi-agent conversation in real-time using Server-Sent Events"""
     
@@ -135,7 +135,7 @@ async def stream_multi_agent_conversation(
 @router.get("/conversations/{conversation_id}", response_model=List[Dict[str, Any]])
 async def get_conversation_history(
     conversation_id: str,
-    ai_service: AIService = Depends(get_ai_service)
+    ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
         history = ai_service.get_conversation_history(conversation_id)

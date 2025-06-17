@@ -51,51 +51,60 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   };
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-      <div className="p-5 border-b border-gray-200">
-        <h2 className="mb-4 text-gray-700">👥 Multi-Agent Chat</h2>
+    <div className="w-80 bg-card border-r border-border flex flex-col shadow-sm">
+      <div className="p-6 border-b border-border">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <span className="text-lg">👥</span>
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">Multi-Agent Chat</h2>
+        </div>
         <Button
           onClick={() => onShowNewConversationForm(true)}
           disabled={agents.length < 2}
-          className="w-full"
+          className="w-full h-11 text-sm font-medium"
           variant={agents.length >= 2 ? "default" : "secondary"}
         >
-          + Start New Conversation
+          <span className="mr-2">+</span> Start New Conversation
         </Button>
         {agents.length < 2 && (
-          <p className="mt-2 text-xs text-red-600">
-            Create at least 2 agents first
-          </p>
+          <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-xs text-destructive font-medium">
+              Create at least 2 agents first
+            </p>
+          </div>
         )}
       </div>
 
       {/* New Conversation Form */}
       {showNewConversationForm && (
-        <div className="p-5 border-b border-gray-200 bg-gray-50">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-base text-gray-700">New Conversation</h3>
+        <div className="p-6 border-b border-border bg-muted/30">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-base font-semibold text-foreground">New Conversation</h3>
             <Button
               onClick={() => onShowNewConversationForm(false)}
-              variant="outline"
+              variant="ghost"
               size="sm"
+              className="h-8 px-3 text-muted-foreground hover:text-foreground"
             >
               Cancel
             </Button>
           </div>
 
-          <div className="mb-4">
-            <Label className="block mb-2 text-sm font-medium">
+          <div className="mb-6">
+            <Label className="block mb-3 text-sm font-medium text-foreground">
               Select Agents (min 2):
             </Label>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {agents.map(agent => (
-                <div key={agent.agent_id} className="flex items-center space-x-2">
+                <div key={agent.agent_id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-accent/50 transition-colors">
                   <Checkbox
                     id={agent.agent_id}
                     checked={selectedAgents.includes(agent.agent_id)}
                     onCheckedChange={(checked) => onSelectAgent(agent.agent_id, checked as boolean)}
+                    className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
-                  <Label htmlFor={agent.agent_id} className="text-sm text-gray-700">
+                  <Label htmlFor={agent.agent_id} className="text-sm font-medium text-foreground cursor-pointer flex-1">
                     {agent.name}
                   </Label>
                 </div>
@@ -103,8 +112,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             </div>
           </div>
 
-          <div className="mb-4">
-            <Label className="block mb-2 text-sm font-medium">
+          <div className="mb-6">
+            <Label className="block mb-3 text-sm font-medium text-foreground">
               Initial Message:
             </Label>
             <Textarea
@@ -112,13 +121,13 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               onChange={(e) => onInitialMessageChange(e.target.value)}
               placeholder="Start the conversation with a topic or question..."
               rows={3}
-              className="resize-y"
+              className="resize-y bg-background border-input focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
             />
           </div>
 
-          <div className="mb-4">
-            <Label className="block mb-2 text-sm font-medium">
-              Max Turns: {maxTurns}
+          <div className="mb-6">
+            <Label className="block mb-3 text-sm font-medium text-foreground">
+              Max Turns: <span className="text-primary font-semibold">{maxTurns}</span>
             </Label>
             <Slider
               value={[maxTurns]}
@@ -128,57 +137,73 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               step={1}
               className="w-full"
             />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>5</span>
+              <span>20</span>
+            </div>
           </div>
 
           <Button
             onClick={onStartConversation}
             disabled={selectedAgents.length < 2 || !initialMessage.trim() || isLoading}
-            className="w-full"
+            className="w-full h-11 text-sm font-medium"
             variant={(selectedAgents.length >= 2 && initialMessage.trim() && !isLoading) ? "default" : "secondary"}
           >
-            {isLoading ? 'Starting...' : 'Start Conversation'}
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Starting...
+              </div>
+            ) : (
+              'Start Conversation'
+            )}
           </Button>
         </div>
       )}
 
       {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <h3 className="mb-4 text-base text-gray-600">
+      <div className="flex-1 overflow-y-auto p-6">
+        <h3 className="mb-4 text-sm font-semibold text-foreground uppercase tracking-wider">
           Conversations ({conversations.length})
         </h3>
         
         {conversations.length === 0 ? (
-          <div className="text-center text-gray-500 p-5 text-sm">
-            No conversations yet.<br />
-            Start your first multi-agent conversation!
+          <div className="text-center text-muted-foreground p-8">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+              <span className="text-2xl opacity-50">💬</span>
+            </div>
+            <p className="text-sm mb-2 font-medium">No conversations yet</p>
+            <p className="text-xs opacity-75">Start your first multi-agent conversation!</p>
           </div>
         ) : (
           <div className="space-y-3">
             {conversations.map((conv) => (
               <div
                 key={conv.id}
-                className={`p-4 rounded-lg border transition-all duration-200 ${
+                className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer group ${
                   activeConversation === conv.id 
-                    ? 'bg-blue-50 border-blue-200' 
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    ? 'bg-primary/5 border-primary/20 shadow-sm' 
+                    : 'bg-card border-border hover:bg-accent/30 hover:border-accent-foreground/20'
                 }`}
               >
                 <div 
                   onClick={() => onSelectConversation(conv.id)}
-                  className="cursor-pointer"
                 >
-                  <div className="font-semibold text-sm text-gray-700 mb-2">
+                  <div className="font-semibold text-sm text-foreground mb-2 group-hover:text-primary transition-colors">
                     {conv.name}
                   </div>
-                  <div className="text-xs text-gray-600 mb-2 flex items-center gap-2">
-                    {conv.messages.length} messages
+                  <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40"></span>
+                      {conv.messages.length} messages
+                    </span>
                     {conv.isActive && (
-                      <Badge variant="secondary" className="bg-green-500 text-white text-xs px-2 py-0.5">
+                      <Badge variant="secondary" className="bg-green-500 text-white text-xs px-2 py-0.5 animate-pulse">
                         LIVE
                       </Badge>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 italic">
+                  <div className="text-xs text-muted-foreground/70">
                     {conv.messages.length > 0 
                       ? formatTime(conv.messages[conv.messages.length - 1].timestamp)
                       : 'No messages'
@@ -186,7 +211,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                   </div>
                 </div>
                 {conv.isActive && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="mt-3 pt-3 border-t border-border/50">
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -194,7 +219,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                       }}
                       variant="outline"
                       size="sm"
-                      className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50 transition-colors"
                     >
                       Stop Conversation
                     </Button>

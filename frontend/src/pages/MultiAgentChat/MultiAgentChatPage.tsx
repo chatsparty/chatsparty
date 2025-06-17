@@ -46,7 +46,7 @@ const MultiAgentChatPage: React.FC = () => {
         onSelectConversation={setActiveConversation}
       />
 
-      <div className="flex-1 flex flex-col bg-card">
+      <div className="flex-1 flex flex-col bg-background">
         <ChatArea
           activeConversation={activeConv}
           agents={agents}
