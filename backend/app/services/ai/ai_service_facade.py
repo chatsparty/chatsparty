@@ -18,10 +18,10 @@ class AIServiceFacade(AIServiceInterface):
     
     def create_agent(
         self, 
-        agent_id: str, 
         name: str, 
         prompt: str, 
         characteristics: str,
+        user_id: str,
         model_config: dict = None,
         chat_style: dict = None,
         connection_id: str = None
@@ -29,18 +29,18 @@ class AIServiceFacade(AIServiceInterface):
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
             return agent_service.create_agent(
-                agent_id, name, prompt, characteristics, model_config, chat_style, connection_id
+                name, prompt, characteristics, user_id, model_config, chat_style, connection_id
             )
     
-    def get_agent(self, agent_id: str) -> Optional[Agent]:
+    def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
-            return agent_service.get_agent(agent_id)
+            return agent_service.get_agent(agent_id, user_id)
     
-    def list_agents(self) -> List[Dict[str, Any]]:
+    def list_agents(self, user_id: str = None) -> List[Dict[str, Any]]:
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
-            return agent_service.list_agents()
+            return agent_service.list_agents(user_id)
     
     def update_agent(
         self, 
@@ -88,16 +88,17 @@ class AIServiceFacade(AIServiceInterface):
             
             return agent_service.update_agent(updated_agent)
 
-    def delete_agent(self, agent_id: str) -> bool:
+    def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
-            return agent_service.delete_agent(agent_id)
+            return agent_service.delete_agent(agent_id, user_id)
     
     async def agent_chat(
         self, 
         agent_id: str, 
         message: str, 
-        conversation_id: str = "default"
+        conversation_id: str = "default",
+        user_id: str = None
     ) -> str:
         # Use the same session for both agent and conversation operations
         with SessionManager.get_agent_repository() as agent_repo, \
@@ -107,14 +108,15 @@ class AIServiceFacade(AIServiceInterface):
                 agent_repo,
                 conv_repo
             )
-            return await chat_service.agent_chat(agent_id, message, conversation_id)
+            return await chat_service.agent_chat(agent_id, message, conversation_id, user_id)
     
     async def multi_agent_conversation(
         self,
         conversation_id: str,
         agent_ids: List[str],
         initial_message: str,
-        max_turns: int = 10
+        max_turns: int = 10,
+        user_id: str = None
     ) -> List[Dict[str, Any]]:
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
@@ -124,7 +126,7 @@ class AIServiceFacade(AIServiceInterface):
                 conv_repo
             )
             conversation_messages = await chat_service.multi_agent_conversation(
-                conversation_id, agent_ids, initial_message, max_turns
+                conversation_id, agent_ids, initial_message, max_turns, user_id
             )
             return [
                 {
@@ -142,7 +144,8 @@ class AIServiceFacade(AIServiceInterface):
         conversation_id: str,
         agent_ids: List[str],
         initial_message: str,
-        max_turns: int = 10
+        max_turns: int = 10,
+        user_id: str = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
@@ -152,20 +155,25 @@ class AIServiceFacade(AIServiceInterface):
                 conv_repo
             )
             async for message in chat_service.multi_agent_conversation_stream(
-                conversation_id, agent_ids, initial_message, max_turns
+                conversation_id, agent_ids, initial_message, max_turns, user_id
             ):
                 yield message
     
-    def get_conversation_history(self, conversation_id: str) -> List[Dict[str, Any]]:
+    def get_conversation_history(self, conversation_id: str, user_id: str = None) -> List[Dict[str, Any]]:
         with SessionManager.get_conversation_repository() as conv_repo:
             chat_service = ChatService(
                 self._model_provider,
-                None,  # We don't need agent repo for getting conversation history
+                None, 
                 conv_repo
             )
-            return chat_service.get_conversation_history(conversation_id)
+            return chat_service.get_conversation_history(conversation_id, user_id)
     
-    def get_all_conversations(self) -> List[Dict[str, Any]]:
+    def get_all_conversations(self, user_id: str = None) -> List[Dict[str, Any]]:
         """Get all conversations from database"""
         with SessionManager.get_conversation_repository() as conv_repo:
-            return conv_repo.get_all_conversations()
+            return conv_repo.get_all_conversations(user_id)
+    
+    def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> Dict[str, Any]:
+        """Get a specific conversation by ID, including shared conversations"""
+        with SessionManager.get_conversation_repository() as conv_repo:
+            return conv_repo.get_conversation_by_id(conversation_id, user_id)

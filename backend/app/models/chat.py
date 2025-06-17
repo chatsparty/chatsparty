@@ -29,7 +29,7 @@ class ModelConfig(BaseModel):
 
 
 class AgentCreateRequest(BaseModel):
-    agent_id: str
+    agent_id: Optional[str] = None
     name: str
     prompt: str
     characteristics: str

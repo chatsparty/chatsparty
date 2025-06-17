@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+import uuid
 from ..domain.entities import Agent, ModelConfiguration, ChatStyle
 from ..domain.interfaces import AgentRepositoryInterface
 
@@ -9,10 +10,10 @@ class AgentService:
     
     def create_agent(
         self, 
-        agent_id: str, 
         name: str, 
         prompt: str, 
         characteristics: str,
+        user_id: str,
         model_config: Optional[Dict] = None,
         chat_style: Optional[Dict] = None,
         connection_id: Optional[str] = None
@@ -35,6 +36,9 @@ class AgentService:
             expertise_level=chat_style.get("expertise_level", "expert")
         ) if chat_style else ChatStyle()
         
+        # Generate a unique UUID for the agent
+        agent_id = str(uuid.uuid4())
+        
         agent = Agent(
             agent_id=agent_id,
             name=name,
@@ -45,13 +49,13 @@ class AgentService:
             connection_id=connection_id or "default"
         )
         
-        return self._agent_repository.create_agent(agent)
+        return self._agent_repository.create_agent(agent, user_id)
     
-    def get_agent(self, agent_id: str) -> Optional[Agent]:
-        return self._agent_repository.get_agent(agent_id)
+    def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
+        return self._agent_repository.get_agent(agent_id, user_id)
     
-    def list_agents(self) -> List[Dict[str, Any]]:
-        agents = self._agent_repository.list_agents()
+    def list_agents(self, user_id: str = None) -> List[Dict[str, Any]]:
+        agents = self._agent_repository.list_agents(user_id)
         return [
             {
                 "agent_id": agent.agent_id,
@@ -79,5 +83,5 @@ class AgentService:
     def update_agent(self, agent: Agent) -> Agent:
         return self._agent_repository.update_agent(agent)
     
-    def delete_agent(self, agent_id: str) -> bool:
-        return self._agent_repository.delete_agent(agent_id)
+    def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
+        return self._agent_repository.delete_agent(agent_id, user_id)

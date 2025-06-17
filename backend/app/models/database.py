@@ -20,6 +20,11 @@ class User(Base):
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    agents: Mapped[List["Agent"]] = relationship("Agent", back_populates="user")
+    conversations: Mapped[List["Conversation"]] = relationship("Conversation", back_populates="user")
+    connections: Mapped[List["Connection"]] = relationship("Connection", back_populates="user")
 
 
 class Agent(Base):
@@ -40,7 +45,11 @@ class Agent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
+    # User relationship
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
+    
     # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="agents")
     conversations: Mapped[List["Conversation"]] = relationship("Conversation", back_populates="agent")
     messages: Mapped[List["Message"]] = relationship("Message", back_populates="agent")
 
@@ -50,13 +59,16 @@ class Conversation(Base):
     
     id: Mapped[str] = mapped_column(String, primary_key=True)
     agent_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("agents.id"), nullable=True)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
     participants: Mapped[List[str]] = mapped_column(JSON, nullable=False)
+    is_shared: Mapped[bool] = mapped_column(Boolean, default=False)
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Relationships
     agent: Mapped[Optional["Agent"]] = relationship("Agent", back_populates="conversations")
+    user: Mapped["User"] = relationship("User", back_populates="conversations")
     messages: Mapped[List["Message"]] = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 
 
@@ -91,5 +103,11 @@ class Connection(Base):
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
+    # User relationship
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="connections")

@@ -11,7 +11,7 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
     def __init__(self, db_session: Session):
         super().__init__(db_session)
     
-    def create_agent(self, agent: Agent) -> Agent:
+    def create_agent(self, agent: Agent, user_id: str) -> Agent:
         def _create():
             db_agent = AgentModel(
                 id=agent.agent_id,
@@ -19,6 +19,7 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
                 prompt=agent.prompt,
                 characteristics=agent.characteristics,
                 connection_id=agent.connection_id,
+                user_id=user_id,
                 model_config={
                     "provider": agent.model_config.provider,
                     "model_name": agent.model_config.model_name,
@@ -39,16 +40,24 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
         
         return self.safe_execute(_create)
     
-    def get_agent(self, agent_id: str) -> Optional[Agent]:
-        db_agent = self.db_session.query(AgentModel).filter(AgentModel.id == agent_id).first()
+    def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
+        query = self.db_session.query(AgentModel).filter(AgentModel.id == agent_id)
+        if user_id:
+            query = query.filter(AgentModel.user_id == user_id)
+        
+        db_agent = query.first()
         
         if not db_agent:
             return None
         
         return self._to_domain_entity(db_agent)
     
-    def list_agents(self) -> List[Agent]:
-        db_agents = self.db_session.query(AgentModel).all()
+    def list_agents(self, user_id: str = None) -> List[Agent]:
+        query = self.db_session.query(AgentModel)
+        if user_id:
+            query = query.filter(AgentModel.user_id == user_id)
+        
+        db_agents = query.all()
         return [self._to_domain_entity(db_agent) for db_agent in db_agents]
     
     def update_agent(self, agent: Agent) -> Agent:
@@ -75,8 +84,12 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
         
         return agent
     
-    def delete_agent(self, agent_id: str) -> bool:
-        db_agent = self.db_session.query(AgentModel).filter(AgentModel.id == agent_id).first()
+    def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
+        query = self.db_session.query(AgentModel).filter(AgentModel.id == agent_id)
+        if user_id:
+            query = query.filter(AgentModel.user_id == user_id)
+        
+        db_agent = query.first()
         
         if not db_agent:
             return False
