@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from app.models.chat import (
     ConnectionCreateRequest,
@@ -6,13 +6,18 @@ from app.models.chat import (
     ConnectionResponse,
     ConnectionTestResult
 )
+from app.models.database import User
 from app.services.connection_service import connection_service
+from .auth import get_current_user_dependency
 
 router = APIRouter()
 
 
 @router.post("/connections", response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED)
-async def create_connection(request: ConnectionCreateRequest):
+async def create_connection(
+    request: ConnectionCreateRequest,
+    current_user: User = Depends(get_current_user_dependency)
+):
     """Create a new model connection"""
     try:
         connection = connection_service.create_connection(request)
@@ -25,7 +30,7 @@ async def create_connection(request: ConnectionCreateRequest):
 
 
 @router.get("/connections", response_model=List[ConnectionResponse])
-async def get_connections():
+async def get_connections(current_user: User = Depends(get_current_user_dependency)):
     """Get all model connections"""
     try:
         connections = connection_service.get_connections()

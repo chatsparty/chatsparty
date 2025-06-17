@@ -1,12 +1,16 @@
 import { useState } from 'react'
-import { FaRobot, FaUsers, FaPlug } from 'react-icons/fa'
+import { FaRobot, FaUsers, FaPlug, FaSignOutAlt } from 'react-icons/fa'
 import { AgentManagerPage, MultiAgentChatPage, LandingPage } from './pages'
 import { ConnectionManagerPage } from './pages/ConnectionManager/ConnectionManagerPage'
 import { ThemeToggle } from './components/ThemeToggle'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { AuthPage } from './components/auth/AuthPage'
+import { Button } from './components/ui/button'
 import './App.css'
 
-function App() {
+const MainApp = () => {
   const [activeTab, setActiveTab] = useState<'landing' | 'agents' | 'connections' | 'multi-chat'>('landing')
+  const { user, logout, loading } = useAuth()
 
   const tabs = [
     { id: 'agents', label: 'Agents', icon: FaRobot },
@@ -14,12 +18,30 @@ function App() {
     { id: 'multi-chat', label: 'Chat', icon: FaUsers }
   ]
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Landing page is public - no authentication required
   if (activeTab === 'landing') {
     return (
       <div className="App h-screen w-screen bg-background overflow-auto">
         <LandingPage onGetStarted={() => setActiveTab('agents')} />
       </div>
     )
+  }
+
+  // Protected features require authentication
+  if (!user) {
+    return <AuthPage />
   }
 
   return (
@@ -51,7 +73,21 @@ function App() {
                   </button>
                 ))}
               </nav>
-              <ThemeToggle />
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  {user?.email}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={logout}
+                  className="flex items-center gap-2"
+                >
+                  <FaSignOutAlt className="text-xs" />
+                  Sign Out
+                </Button>
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </div>
@@ -64,6 +100,14 @@ function App() {
         </div>
       </div>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   )
 }
 

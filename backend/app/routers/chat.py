@@ -8,9 +8,11 @@ from ..models.chat import (
     ChatResponse, AgentCreateRequest, AgentResponse, 
     AgentChatRequest, MultiAgentConversationRequest, ConversationMessage
 )
+from ..models.database import User
 from ..services.ai import get_ai_service, AIServiceFacade
 from ..services.ai.infrastructure.unified_model_service import get_unified_model_service
 from ..services.connection_service import connection_service
+from .auth import get_current_user_dependency
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -19,6 +21,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.post("/agents", response_model=AgentResponse)
 async def create_agent(
     agent_request: AgentCreateRequest,
+    current_user: User = Depends(get_current_user_dependency),
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     """Create an agent using connection_id"""
@@ -57,7 +60,10 @@ async def create_agent(
 
 
 @router.get("/agents", response_model=List[AgentResponse])
-async def list_agents(ai_service: AIServiceFacade = Depends(get_ai_service)):
+async def list_agents(
+    current_user: User = Depends(get_current_user_dependency),
+    ai_service: AIServiceFacade = Depends(get_ai_service)
+):
     try:
         agents_data = ai_service.list_agents()
         return [AgentResponse(**agent) for agent in agents_data]
@@ -69,6 +75,7 @@ async def list_agents(ai_service: AIServiceFacade = Depends(get_ai_service)):
 async def update_agent(
     agent_id: str,
     agent_request: AgentCreateRequest,
+    current_user: User = Depends(get_current_user_dependency),
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     """Update an existing agent"""
@@ -113,6 +120,7 @@ async def update_agent(
 @router.delete("/agents/{agent_id}")
 async def delete_agent(
     agent_id: str,
+    current_user: User = Depends(get_current_user_dependency),
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
