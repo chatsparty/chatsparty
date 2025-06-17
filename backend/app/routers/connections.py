@@ -1,0 +1,92 @@
+from fastapi import APIRouter, HTTPException, status
+from typing import List
+from app.models.chat import (
+    ConnectionCreateRequest,
+    ConnectionUpdateRequest, 
+    ConnectionResponse,
+    ConnectionTestResult
+)
+from app.services.connection_service import connection_service
+
+router = APIRouter()
+
+
+@router.post("/connections", response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED)
+async def create_connection(request: ConnectionCreateRequest):
+    """Create a new model connection"""
+    try:
+        connection = connection_service.create_connection(request)
+        return connection
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create connection: {str(e)}"
+        )
+
+
+@router.get("/connections", response_model=List[ConnectionResponse])
+async def get_connections():
+    """Get all model connections"""
+    try:
+        connections = connection_service.get_connections()
+        return connections
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch connections: {str(e)}"
+        )
+
+
+@router.get("/connections/active", response_model=List[ConnectionResponse])
+async def get_active_connections():
+    """Get only active model connections"""
+    try:
+        connections = connection_service.get_active_connections()
+        return connections
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch active connections: {str(e)}"
+        )
+
+
+@router.get("/connections/{connection_id}", response_model=ConnectionResponse)
+async def get_connection(connection_id: str):
+    """Get a specific model connection"""
+    connection = connection_service.get_connection(connection_id)
+    if not connection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Connection not found"
+        )
+    return connection
+
+
+@router.put("/connections/{connection_id}", response_model=ConnectionResponse)
+async def update_connection(connection_id: str, request: ConnectionUpdateRequest):
+    """Update a model connection"""
+    connection = connection_service.update_connection(connection_id, request)
+    if not connection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Connection not found"
+        )
+    return connection
+
+
+@router.delete("/connections/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_connection(connection_id: str):
+    """Delete a model connection"""
+    success = connection_service.delete_connection(connection_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Connection not found"
+        )
+
+
+@router.post("/connections/{connection_id}/test", response_model=ConnectionTestResult)
+async def test_connection(connection_id: str):
+    """Test a model connection"""
+    result = connection_service.test_connection(connection_id)
+    return result

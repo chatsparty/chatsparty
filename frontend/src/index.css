@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 

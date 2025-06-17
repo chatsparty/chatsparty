@@ -28,6 +28,7 @@ class Agent:
     characteristics: str
     model_config: ModelConfiguration
     chat_style: ChatStyle
+    connection_id: str
     
     def get_system_prompt(self) -> str:
         style_instructions = []

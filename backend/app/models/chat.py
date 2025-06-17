@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
+from datetime import datetime
 
 
 class ChatMessage(BaseModel):
@@ -13,18 +14,18 @@ class ChatResponse(BaseModel):
 
 
 class ChatStyle(BaseModel):
-    friendliness: str = "friendly"  # friendly, neutral, formal
-    response_length: str = "medium"  # short, medium, long
-    personality: str = "balanced"   # enthusiastic, balanced, reserved
-    humor: str = "light"           # none, light, witty
-    expertise_level: str = "expert" # beginner, intermediate, expert
+    friendliness: str = "friendly"
+    response_length: str = "medium"
+    personality: str = "balanced"
+    humor: str = "light"
+    expertise_level: str = "expert"
 
 
 class ModelConfig(BaseModel):
-    provider: str = "ollama"  # ollama, openai, anthropic, gemini, groq
+    provider: str = "ollama"
     model_name: str = "gemma2:2b"
     api_key: Optional[str] = None
-    base_url: Optional[str] = None  # For Ollama or custom endpoints
+    base_url: Optional[str] = None
 
 
 class AgentCreateRequest(BaseModel):
@@ -32,7 +33,7 @@ class AgentCreateRequest(BaseModel):
     name: str
     prompt: str
     characteristics: str
-    model_configuration: ModelConfig
+    connection_id: str
     chat_style: Optional[ChatStyle] = None
 
 
@@ -41,7 +42,7 @@ class AgentResponse(BaseModel):
     name: str
     prompt: str
     characteristics: str
-    model_configuration: ModelConfig
+    connection_id: str
     chat_style: Optional[ChatStyle] = None
 
 
@@ -63,3 +64,43 @@ class ConversationMessage(BaseModel):
     agent_id: Optional[str] = None
     message: str
     timestamp: float
+
+
+class ConnectionCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    provider: str
+    model_name: str
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+
+
+class ConnectionUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    provider: Optional[str] = None
+    model_name: Optional[str] = None
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class ConnectionResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    provider: str
+    model_name: str
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    created_at: str
+    updated_at: str
+    is_active: bool = True
+
+
+class ConnectionTestResult(BaseModel):
+    success: bool
+    message: str
+    latency: Optional[float] = None
+
+

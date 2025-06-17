@@ -53,11 +53,11 @@ class UnifiedModelService:
         """Create a model instance for the given provider and model"""
         try:
             if provider == 'ollama':
-                # For Ollama, use OpenAIModel with custom base URL
-                base_url = base_url or 'http://localhost:11434/v1'
+                base_url = base_url or 'http://localhost:11434'
+                openai_compatible_url = f"{base_url}/v1" if not base_url.endswith('/v1') else base_url
                 return OpenAIModel(
                     model_name=model_name,
-                    provider=OpenAIProvider(base_url=base_url)
+                    provider=OpenAIProvider(base_url=openai_compatible_url)
                 )
             
             elif provider == 'openai':
@@ -120,11 +120,9 @@ class UnifiedModelService:
                             base_url: Optional[str] = None) -> str:
         """Generate a chat completion using the specified model"""
         try:
-            # Create temporary agent for this completion
             model = self.create_model(provider, model_name, api_key, base_url)
             agent = PydanticAgent(model=model, system_prompt=system_prompt)
             
-            # Convert messages to conversation
             conversation_text = ""
             for message in messages:
                 role = message.get("role", "user")
@@ -135,7 +133,6 @@ class UnifiedModelService:
                 elif role == "assistant":
                     conversation_text += f"Assistant: {content}\n"
             
-            # Run the agent
             result = await agent.run(conversation_text)
             return result.output
             
@@ -155,7 +152,6 @@ class UnifiedModelService:
                 return False
             
             if provider_info['requires_api_key'] and not api_key:
-                # Check environment variables
                 env_key = f"{provider.upper()}_API_KEY"
                 if not os.getenv(env_key):
                     return False

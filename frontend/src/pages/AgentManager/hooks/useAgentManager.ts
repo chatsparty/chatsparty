@@ -9,19 +9,12 @@ interface ChatStyle {
   expertise_level: 'beginner' | 'intermediate' | 'expert';
 }
 
-interface ModelConfig {
-  provider: string;
-  model_name: string;
-  api_key?: string;
-  base_url?: string;
-}
-
 interface Agent {
   agent_id: string;
   name: string;
   prompt: string;
   characteristics: string;
-  model_configuration?: ModelConfig;
+  connection_id?: string;
   chat_style?: ChatStyle;
 }
 
@@ -30,7 +23,7 @@ interface FormData {
   name: string;
   prompt: string;
   characteristics: string;
-  model_configuration: ModelConfig;
+  connection_id: string;
   chat_style: ChatStyle;
 }
 
@@ -50,12 +43,7 @@ export const useAgentManager = () => {
     name: '',
     prompt: '',
     characteristics: '',
-    model_configuration: {
-      provider: 'ollama',
-      model_name: 'gemma3:4b',
-      api_key: '',
-      base_url: ''
-    },
+    connection_id: '',
     chat_style: {
       friendliness: 'friendly',
       response_length: 'medium',
@@ -111,7 +99,7 @@ export const useAgentManager = () => {
         name: formData.name,
         prompt: formData.prompt,
         characteristics: formData.characteristics,
-        model_configuration: formData.model_configuration,
+        connection_id: formData.connection_id,
         chat_style: formData.chat_style
       });
       
@@ -132,12 +120,7 @@ export const useAgentManager = () => {
       name: agent.name,
       prompt: agent.prompt,
       characteristics: agent.characteristics,
-      model_configuration: agent.model_configuration || {
-        provider: 'ollama',
-        model_name: 'gemma3:4b',
-        api_key: '',
-        base_url: ''
-      },
+      connection_id: agent.connection_id || '',
       chat_style: agent.chat_style || {
         friendliness: 'friendly',
         response_length: 'medium',
@@ -161,15 +144,6 @@ export const useAgentManager = () => {
           [styleKey]: value
         }
       });
-    } else if (name.startsWith('model_configuration.')) {
-      const configKey = name.split('.')[1];
-      setFormData({
-        ...formData,
-        model_configuration: {
-          ...formData.model_configuration,
-          [configKey]: value
-        }
-      });
     } else {
       setFormData({
         ...formData,
@@ -186,12 +160,7 @@ export const useAgentManager = () => {
       name: '',
       prompt: '',
       characteristics: '',
-      model_configuration: {
-        provider: 'ollama',
-        model_name: 'gemma3:4b',
-        api_key: '',
-        base_url: ''
-      },
+      connection_id: '',
       chat_style: {
         friendliness: 'friendly',
         response_length: 'medium',
@@ -209,12 +178,7 @@ export const useAgentManager = () => {
       name: preset.name,
       prompt: preset.prompt,
       characteristics: preset.characteristics,
-      model_configuration: {
-        provider: 'ollama',
-        model_name: 'gemma3:4b',
-        api_key: '',
-        base_url: ''
-      },
+      connection_id: '',
       chat_style: {
         friendliness: 'friendly',
         response_length: 'medium',

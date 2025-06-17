@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import axios from 'axios';
+import { useConnections } from '@/hooks/useConnections';
+import type { ModelConnection } from '@/types/connection';
 
 interface ChatStyle {
   friendliness: 'friendly' | 'neutral' | 'formal';
@@ -14,19 +15,12 @@ interface ChatStyle {
   expertise_level: 'beginner' | 'intermediate' | 'expert';
 }
 
-interface ModelConfig {
-  provider: string;
-  model_name: string;
-  api_key?: string;
-  base_url?: string;
-}
-
 interface Agent {
   agent_id: string;
   name: string;
   prompt: string;
   characteristics: string;
-  model_configuration?: ModelConfig;
+  connection_id?: string;
   chat_style?: ChatStyle;
 }
 
@@ -35,7 +29,7 @@ interface FormData {
   name: string;
   prompt: string;
   characteristics: string;
-  model_configuration: ModelConfig;
+  connection_id: string;
   chat_style: ChatStyle;
 }
 
@@ -46,6 +40,7 @@ interface AgentFormProps {
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
+  onNavigateToConnections: () => void;
 }
 
 const AgentForm: React.FC<AgentFormProps> = ({
@@ -54,32 +49,11 @@ const AgentForm: React.FC<AgentFormProps> = ({
   isLoading,
   onInputChange,
   onSubmit,
-  onCancel
+  onCancel,
+  onNavigateToConnections
 }) => {
-  const [providers, setProviders] = useState<Record<string, { models: string[]; requires_api_key?: boolean; base_url_required?: boolean }>>({});
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [loadingProviders, setLoadingProviders] = useState(true);
-
-  useEffect(() => {
-    const fetchProviders = async () => {
-      try {
-        const response = await axios.get('http://localhost:8000/chat/providers');
-        setProviders(response.data.providers || {});
-      } catch (error) {
-        console.error('Failed to fetch providers:', error);
-      } finally {
-        setLoadingProviders(false);
-      }
-    };
-
-    fetchProviders();
-  }, []);
-
-  useEffect(() => {
-    if (formData.model_configuration?.provider && providers[formData.model_configuration.provider]) {
-      setAvailableModels(providers[formData.model_configuration.provider].models || []);
-    }
-  }, [formData.model_configuration?.provider, providers]);
+  const { connections, getActiveConnections } = useConnections();
+  const activeConnections = getActiveConnections();
 
   const handleSelectChange = (field: string, value: string) => {
     const event = {
@@ -88,16 +62,19 @@ const AgentForm: React.FC<AgentFormProps> = ({
     onInputChange(event);
   };
 
-  const handleModelConfigChange = (field: string, value: string) => {
+  const handleConnectionChange = (connectionId: string) => {
+    if (connectionId === 'add-new') {
+      onNavigateToConnections();
+      return;
+    }
+    
     const event = {
-      target: { name: `model_configuration.${field}`, value }
+      target: { name: 'connection_id', value: connectionId }
     } as React.ChangeEvent<HTMLInputElement>;
     onInputChange(event);
   };
 
-  const selectedProvider = formData.model_configuration?.provider ? providers[formData.model_configuration.provider] : null;
-  const requiresApiKey = selectedProvider?.requires_api_key || false;
-  const requiresBaseUrl = selectedProvider?.base_url_required || false;
+  const selectedConnection = activeConnections.find(conn => conn.id === formData.connection_id);
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -183,85 +160,56 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
               <div>
                 <h3 className="mb-4 font-bold text-card-foreground text-lg">
-                  Model Configuration
+                  Model Connection
                 </h3>
                 
                 <div className="space-y-4">
                   <div>
                     <label className="block mb-2 font-medium text-card-foreground">
-                      AI Provider *
+                      Connection *
                     </label>
                     <Select
-                      value={formData.model_configuration?.provider || ''}
-                      onValueChange={(value) => handleModelConfigChange('provider', value)}
-                      disabled={loadingProviders}
+                      value={formData.connection_id || ''}
+                      onValueChange={handleConnectionChange}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={loadingProviders ? "Loading providers..." : "Select a provider"} />
+                        <SelectValue placeholder="Select a connection" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.keys(providers).map((provider) => (
-                          <SelectItem key={provider} value={provider}>
-                            {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                        {activeConnections.map((connection) => (
+                          <SelectItem key={connection.id} value={connection.id}>
+                            <div className="flex flex-col">
+                              <span>{connection.name}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {connection.provider} • {connection.model_name}
+                              </span>
+                            </div>
                           </SelectItem>
                         ))}
+                        <SelectItem value="add-new">
+                          <div className="flex items-center gap-2 text-primary">
+                            <span>+ Add New Connection</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
+                    {activeConnections.length === 0 && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        No active connections available. Create a connection first in the Connections tab.
+                      </p>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="block mb-2 font-medium text-card-foreground">
-                      Model *
-                    </label>
-                    <Select
-                      value={formData.model_configuration?.model_name || ''}
-                      onValueChange={(value) => handleModelConfigChange('model_name', value)}
-                      disabled={!formData.model_configuration?.provider || availableModels.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableModels.map((model) => (
-                          <SelectItem key={model} value={model}>
-                            {model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {requiresApiKey && (
-                    <div>
-                      <label className="block mb-2 font-medium text-card-foreground">
-                        API Key *
-                      </label>
-                      <Input
-                        type="password"
-                        value={formData.model_configuration?.api_key || ''}
-                        onChange={(e) => handleModelConfigChange('api_key', e.target.value)}
-                        placeholder={`Enter your ${formData.model_configuration?.provider || 'provider'} API key`}
-                        required
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Your API key will be used securely for this agent only
-                      </p>
-                    </div>
-                  )}
-
-                  {requiresBaseUrl && (
-                    <div>
-                      <label className="block mb-2 font-medium text-card-foreground">
-                        Base URL
-                      </label>
-                      <Input
-                        value={formData.model_configuration?.base_url || ''}
-                        onChange={(e) => handleModelConfigChange('base_url', e.target.value)}
-                        placeholder="http://localhost:11434"
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Leave empty to use default URL
-                      </p>
+                  {selectedConnection && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <h4 className="font-medium mb-2">Selected Connection Details:</h4>
+                      <div className="text-sm space-y-1">
+                        <p><span className="font-medium">Provider:</span> {selectedConnection.provider}</p>
+                        <p><span className="font-medium">Model:</span> {selectedConnection.model_name}</p>
+                        {selectedConnection.description && (
+                          <p><span className="font-medium">Description:</span> {selectedConnection.description}</p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

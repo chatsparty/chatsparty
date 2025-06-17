@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { FaRobot, FaUsers } from 'react-icons/fa'
+import { FaRobot, FaUsers, FaPlug } from 'react-icons/fa'
 import { AgentManagerPage, MultiAgentChatPage } from './pages'
+import { ConnectionManagerPage } from './pages/ConnectionManager/ConnectionManagerPage'
 import { ThemeToggle } from './components/ThemeToggle'
 import './App.css'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'agents' | 'multi-chat'>('agents')
+  const [activeTab, setActiveTab] = useState<'agents' | 'connections' | 'multi-chat'>('agents')
 
   const tabs = [
     { id: 'agents', label: 'Agents', icon: FaRobot },
+    { id: 'connections', label: 'Connections', icon: FaPlug },
     { id: 'multi-chat', label: 'Chat', icon: FaUsers }
   ]
 
@@ -43,7 +45,8 @@ function App() {
 
         {/* Content Area */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          {activeTab === 'agents' && <AgentManagerPage />}
+          {activeTab === 'agents' && <AgentManagerPage onNavigateToConnections={() => setActiveTab('connections')} />}
+          {activeTab === 'connections' && <ConnectionManagerPage />}
           {activeTab === 'multi-chat' && <MultiAgentChatPage />}
         </div>
       </div>

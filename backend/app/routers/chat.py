@@ -10,6 +10,7 @@ from ..models.chat import (
 )
 from ..services.ai import get_ai_service, AIServiceFacade
 from ..services.ai.infrastructure.unified_model_service import get_unified_model_service
+from ..services.connection_service import connection_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -20,14 +21,17 @@ async def create_agent(
     agent_request: AgentCreateRequest,
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
+    """Create an agent using connection_id"""
     try:
+        model_config = connection_service.get_connection_model_config(agent_request.connection_id)
+        if not model_config:
+            raise HTTPException(status_code=404, detail=f"Connection {agent_request.connection_id} not found")
+        
         chat_style_dict = None
         if agent_request.chat_style:
             chat_style_dict = agent_request.chat_style.model_dump()
         
-        model_config_dict = None
-        if agent_request.model_configuration:
-            model_config_dict = agent_request.model_configuration.model_dump()
+        model_config_dict = model_config.model_dump()
         
         agent = ai_service.create_agent(
             agent_request.agent_id,
@@ -35,16 +39,19 @@ async def create_agent(
             agent_request.prompt,
             agent_request.characteristics,
             model_config_dict,
-            chat_style_dict
+            chat_style_dict,
+            agent_request.connection_id
         )
         return AgentResponse(
             agent_id=agent.agent_id,
             name=agent.name,
             prompt=agent.prompt,
             characteristics=agent.characteristics,
-            model_configuration=agent_request.model_configuration,
+            connection_id=agent_request.connection_id,
             chat_style=agent_request.chat_style
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
 
@@ -122,18 +129,15 @@ async def stream_multi_agent_conversation(
                 conversation_request.initial_message,
                 conversation_request.max_turns
             ):
-                # Format as Server-Sent Events
                 data = json.dumps(message)
                 yield f"data: {data}\n\n"
                 
-                # Small delay to ensure proper streaming
                 await asyncio.sleep(0.1)
                 
         except Exception as e:
             error_message = {"error": f"Stream error: {str(e)}"}
             yield f"data: {json.dumps(error_message)}\n\n"
         
-        # Send completion event
         yield f"data: {json.dumps({'type': 'complete'})}\n\n"
     
     return StreamingResponse(
@@ -166,7 +170,10 @@ async def list_available_models():
         import ollama
         client = ollama.Client()
         models = client.list()
-        return {"models": [model["name"] for model in models["models"]]}
+        if "models" in models:
+            return {"models": [model.get("name", model.get("model", "")) for model in models["models"]]}
+        else:
+            return {"models": [], "error": "No models found in response"}
     except Exception as e:
         return {"models": [], "error": str(e)}
 

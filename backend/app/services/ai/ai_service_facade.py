@@ -16,7 +16,6 @@ class AIServiceFacade(AIServiceInterface):
         
         self._agent_service = AgentService(self._agent_repository)
         
-        # Use unified provider to support all model types
         self._model_provider = UnifiedModelProvider()
         self._chat_service = ChatService(
             self._model_provider,
@@ -31,10 +30,11 @@ class AIServiceFacade(AIServiceInterface):
         prompt: str, 
         characteristics: str,
         model_config: dict = None,
-        chat_style: dict = None
+        chat_style: dict = None,
+        connection_id: str = None
     ):
         return self._agent_service.create_agent(
-            agent_id, name, prompt, characteristics, model_config, chat_style
+            agent_id, name, prompt, characteristics, model_config, chat_style, connection_id
         )
     
     def get_agent(self, agent_id: str):

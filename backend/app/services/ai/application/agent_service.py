@@ -14,7 +14,8 @@ class AgentService:
         prompt: str, 
         characteristics: str,
         model_config: Optional[Dict] = None,
-        chat_style: Optional[Dict] = None
+        chat_style: Optional[Dict] = None,
+        connection_id: Optional[str] = None
     ) -> Agent:
         model_configuration = ModelConfiguration(
             provider=model_config.get("provider", "ollama"),
@@ -40,7 +41,8 @@ class AgentService:
             prompt=prompt,
             characteristics=characteristics,
             model_config=model_configuration,
-            chat_style=chat_style_obj
+            chat_style=chat_style_obj,
+            connection_id=connection_id or "default"
         )
         
         return self._agent_repository.create_agent(agent)
@@ -56,6 +58,7 @@ class AgentService:
                 "name": agent.name,
                 "prompt": agent.prompt,
                 "characteristics": agent.characteristics,
+                "connection_id": agent.connection_id,
                 "model_configuration": {
                     "provider": agent.model_config.provider,
                     "model_name": agent.model_config.model_name,
