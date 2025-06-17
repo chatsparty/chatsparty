@@ -48,3 +48,23 @@ class TokenData(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+class OAuthInitRequest(BaseModel):
+    provider: str  # "google" or "github"
+
+
+class OAuthInitResponse(BaseModel):
+    auth_url: str
+    state: str
+
+
+class OAuthCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
+class AuthConfigResponse(BaseModel):
+    social_auth_only: bool
+    google_enabled: bool
+    github_enabled: bool

@@ -19,6 +19,7 @@ const MultiAgentChatPage: React.FC = () => {
     setShowNewConversationForm,
     startConversation,
     stopConversation,
+    deleteConversation,
     getAgentName,
     getAgentColor,
     handleSelectAgent,
@@ -45,6 +46,7 @@ const MultiAgentChatPage: React.FC = () => {
         onStartConversation={startConversation}
         onStopConversation={stopConversation}
         onSelectConversation={setActiveConversation}
+        onDeleteConversation={deleteConversation}
       />
 
       <div className="flex-1 flex flex-col bg-background">

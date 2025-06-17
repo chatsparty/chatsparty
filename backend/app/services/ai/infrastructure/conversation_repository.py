@@ -189,3 +189,25 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         conversation.is_shared = is_shared
         self.db_session.commit()
         return True
+    
+    def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
+        """Delete a conversation and all its messages"""
+        conversation = (
+            self.db_session.query(ConversationModel)
+            .filter(ConversationModel.id == conversation_id)
+            .filter(ConversationModel.user_id == user_id)
+            .first()
+        )
+        
+        if not conversation:
+            return False
+        
+        # Delete all messages first (due to foreign key constraints)
+        self.db_session.query(MessageModel).filter(
+            MessageModel.conversation_id == conversation_id
+        ).delete()
+        
+        # Delete the conversation
+        self.db_session.delete(conversation)
+        self.db_session.commit()
+        return True

@@ -5,6 +5,7 @@ import { Button } from "../../../components/ui/button";
 import { ShareModal } from "../../../components/ui/modal";
 import { ToastContainer } from "../../../components/ui/toast";
 import { useToast } from "../../../hooks/useToast";
+import { Users, AlertTriangle, CheckCircle } from "lucide-react";
 import axios from "axios";
 
 interface ChatAreaProps {
@@ -139,7 +140,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     return (
       <div className="flex-1 flex flex-col justify-center items-center p-10 text-center">
         <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-          <span className="text-3xl">👥</span>
+          <Users className="w-10 h-10 text-primary" />
         </div>
         <h2 className="text-2xl font-bold text-foreground mb-4">
           Multi-Agent Conversations
@@ -152,7 +153,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         {agents.length < 2 ? (
           <div className="p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-xl max-w-md">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-yellow-600 text-lg">⚠️</span>
+              <AlertTriangle className="w-5 h-5 text-yellow-600" />
               <strong className="text-yellow-800 dark:text-yellow-200 font-semibold">
                 Getting Started
               </strong>
@@ -165,7 +166,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         ) : (
           <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl max-w-md">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-green-600 text-lg">✓</span>
+              <CheckCircle className="w-5 h-5 text-green-600" />
               <strong className="text-green-800 dark:text-green-200 font-semibold">
                 Ready to go!
               </strong>

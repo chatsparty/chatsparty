@@ -4,6 +4,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card } from '../ui/card';
 import { useAuth } from '../../contexts/AuthContext';
+import { SocialLoginButtons } from './SocialLoginButtons';
 
 interface RegisterFormProps {
   onToggleMode: () => void;
@@ -154,6 +155,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
             {loading ? 'Creating account...' : 'Create Account'}
           </Button>
         </form>
+
+        <SocialLoginButtons loading={loading} />
 
         <div className="text-center">
           <p className="text-muted-foreground">

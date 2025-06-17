@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Agent, ActiveConversation } from "../types";
 import type { UseMultiAgentChatReturn } from "./types";
 import { DEFAULT_MAX_TURNS } from "./constants";
-import { fetchAgents, fetchConversations } from "./api";
+import { fetchAgents, fetchConversations, deleteConversation as apiDeleteConversation } from "./api";
 import { createAgentHelpers } from "./helpers";
 import { useConversationActions } from "./conversationActions";
 
@@ -48,6 +48,21 @@ export const useMultiAgentChat = (): UseMultiAgentChatReturn => {
     } catch {}
   }, [agents]);
 
+  const deleteConversation = useCallback(async (conversationId: string): Promise<void> => {
+    try {
+      await apiDeleteConversation(conversationId);
+      // If the deleted conversation was active, clear the active conversation
+      if (activeConversation === conversationId) {
+        setActiveConversation(null);
+      }
+      // Reload conversations to reflect the deletion
+      await loadConversations();
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      throw error;
+    }
+  }, [activeConversation, loadConversations]);
+
   useEffect(() => {
     loadAgents();
 
@@ -76,6 +91,7 @@ export const useMultiAgentChat = (): UseMultiAgentChatReturn => {
     setShowNewConversationForm,
     startConversation,
     stopConversation,
+    deleteConversation,
     handleSelectAgent,
     loadConversations,
 
