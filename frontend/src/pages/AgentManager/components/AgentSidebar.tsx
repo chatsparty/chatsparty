@@ -13,12 +13,14 @@ interface AgentSidebarProps {
   agents: Agent[];
   onCreateAgent: () => void;
   onEditAgent: (agent: Agent) => void;
+  onDeleteAgent: (agentId: string) => void;
 }
 
 const AgentSidebar: React.FC<AgentSidebarProps> = ({ 
   agents, 
   onCreateAgent, 
-  onEditAgent 
+  onEditAgent,
+  onDeleteAgent 
 }) => {
   return (
     <div className="w-80 bg-card border-r border-border flex flex-col">
@@ -49,6 +51,7 @@ const AgentSidebar: React.FC<AgentSidebarProps> = ({
                 key={agent.agent_id}
                 agent={agent}
                 onEdit={onEditAgent}
+                onDelete={onDeleteAgent}
               />
             ))}
           </div>

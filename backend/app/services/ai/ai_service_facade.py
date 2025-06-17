@@ -43,6 +43,9 @@ class AIServiceFacade(AIServiceInterface):
     def list_agents(self) -> List[Dict[str, Any]]:
         return self._agent_service.list_agents()
     
+    def delete_agent(self, agent_id: str) -> bool:
+        return self._agent_service.delete_agent(agent_id)
+    
     async def agent_chat(
         self, 
         agent_id: str, 

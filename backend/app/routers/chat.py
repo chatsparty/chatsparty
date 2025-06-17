@@ -58,6 +58,22 @@ async def list_agents(ai_service: AIServiceFacade = Depends(get_ai_service)):
         raise HTTPException(status_code=500, detail=f"Failed to list agents: {str(e)}")
 
 
+@router.delete("/agents/{agent_id}")
+async def delete_agent(
+    agent_id: str,
+    ai_service: AIServiceFacade = Depends(get_ai_service)
+):
+    try:
+        success = ai_service.delete_agent(agent_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        return {"message": f"Agent {agent_id} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete agent: {str(e)}")
+
+
 @router.post("/agents/chat", response_model=ChatResponse)
 async def chat_with_agent(
     chat_request: AgentChatRequest,

@@ -186,7 +186,7 @@ export const useAgentManager = () => {
       name: '',
       prompt: '',
       characteristics: '',
-      model_config: {
+      model_configuration: {
         provider: 'ollama',
         model_name: 'gemma3:4b',
         api_key: '',
@@ -209,7 +209,7 @@ export const useAgentManager = () => {
       name: preset.name,
       prompt: preset.prompt,
       characteristics: preset.characteristics,
-      model_config: {
+      model_configuration: {
         provider: 'ollama',
         model_name: 'gemma3:4b',
         api_key: '',
@@ -226,6 +226,23 @@ export const useAgentManager = () => {
     setShowCreateForm(true);
   };
 
+  const handleDeleteAgent = async (agentId: string) => {
+    if (!window.confirm('Are you sure you want to delete this agent?')) {
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await axios.delete(`http://localhost:8000/chat/agents/${agentId}`);
+      await fetchAgents();
+    } catch (error) {
+      console.error('Failed to delete agent:', error);
+      alert('Failed to delete agent. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     agents,
     isLoading,
@@ -238,6 +255,7 @@ export const useAgentManager = () => {
     handleEditAgent,
     handleInputChange,
     resetForm,
-    createPresetAgent
+    createPresetAgent,
+    handleDeleteAgent
   };
 };

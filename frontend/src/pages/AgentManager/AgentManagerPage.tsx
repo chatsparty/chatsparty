@@ -17,7 +17,8 @@ const AgentManagerPage: React.FC = () => {
     handleEditAgent,
     handleInputChange,
     resetForm,
-    createPresetAgent
+    createPresetAgent,
+    handleDeleteAgent
   } = useAgentManager();
 
   return (
@@ -26,6 +27,7 @@ const AgentManagerPage: React.FC = () => {
         agents={agents}
         onCreateAgent={() => setShowCreateForm(true)}
         onEditAgent={handleEditAgent}
+        onDeleteAgent={handleDeleteAgent}
       />
 
       <div className="flex-1 flex flex-col min-h-0">
