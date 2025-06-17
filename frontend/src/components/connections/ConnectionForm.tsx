@@ -35,7 +35,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   useEffect(() => {
     const fetchProviders = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/chat/providers');
+        const response = await axios.get('/chat/providers');
         setProviders(response.data.providers || {});
       } catch (error) {
         console.error('Failed to fetch providers:', error);

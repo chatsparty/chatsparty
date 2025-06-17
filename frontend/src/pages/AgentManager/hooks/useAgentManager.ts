@@ -19,7 +19,6 @@ interface Agent {
 }
 
 interface FormData {
-  agent_id: string;
   name: string;
   prompt: string;
   characteristics: string;
@@ -39,7 +38,6 @@ export const useAgentManager = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    agent_id: '',
     name: '',
     prompt: '',
     characteristics: '',
@@ -78,7 +76,7 @@ export const useAgentManager = () => {
 
   const fetchAgents = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/chat/agents');
+      const response = await axios.get('/chat/agents');
       setAgents(response.data);
     } catch (error) {
       console.error('Failed to fetch agents:', error);
@@ -94,8 +92,7 @@ export const useAgentManager = () => {
     setIsLoading(true);
     
     try {
-      await axios.post('http://localhost:8000/chat/agents', {
-        agent_id: formData.agent_id,
+      await axios.post('/chat/agents', {
         name: formData.name,
         prompt: formData.prompt,
         characteristics: formData.characteristics,
@@ -116,7 +113,6 @@ export const useAgentManager = () => {
   const handleEditAgent = (agent: Agent) => {
     setEditingAgent(agent);
     setFormData({
-      agent_id: agent.agent_id,
       name: agent.name,
       prompt: agent.prompt,
       characteristics: agent.characteristics,
@@ -156,7 +152,6 @@ export const useAgentManager = () => {
     setShowCreateForm(false);
     setEditingAgent(null);
     setFormData({
-      agent_id: '',
       name: '',
       prompt: '',
       characteristics: '',
@@ -172,9 +167,7 @@ export const useAgentManager = () => {
   };
 
   const createPresetAgent = (preset: PresetAgent) => {
-    const agentId = preset.name.toLowerCase().replace(/\s+/g, '-');
     setFormData({
-      agent_id: agentId,
       name: preset.name,
       prompt: preset.prompt,
       characteristics: preset.characteristics,
@@ -197,7 +190,7 @@ export const useAgentManager = () => {
     
     setIsLoading(true);
     try {
-      await axios.delete(`http://localhost:8000/chat/agents/${agentId}`);
+      await axios.delete(`/chat/agents/${agentId}`);
       await fetchAgents();
     } catch (error) {
       console.error('Failed to delete agent:', error);

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useConnections } from "@/hooks/useConnections";
 
 interface ChatStyle {
   friendliness: "friendly" | "neutral" | "formal";
@@ -30,7 +31,6 @@ interface Agent {
 }
 
 interface FormData {
-  agent_id: string;
   name: string;
   prompt: string;
   characteristics: string;
@@ -60,6 +60,10 @@ const AgentForm: React.FC<AgentFormProps> = ({
   onCancel,
 }) => {
   const navigate = useNavigate();
+  const { loading: connectionsLoading, getActiveConnections } = useConnections();
+  
+  const activeConnections = getActiveConnections();
+  const selectedConnection = activeConnections.find(conn => conn.id === formData.connection_id);
   const handleSelectChange = (field: string, value: string) => {
     const event = {
       target: { name: field, value },
@@ -94,24 +98,6 @@ const AgentForm: React.FC<AgentFormProps> = ({
         <form onSubmit={onSubmit} className="flex flex-col min-h-full">
           <div className="flex-1 p-5 pb-0">
             <div className="space-y-5">
-              <div>
-                <label className="block mb-2 font-medium text-card-foreground">
-                  Agent ID *
-                </label>
-                <Input
-                  name="agent_id"
-                  value={formData.agent_id}
-                  onChange={onInputChange}
-                  placeholder="e.g., business-analyst"
-                  disabled={editingAgent !== null}
-                  className={editingAgent ? "bg-muted" : ""}
-                  required
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Unique identifier for the agent (cannot be changed after
-                  creation)
-                </p>
-              </div>
 
               <div>
                 <label className="block mb-2 font-medium text-card-foreground">
@@ -176,7 +162,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                         <SelectValue placeholder="Select a connection" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* {activeConnections.map((connection) => (
+                        {activeConnections.map((connection) => (
                           <SelectItem key={connection.id} value={connection.id}>
                             <div className="flex flex-col">
                               <span>{connection.name}</span>
@@ -185,7 +171,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                               </span>
                             </div>
                           </SelectItem>
-                        ))} */}
+                        ))}
                         <SelectItem value="add-new">
                           <div className="flex items-center gap-2 text-primary">
                             <span>+ Add New Connection</span>
@@ -193,14 +179,14 @@ const AgentForm: React.FC<AgentFormProps> = ({
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    {/* {activeConnections.length === 0 && (
+                    {activeConnections.length === 0 && !connectionsLoading && (
                       <p className="text-sm text-muted-foreground mt-1">
                         No active connections available. Create a connection first in the Connections tab.
                       </p>
-                    )} */}
+                    )}
                   </div>
 
-                  {/* {selectedConnection && (
+                  {selectedConnection && (
                     <div className="p-3 bg-muted rounded-lg">
                       <h4 className="font-medium mb-2">Selected Connection Details:</h4>
                       <div className="text-sm space-y-1">
@@ -211,7 +197,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                         )}
                       </div>
                     </div>
-                  )} */}
+                  )}
                 </div>
               </div>
 
