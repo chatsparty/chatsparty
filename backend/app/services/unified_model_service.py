@@ -76,8 +76,8 @@ class UnifiedModelService:
                     api_key = os.getenv('GEMINI_API_KEY')
                 if not api_key:
                     raise ValueError("Gemini API key is required")
-                os.environ['GEMINI_API_KEY'] = api_key
-                return f'gemini:{model_name}'
+                os.environ['GOOGLE_API_KEY'] = api_key
+                return f'google-gla:{model_name}'
             
             elif provider == 'groq':
                 if not api_key:
