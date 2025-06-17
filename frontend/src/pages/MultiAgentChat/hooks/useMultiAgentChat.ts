@@ -11,6 +11,7 @@ export const useMultiAgentChat = () => {
   const [maxTurns, setMaxTurns] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewConversationForm, setShowNewConversationForm] = useState(false);
+  const [abortControllers, setAbortControllers] = useState<Map<string, AbortController>>(new Map());
 
   const fetchAgents = async () => {
     try {
@@ -30,6 +31,10 @@ export const useMultiAgentChat = () => {
 
     setIsLoading(true);
     const conversationId = `conv_${Date.now()}`;
+    const abortController = new AbortController();
+    
+    // Store abort controller for this conversation
+    setAbortControllers(prev => new Map(prev.set(conversationId, abortController)));
     
     try {
       // Create new conversation
@@ -58,7 +63,8 @@ export const useMultiAgentChat = () => {
           agent_ids: selectedAgents,
           initial_message: initialMessage,
           max_turns: maxTurns
-        })
+        }),
+        signal: abortController.signal
       }).then(response => {
         if (!response.ok) {
           throw new Error('Failed to start streaming conversation');
@@ -96,6 +102,12 @@ export const useMultiAgentChat = () => {
                             : conv
                         )
                       );
+                      // Clean up abort controller
+                      setAbortControllers(prev => {
+                        const newMap = new Map(prev);
+                        newMap.delete(conversationId);
+                        return newMap;
+                      });
                       break;
                     }
                     
@@ -155,15 +167,49 @@ export const useMultiAgentChat = () => {
         readStream();
       }).catch(error => {
         console.error('Failed to start conversation:', error);
-        alert('Failed to start conversation. Make sure all selected agents exist.');
+        if (error.name !== 'AbortError') {
+          alert('Failed to start conversation. Make sure all selected agents exist.');
+        }
         setConversations(prev => prev.filter(conv => conv.id !== conversationId));
+        // Clean up abort controller
+        setAbortControllers(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(conversationId);
+          return newMap;
+        });
       });
 
     } catch (error) {
       console.error('Failed to start conversation:', error);
       alert('Failed to start conversation. Make sure all selected agents exist.');
+      // Clean up abort controller
+      setAbortControllers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(conversationId);
+        return newMap;
+      });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const stopConversation = (conversationId: string) => {
+    const abortController = abortControllers.get(conversationId);
+    if (abortController) {
+      abortController.abort();
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === conversationId 
+            ? { ...conv, isActive: false }
+            : conv
+        )
+      );
+      // Clean up abort controller
+      setAbortControllers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(conversationId);
+        return newMap;
+      });
     }
   };
 
@@ -202,6 +248,7 @@ export const useMultiAgentChat = () => {
     setMaxTurns,
     setShowNewConversationForm,
     startConversation,
+    stopConversation,
     getAgentName,
     getAgentColor,
     handleSelectAgent,

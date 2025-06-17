@@ -21,6 +21,7 @@ interface ConversationSidebarProps {
   onInitialMessageChange: (message: string) => void;
   onMaxTurnsChange: (turns: number) => void;
   onStartConversation: () => void;
+  onStopConversation: (conversationId: string) => void;
   onSelectConversation: (conversationId: string) => void;
 }
 
@@ -38,6 +39,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onInitialMessageChange,
   onMaxTurnsChange,
   onStartConversation,
+  onStopConversation,
   onSelectConversation,
 }) => {
   const formatTime = (timestamp: number) => {
@@ -155,30 +157,49 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             {conversations.map((conv) => (
               <div
                 key={conv.id}
-                onClick={() => onSelectConversation(conv.id)}
-                className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                className={`p-4 rounded-lg border transition-all duration-200 ${
                   activeConversation === conv.id 
                     ? 'bg-blue-50 border-blue-200' 
                     : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                 }`}
               >
-                <div className="font-semibold text-sm text-gray-700 mb-2">
-                  {conv.name}
+                <div 
+                  onClick={() => onSelectConversation(conv.id)}
+                  className="cursor-pointer"
+                >
+                  <div className="font-semibold text-sm text-gray-700 mb-2">
+                    {conv.name}
+                  </div>
+                  <div className="text-xs text-gray-600 mb-2 flex items-center gap-2">
+                    {conv.messages.length} messages
+                    {conv.isActive && (
+                      <Badge variant="secondary" className="bg-green-500 text-white text-xs px-2 py-0.5">
+                        LIVE
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500 italic">
+                    {conv.messages.length > 0 
+                      ? formatTime(conv.messages[conv.messages.length - 1].timestamp)
+                      : 'No messages'
+                    }
+                  </div>
                 </div>
-                <div className="text-xs text-gray-600 mb-2 flex items-center gap-2">
-                  {conv.messages.length} messages
-                  {conv.isActive && (
-                    <Badge variant="secondary" className="bg-green-500 text-white text-xs px-2 py-0.5">
-                      LIVE
-                    </Badge>
-                  )}
-                </div>
-                <div className="text-xs text-gray-500 italic">
-                  {conv.messages.length > 0 
-                    ? formatTime(conv.messages[conv.messages.length - 1].timestamp)
-                    : 'No messages'
-                  }
-                </div>
+                {conv.isActive && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStopConversation(conv.id);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                    >
+                      Stop Conversation
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

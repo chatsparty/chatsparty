@@ -18,6 +18,7 @@ const MultiAgentChatPage: React.FC = () => {
     setMaxTurns,
     setShowNewConversationForm,
     startConversation,
+    stopConversation,
     getAgentName,
     getAgentColor,
     handleSelectAgent,
@@ -41,6 +42,7 @@ const MultiAgentChatPage: React.FC = () => {
         onInitialMessageChange={setInitialMessage}
         onMaxTurnsChange={setMaxTurns}
         onStartConversation={startConversation}
+        onStopConversation={stopConversation}
         onSelectConversation={setActiveConversation}
       />
 
