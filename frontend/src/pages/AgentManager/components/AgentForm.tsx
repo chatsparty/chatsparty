@@ -55,9 +55,9 @@ const AgentForm: React.FC<AgentFormProps> = ({
   };
 
   return (
-    <div className="p-5 h-full overflow-y-auto bg-white">
+    <div className="p-5 h-full overflow-y-auto bg-card">
       <div className="flex justify-between items-center mb-5">
-        <h2 className="text-lg font-semibold text-gray-700">
+        <h2 className="text-lg font-semibold text-card-foreground">
           {editingAgent ? 'Edit Agent' : 'Create New Agent'}
         </h2>
         <Button
@@ -72,7 +72,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
       <form onSubmit={onSubmit}>
         <div className="space-y-5">
           <div>
-            <label className="block mb-2 font-medium text-gray-700">
+            <label className="block mb-2 font-medium text-card-foreground">
               Agent ID *
             </label>
             <Input
@@ -81,16 +81,16 @@ const AgentForm: React.FC<AgentFormProps> = ({
               onChange={onInputChange}
               placeholder="e.g., business-analyst"
               disabled={editingAgent !== null}
-              className={editingAgent ? "bg-gray-50" : ""}
+              className={editingAgent ? "bg-muted" : ""}
               required
             />
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Unique identifier for the agent (cannot be changed after creation)
             </p>
           </div>
 
           <div>
-            <label className="block mb-2 font-medium text-gray-700">
+            <label className="block mb-2 font-medium text-card-foreground">
               Agent Name *
             </label>
             <Input
@@ -103,7 +103,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           </div>
 
           <div>
-            <label className="block mb-2 font-medium text-gray-700">
+            <label className="block mb-2 font-medium text-card-foreground">
               Characteristics *
             </label>
             <Textarea
@@ -118,7 +118,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           </div>
 
           <div>
-            <label className="block mb-2 font-medium text-gray-700">
+            <label className="block mb-2 font-medium text-card-foreground">
               System Prompt *
             </label>
             <Textarea
@@ -133,7 +133,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           </div>
 
           <div>
-            <label className="block mb-2 font-medium text-gray-700">
+            <label className="block mb-2 font-medium text-card-foreground">
               Model Name (Optional)
             </label>
             <Input
@@ -147,13 +147,13 @@ const AgentForm: React.FC<AgentFormProps> = ({
           <Separator />
 
           <div>
-            <h3 className="mb-4 font-bold text-gray-700 text-lg">
+            <h3 className="mb-4 font-bold text-card-foreground text-lg">
               Chat Style Settings
             </h3>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-2 font-medium text-gray-700">
+                <label className="block mb-2 font-medium text-card-foreground">
                   Friendliness
                 </label>
                 <Select
@@ -172,7 +172,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
               </div>
 
               <div>
-                <label className="block mb-2 font-medium text-gray-700">
+                <label className="block mb-2 font-medium text-card-foreground">
                   Response Length
                 </label>
                 <Select
@@ -191,7 +191,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
               </div>
 
               <div>
-                <label className="block mb-2 font-medium text-gray-700">
+                <label className="block mb-2 font-medium text-card-foreground">
                   Personality
                 </label>
                 <Select
@@ -210,7 +210,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
               </div>
 
               <div>
-                <label className="block mb-2 font-medium text-gray-700">
+                <label className="block mb-2 font-medium text-card-foreground">
                   Humor Level
                 </label>
                 <Select
@@ -229,7 +229,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
               </div>
 
               <div className="col-span-2">
-                <label className="block mb-2 font-medium text-gray-700">
+                <label className="block mb-2 font-medium text-card-foreground">
                   Expertise Level
                 </label>
                 <Select

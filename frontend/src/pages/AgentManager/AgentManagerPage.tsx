@@ -21,7 +21,7 @@ const AgentManagerPage: React.FC = () => {
   } = useAgentManager();
 
   return (
-    <div className="flex h-full w-full bg-gray-50">
+    <div className="flex h-full w-full bg-background">
       <AgentSidebar
         agents={agents}
         onCreateAgent={() => setShowCreateForm(true)}
