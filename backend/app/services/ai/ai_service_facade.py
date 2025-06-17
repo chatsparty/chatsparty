@@ -3,7 +3,7 @@ from .domain.interfaces import AIServiceInterface
 from .application.agent_service import AgentService
 from .application.chat_service import ChatService
 from .infrastructure.repositories import InMemoryAgentRepository, InMemoryConversationRepository
-from .infrastructure.model_providers import ModelProviderFactory
+from .infrastructure.model_providers import UnifiedModelProvider
 import os
 
 
@@ -16,7 +16,8 @@ class AIServiceFacade(AIServiceInterface):
         
         self._agent_service = AgentService(self._agent_repository)
         
-        self._model_provider = ModelProviderFactory.create_provider("ollama")
+        # Use unified provider to support all model types
+        self._model_provider = UnifiedModelProvider()
         self._chat_service = ChatService(
             self._model_provider,
             self._agent_repository,

@@ -1,10 +1,8 @@
-from .model_providers import OllamaModelProvider, UnifiedModelProvider, ModelProviderFactory
+from .model_providers import UnifiedModelProvider
 from .repositories import InMemoryAgentRepository, InMemoryConversationRepository
 
 __all__ = [
-    "OllamaModelProvider",
-    "UnifiedModelProvider", 
-    "ModelProviderFactory",
+    "UnifiedModelProvider",
     "InMemoryAgentRepository",
     "InMemoryConversationRepository"
 ]

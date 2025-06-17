@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import type { ConversationMessage } from '../types';
 
 interface MessageBubbleProps {
@@ -109,7 +110,44 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, getAgentColor })
               </div>
             </div>
           ) : (
-            <div className="text-sm">{message.message}</div>
+            <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  code: ({ inline, children, ...props }: { inline?: boolean; children: React.ReactNode; [key: string]: unknown }) => (
+                    inline ? (
+                      <code 
+                        className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs"
+                        {...props}
+                      >
+                        {children}
+                      </code>
+                    ) : (
+                      <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto">
+                        <code className="text-xs" {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    )
+                  ),
+                  ul: ({ children }) => <ul className="list-disc pl-4 space-y-1">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal pl-4 space-y-1">{children}</ol>,
+                  li: ({ children }) => <li className="text-sm">{children}</li>,
+                  h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
+                      {children}
+                    </blockquote>
+                  ),
+                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                  em: ({ children }) => <em className="italic">{children}</em>,
+                }}
+              >
+                {message.message}
+              </ReactMarkdown>
+            </div>
           )}
         </div>
       </div>

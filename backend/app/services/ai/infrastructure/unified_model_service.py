@@ -1,4 +1,6 @@
 from pydantic_ai import Agent as PydanticAgent
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 from typing import List, Dict, Optional, Union
 import os
 import asyncio
@@ -47,13 +49,16 @@ class UnifiedModelService:
         """Get available models for a specific provider"""
         return self.SUPPORTED_PROVIDERS.get(provider, {}).get('models', [])
     
-    def create_model(self, provider: str, model_name: str, api_key: Optional[str] = None, base_url: Optional[str] = None) -> str:
+    def create_model(self, provider: str, model_name: str, api_key: Optional[str] = None, base_url: Optional[str] = None):
         """Create a model instance for the given provider and model"""
         try:
             if provider == 'ollama':
-                # For Ollama, use the base_url or default to localhost
-                base_url = base_url or 'http://localhost:11434'
-                return f'ollama:{model_name}'
+                # For Ollama, use OpenAIModel with custom base URL
+                base_url = base_url or 'http://localhost:11434/v1'
+                return OpenAIModel(
+                    model_name=model_name,
+                    provider=OpenAIProvider(base_url=base_url)
+                )
             
             elif provider == 'openai':
                 if not api_key:
@@ -132,7 +137,7 @@ class UnifiedModelService:
             
             # Run the agent
             result = await agent.run(conversation_text)
-            return result.data
+            return result.output
             
         except Exception as e:
             print(f"Error in chat completion: {e}")

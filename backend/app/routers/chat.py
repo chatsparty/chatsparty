@@ -9,7 +9,7 @@ from ..models.chat import (
     AgentChatRequest, MultiAgentConversationRequest, ConversationMessage
 )
 from ..services.ai import get_ai_service, AIServiceFacade
-from ..services.unified_model_service import get_unified_model_service
+from ..services.ai.infrastructure.unified_model_service import get_unified_model_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
