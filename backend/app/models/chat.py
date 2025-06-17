@@ -29,7 +29,7 @@ class ModelConfig(BaseModel):
 
 
 class AgentCreateRequest(BaseModel):
-    agent_id: str
+    agent_id: Optional[str] = None
     name: str
     prompt: str
     characteristics: str
@@ -102,5 +102,15 @@ class ConnectionTestResult(BaseModel):
     success: bool
     message: str
     latency: Optional[float] = None
+
+
+class ConversationShareRequest(BaseModel):
+    is_shared: bool
+
+
+class ConversationShareResponse(BaseModel):
+    conversation_id: str
+    is_shared: bool
+    share_url: Optional[str] = None
 
 

@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     use_sqlite: bool = True
     ollama_model: str = "gemma3:4b"
     
+    # Authentication settings
+    secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
+    
     @property
     def database_url_computed(self) -> str:
         if self.database_url:

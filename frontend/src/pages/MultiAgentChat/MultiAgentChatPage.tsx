@@ -22,6 +22,7 @@ const MultiAgentChatPage: React.FC = () => {
     getAgentName,
     getAgentColor,
     handleSelectAgent,
+    loadConversations,
   } = useMultiAgentChat();
 
   const activeConv = conversations.find(c => c.id === activeConversation);
@@ -52,6 +53,7 @@ const MultiAgentChatPage: React.FC = () => {
           agents={agents}
           getAgentName={getAgentName}
           getAgentColor={getAgentColor}
+          onConversationUpdated={loadConversations}
         />
       </div>
     </div>

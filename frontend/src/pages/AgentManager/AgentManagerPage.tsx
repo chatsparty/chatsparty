@@ -4,11 +4,7 @@ import AgentSidebar from './components/AgentSidebar';
 import AgentForm from './components/AgentForm';
 import PresetTemplates from './components/PresetTemplates';
 
-interface AgentManagerPageProps {
-  onNavigateToConnections: () => void;
-}
-
-const AgentManagerPage: React.FC<AgentManagerPageProps> = ({ onNavigateToConnections }) => {
+const AgentManagerPage: React.FC = () => {
   const {
     agents,
     isLoading,
@@ -43,7 +39,6 @@ const AgentManagerPage: React.FC<AgentManagerPageProps> = ({ onNavigateToConnect
             onInputChange={handleInputChange}
             onSubmit={handleCreateAgent}
             onCancel={resetForm}
-            onNavigateToConnections={onNavigateToConnections}
           />
         ) : (
           <PresetTemplates

@@ -11,10 +11,12 @@ export const handleStreamConversation = async (
   onMessage: (conversationId: string, message: StreamMessage) => void
 ): Promise<void> => {
   try {
+    const token = localStorage.getItem('access_token');
     const response = await fetch(`${API_BASE_URL}/chat/agents/conversation/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
       },
       body: JSON.stringify({
         conversation_id: conversationId,

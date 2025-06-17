@@ -24,19 +24,20 @@ class ChatService:
         self, 
         agent_id: str, 
         message: str, 
-        conversation_id: str = "default"
+        conversation_id: str = "default",
+        user_id: str = None
     ) -> str:
-        agent = self._agent_repository.get_agent(agent_id)
+        agent = self._agent_repository.get_agent(agent_id, user_id)
         if not agent:
             return f"Agent {agent_id} not found"
         
-        if not self._conversation_repository.get_conversation(conversation_id):
-            self._conversation_repository.create_conversation(conversation_id)
+        if not self._conversation_repository.get_conversation(conversation_id, user_id):
+            self._conversation_repository.create_conversation(conversation_id, user_id or "default")
         
         user_message = Message(role="user", content=message, speaker="user")
         self._conversation_repository.add_message(conversation_id, user_message)
         
-        conversation_messages = self._conversation_repository.get_conversation(conversation_id)
+        conversation_messages = self._conversation_repository.get_conversation(conversation_id, user_id)
         
         response = await self._model_provider.chat_completion(
             conversation_messages,
@@ -54,7 +55,8 @@ class ChatService:
         conversation_id: str,
         agent_ids: List[str],
         initial_message: str,
-        max_turns: int = 10
+        max_turns: int = 10,
+        user_id: str = None
     ) -> List[ConversationMessage]:
         if len(agent_ids) < 2:
             return [ConversationMessage(
@@ -64,7 +66,7 @@ class ChatService:
             )]
         
         for agent_id in agent_ids:
-            if not self._agent_repository.get_agent(agent_id):
+            if not self._agent_repository.get_agent(agent_id, user_id):
                 return [ConversationMessage(
                     speaker="system",
                     message=f"Agent {agent_id} not found",
@@ -72,8 +74,8 @@ class ChatService:
                 )]
         
         # Create or get existing conversation from database
-        if not self._conversation_repository.get_conversation(conversation_id):
-            self._conversation_repository.create_conversation(conversation_id)
+        if not self._conversation_repository.get_conversation(conversation_id, user_id):
+            self._conversation_repository.create_conversation(conversation_id, user_id or "default")
         
         # Add initial user message to database
         user_message = Message(role="user", content=initial_message, timestamp=datetime.now(), speaker="user")
@@ -91,7 +93,7 @@ class ChatService:
         
         for turn in range(max_turns):
             current_agent_id = agent_ids[current_agent_index]
-            current_agent = self._agent_repository.get_agent(current_agent_id)
+            current_agent = self._agent_repository.get_agent(current_agent_id, user_id)
             
             context_messages = []
             if len(conversation_log) > 1:
@@ -139,20 +141,21 @@ class ChatService:
         conversation_id: str,
         agent_ids: List[str],
         initial_message: str,
-        max_turns: int = 10
+        max_turns: int = 10,
+        user_id: str = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         if len(agent_ids) < 2:
             yield {"error": "At least 2 agents are required for a conversation"}
             return
         
         for agent_id in agent_ids:
-            if not self._agent_repository.get_agent(agent_id):
+            if not self._agent_repository.get_agent(agent_id, user_id):
                 yield {"error": f"Agent {agent_id} not found"}
                 return
         
         # Create or get existing conversation from database
-        if not self._conversation_repository.get_conversation(conversation_id):
-            self._conversation_repository.create_conversation(conversation_id)
+        if not self._conversation_repository.get_conversation(conversation_id, user_id):
+            self._conversation_repository.create_conversation(conversation_id, user_id or "default")
         
         # Add initial user message to database
         user_message = Message(role="user", content=initial_message, timestamp=datetime.now(), speaker="user")
@@ -173,7 +176,7 @@ class ChatService:
         
         for turn in range(max_turns):
             current_agent_id = agent_ids[current_agent_index]
-            current_agent = self._agent_repository.get_agent(current_agent_id)
+            current_agent = self._agent_repository.get_agent(current_agent_id, user_id)
             
             yield {
                 "type": "typing",
@@ -226,8 +229,8 @@ class ChatService:
             
             await asyncio.sleep(1)
     
-    def get_conversation_history(self, conversation_id: str) -> List[Dict[str, Any]]:
-        messages = self._conversation_repository.get_conversation(conversation_id)
+    def get_conversation_history(self, conversation_id: str, user_id: str = None) -> List[Dict[str, Any]]:
+        messages = self._conversation_repository.get_conversation(conversation_id, user_id)
         return [
             {
                 "role": msg.role,

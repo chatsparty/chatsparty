@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from app.models.chat import (
     ConnectionCreateRequest,
@@ -6,16 +6,21 @@ from app.models.chat import (
     ConnectionResponse,
     ConnectionTestResult
 )
+from app.models.database import User
 from app.services.connection_service import connection_service
+from .auth import get_current_user_dependency
 
 router = APIRouter()
 
 
 @router.post("/connections", response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED)
-async def create_connection(request: ConnectionCreateRequest):
+async def create_connection(
+    request: ConnectionCreateRequest,
+    current_user: User = Depends(get_current_user_dependency)
+):
     """Create a new model connection"""
     try:
-        connection = connection_service.create_connection(request)
+        connection = connection_service.create_connection(request, current_user.id)
         return connection
     except Exception as e:
         raise HTTPException(
@@ -25,10 +30,10 @@ async def create_connection(request: ConnectionCreateRequest):
 
 
 @router.get("/connections", response_model=List[ConnectionResponse])
-async def get_connections():
+async def get_connections(current_user: User = Depends(get_current_user_dependency)):
     """Get all model connections"""
     try:
-        connections = connection_service.get_connections()
+        connections = connection_service.get_connections(current_user.id)
         return connections
     except Exception as e:
         raise HTTPException(
@@ -38,10 +43,10 @@ async def get_connections():
 
 
 @router.get("/connections/active", response_model=List[ConnectionResponse])
-async def get_active_connections():
+async def get_active_connections(current_user: User = Depends(get_current_user_dependency)):
     """Get only active model connections"""
     try:
-        connections = connection_service.get_active_connections()
+        connections = connection_service.get_active_connections(current_user.id)
         return connections
     except Exception as e:
         raise HTTPException(
@@ -51,9 +56,9 @@ async def get_active_connections():
 
 
 @router.get("/connections/{connection_id}", response_model=ConnectionResponse)
-async def get_connection(connection_id: str):
+async def get_connection(connection_id: str, current_user: User = Depends(get_current_user_dependency)):
     """Get a specific model connection"""
-    connection = connection_service.get_connection(connection_id)
+    connection = connection_service.get_connection(connection_id, current_user.id)
     if not connection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -63,9 +68,9 @@ async def get_connection(connection_id: str):
 
 
 @router.put("/connections/{connection_id}", response_model=ConnectionResponse)
-async def update_connection(connection_id: str, request: ConnectionUpdateRequest):
+async def update_connection(connection_id: str, request: ConnectionUpdateRequest, current_user: User = Depends(get_current_user_dependency)):
     """Update a model connection"""
-    connection = connection_service.update_connection(connection_id, request)
+    connection = connection_service.update_connection(connection_id, request, current_user.id)
     if not connection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -75,9 +80,9 @@ async def update_connection(connection_id: str, request: ConnectionUpdateRequest
 
 
 @router.delete("/connections/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_connection(connection_id: str):
+async def delete_connection(connection_id: str, current_user: User = Depends(get_current_user_dependency)):
     """Delete a model connection"""
-    success = connection_service.delete_connection(connection_id)
+    success = connection_service.delete_connection(connection_id, current_user.id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -86,7 +91,7 @@ async def delete_connection(connection_id: str):
 
 
 @router.post("/connections/{connection_id}/test", response_model=ConnectionTestResult)
-async def test_connection(connection_id: str):
+async def test_connection(connection_id: str, current_user: User = Depends(get_current_user_dependency)):
     """Test a model connection"""
-    result = connection_service.test_connection(connection_id)
+    result = connection_service.test_connection(connection_id, current_user.id)
     return result

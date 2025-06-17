@@ -11,7 +11,7 @@ export const useConnections = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('http://localhost:8000/connections');
+      const response = await axios.get('/connections');
       setConnections(response.data);
     } catch (err) {
       setError('Failed to fetch connections');
@@ -23,7 +23,7 @@ export const useConnections = () => {
 
   const createConnection = async (connectionData: CreateConnectionRequest): Promise<ModelConnection> => {
     try {
-      const response = await axios.post('http://localhost:8000/connections', connectionData);
+      const response = await axios.post('/connections', connectionData);
       const newConnection = response.data;
       setConnections(prev => [...prev, newConnection]);
       return newConnection;
@@ -34,7 +34,7 @@ export const useConnections = () => {
 
   const updateConnection = async (id: string, updates: UpdateConnectionRequest): Promise<ModelConnection> => {
     try {
-      const response = await axios.put(`http://localhost:8000/connections/${id}`, updates);
+      const response = await axios.put(`/connections/${id}`, updates);
       const updatedConnection = response.data;
       setConnections(prev => prev.map(conn => 
         conn.id === id ? updatedConnection : conn
@@ -47,7 +47,7 @@ export const useConnections = () => {
 
   const deleteConnection = async (id: string): Promise<void> => {
     try {
-      await axios.delete(`http://localhost:8000/connections/${id}`);
+      await axios.delete(`/connections/${id}`);
       setConnections(prev => prev.filter(conn => conn.id !== id));
     } catch (err) {
       throw new Error('Failed to delete connection');
@@ -56,7 +56,7 @@ export const useConnections = () => {
 
   const testConnection = async (id: string): Promise<ConnectionTestResult> => {
     try {
-      const response = await axios.post(`http://localhost:8000/connections/${id}/test`);
+      const response = await axios.post(`/connections/${id}/test`);
       return response.data;
     } catch (err) {
       throw new Error('Failed to test connection');

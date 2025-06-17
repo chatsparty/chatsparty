@@ -51,9 +51,12 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete }) => {
       <div className="flex flex-wrap gap-2 mb-2">
         <Badge 
           variant="secondary"
-          className="text-xs font-mono"
+          className="text-xs font-mono max-w-32"
+          title={`Full ID: ${agent.agent_id}`}
         >
-          ID: {agent.agent_id}
+          <span className="truncate">
+            ID: {agent.agent_id.slice(0, 8)}...
+          </span>
         </Badge>
         {agent.model_configuration && (
           <Badge 

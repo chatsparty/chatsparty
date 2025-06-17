@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from .core.config import create_app
 from .core.database import db_manager
-from .routers import health, chat, connections
+from .routers import health, chat, connections, auth
 
 
 @asynccontextmanager
@@ -16,6 +16,7 @@ async def lifespan(app):
 app = create_app(lifespan=lifespan)
 
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(connections.router)
 

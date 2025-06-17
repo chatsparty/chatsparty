@@ -18,36 +18,57 @@ class DatabaseConnectionRepository(BaseRepository):
             model_name=connection_data["model_name"],
             api_key=connection_data.get("api_key"),
             base_url=connection_data.get("base_url"),
-            is_active=connection_data.get("is_active", True)
+            is_active=connection_data.get("is_active", True),
+            user_id=connection_data["user_id"]
         )
         
         self.db_session.add(db_connection)
         return self._to_dict(db_connection)
     
-    def get_connection(self, connection_id: str) -> Optional[dict]:
-        db_connection = self.db_session.query(ConnectionModel).filter(
+    def get_connection(self, connection_id: str, user_id: str = None) -> Optional[dict]:
+        query = self.db_session.query(ConnectionModel).filter(
             ConnectionModel.id == connection_id
-        ).first()
+        )
+        
+        if user_id:
+            query = query.filter(ConnectionModel.user_id == user_id)
+        
+        db_connection = query.first()
         
         if not db_connection:
             return None
         
         return self._to_dict(db_connection)
     
-    def get_all_connections(self) -> List[dict]:
-        db_connections = self.db_session.query(ConnectionModel).all()
+    def get_all_connections(self, user_id: str = None) -> List[dict]:
+        query = self.db_session.query(ConnectionModel)
+        
+        if user_id:
+            query = query.filter(ConnectionModel.user_id == user_id)
+        
+        db_connections = query.all()
         return [self._to_dict(conn) for conn in db_connections]
     
-    def get_active_connections(self) -> List[dict]:
-        db_connections = self.db_session.query(ConnectionModel).filter(
+    def get_active_connections(self, user_id: str = None) -> List[dict]:
+        query = self.db_session.query(ConnectionModel).filter(
             ConnectionModel.is_active == True
-        ).all()
+        )
+        
+        if user_id:
+            query = query.filter(ConnectionModel.user_id == user_id)
+        
+        db_connections = query.all()
         return [self._to_dict(conn) for conn in db_connections]
     
-    def update_connection(self, connection_id: str, update_data: dict) -> Optional[dict]:
-        db_connection = self.db_session.query(ConnectionModel).filter(
+    def update_connection(self, connection_id: str, update_data: dict, user_id: str = None) -> Optional[dict]:
+        query = self.db_session.query(ConnectionModel).filter(
             ConnectionModel.id == connection_id
-        ).first()
+        )
+        
+        if user_id:
+            query = query.filter(ConnectionModel.user_id == user_id)
+        
+        db_connection = query.first()
         
         if not db_connection:
             return None
@@ -58,10 +79,15 @@ class DatabaseConnectionRepository(BaseRepository):
         
         return self._to_dict(db_connection)
     
-    def delete_connection(self, connection_id: str) -> bool:
-        db_connection = self.db_session.query(ConnectionModel).filter(
+    def delete_connection(self, connection_id: str, user_id: str = None) -> bool:
+        query = self.db_session.query(ConnectionModel).filter(
             ConnectionModel.id == connection_id
-        ).first()
+        )
+        
+        if user_id:
+            query = query.filter(ConnectionModel.user_id == user_id)
+        
+        db_connection = query.first()
         
         if not db_connection:
             return False
@@ -86,6 +112,7 @@ class DatabaseConnectionRepository(BaseRepository):
             "api_key": db_connection.api_key,
             "base_url": db_connection.base_url,
             "is_active": db_connection.is_active,
+            "user_id": db_connection.user_id,
             "created_at": db_connection.created_at.isoformat() if db_connection.created_at else datetime.utcnow().isoformat(),
             "updated_at": db_connection.updated_at.isoformat() if db_connection.updated_at else datetime.utcnow().isoformat(),
         }
