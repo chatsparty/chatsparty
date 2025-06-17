@@ -189,6 +189,18 @@ wheels = [
 ]
 
 [[package]]
+name = "authlib"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a2/9d/b1e08d36899c12c8b894a44a5583ee157789f26fc4b176f8e4b6217b56e1/authlib-1.6.0.tar.gz", hash = "sha256:4367d32031b7af175ad3a323d571dc7257b7099d55978087ceae4a0d88cd3210", size = 158371 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/84/29/587c189bbab1ccc8c86a03a5d0e13873df916380ef1be461ebe6acebf48d/authlib-1.6.0-py2.py3-none-any.whl", hash = "sha256:91685589498f79e8655e8a8947431ad6288831d643f11c55c2143ffcc738048d", size = 239981 },
+]
+
+[[package]]
 name = "backend"
 version = "0.1.0"
 source = { virtual = "." }
@@ -196,10 +208,12 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "asyncpg" },
+    { name = "authlib" },
     { name = "bcrypt" },
     { name = "fastapi" },
     { name = "google-generativeai" },
     { name = "greenlet" },
+    { name = "httpx" },
     { name = "litellm" },
     { name = "ollama" },
     { name = "passlib", extra = ["bcrypt"] },
@@ -218,10 +232,12 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
     { name = "alembic", specifier = ">=1.13.0" },
     { name = "asyncpg", specifier = ">=0.29.0" },
+    { name = "authlib", specifier = ">=1.6.0" },
     { name = "bcrypt", specifier = ">=4.1.0" },
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "google-generativeai", specifier = ">=0.8.5" },
     { name = "greenlet", specifier = ">=3.0.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "litellm", specifier = ">=1.72.6" },
     { name = "ollama", specifier = ">=0.5.1" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },

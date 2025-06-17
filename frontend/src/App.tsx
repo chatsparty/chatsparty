@@ -14,33 +14,19 @@ import SharedConversationPage from "./pages/SharedConversation/SharedConversatio
 import { ThemeToggle } from "./components/ThemeToggle";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AuthPage } from "./components/auth/AuthPage";
+import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { Button } from "./components/ui/button";
 import "./App.css";
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthPage />;
-  }
-
-  return <>{children}</>;
-};
 
 const Layout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+
+  // If user is not authenticated, render AuthPage without layout
+  if (!user) {
+    return <AuthPage />;
+  }
 
   const tabs = [
     { path: "/agents", label: "Agents", icon: FaRobot },
@@ -97,38 +83,10 @@ const Layout = () => {
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
-            <Route
-              path="/agents"
-              element={
-                <ProtectedRoute>
-                  <AgentManagerPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/connections"
-              element={
-                <ProtectedRoute>
-                  <ConnectionManagerPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/chat"
-              element={
-                <ProtectedRoute>
-                  <MultiAgentChatPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/agents" element={<AgentManagerPage />} />
+            <Route path="/connections" element={<ConnectionManagerPage />} />
+            <Route path="/chat" element={<MultiAgentChatPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/agents" replace />} />
           </Routes>
         </div>
@@ -158,6 +116,10 @@ const MainApp = () => {
       location.pathname
     );
     return <SharedConversationPage />;
+  }
+
+  if (location.pathname === "/auth/callback/google" || location.pathname === "/auth/callback/github") {
+    return <OAuthCallback />;
   }
 
   if (location.pathname === "/") {

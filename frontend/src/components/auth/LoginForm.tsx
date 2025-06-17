@@ -4,6 +4,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card } from '../ui/card';
 import { useAuth } from '../../contexts/AuthContext';
+import { SocialLoginButtons } from './SocialLoginButtons';
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -82,6 +83,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
+
+        <SocialLoginButtons loading={loading} />
 
         <div className="text-center">
           <p className="text-muted-foreground">

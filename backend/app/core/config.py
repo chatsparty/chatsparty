@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     
+    # OAuth settings
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    github_client_id: Optional[str] = None
+    github_client_secret: Optional[str] = None
+    frontend_url: str = "http://localhost:5173"
+    
+    # Authentication mode settings
+    # Set to true to disable traditional email/password auth (cloud mode)
+    social_auth_only: bool = False
+    
     @property
     def database_url_computed(self) -> str:
         if self.database_url:

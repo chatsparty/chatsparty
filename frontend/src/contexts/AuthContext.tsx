@@ -13,11 +13,20 @@ interface User {
   updated_at: string;
 }
 
+interface AuthConfig {
+  social_auth_only: boolean;
+  google_enabled: boolean;
+  github_enabled: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  authConfig: AuthConfig | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
+  loginWithOAuth: (provider: 'google' | 'github') => Promise<void>;
+  handleOAuthCallback: (provider: 'google' | 'github', code: string, state: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -82,25 +91,34 @@ axios.interceptors.response.use(
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('access_token');
-      
-      if (storedToken) {
-        setToken(storedToken);
-        try {
-          const response = await axios.get('/auth/me');
-          setUser(response.data);
-        } catch (error) {
-          console.error('Failed to fetch user:', error);
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+      try {
+        // Fetch auth configuration first
+        const configResponse = await axios.get('/auth/config');
+        setAuthConfig(configResponse.data);
+        
+        const storedToken = localStorage.getItem('access_token');
+        
+        if (storedToken) {
+          setToken(storedToken);
+          try {
+            const response = await axios.get('/auth/me');
+            setUser(response.data);
+          } catch (error) {
+            console.error('Failed to fetch user:', error);
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+          }
         }
+      } catch (error) {
+        console.error('Failed to fetch auth config:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     initAuth();
@@ -145,9 +163,61 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const loginWithOAuth = async (provider: 'google' | 'github') => {
+    try {
+      const response = await axios.post('/auth/oauth/init', {
+        provider
+      });
+
+      const { auth_url, state } = response.data;
+      
+      // Store state in sessionStorage for validation
+      sessionStorage.setItem('oauth_state', state);
+      
+      // Redirect to OAuth provider
+      window.location.href = auth_url;
+    } catch (error) {
+      console.error('OAuth init failed:', error);
+      throw error;
+    }
+  };
+
+  const handleOAuthCallback = async (provider: 'google' | 'github', code: string, state: string) => {
+    try {
+      // Validate state
+      const storedState = sessionStorage.getItem('oauth_state');
+      if (!storedState || storedState !== state) {
+        throw new Error('Invalid OAuth state');
+      }
+
+      const response = await axios.post(`/auth/oauth/callback/${provider}`, {
+        code,
+        state
+      });
+
+      const { access_token, refresh_token } = response.data;
+      
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('refresh_token', refresh_token);
+      setToken(access_token);
+
+      // Clear OAuth state
+      sessionStorage.removeItem('oauth_state');
+
+      // Fetch user data
+      const userResponse = await axios.get('/auth/me');
+      setUser(userResponse.data);
+    } catch (error) {
+      console.error('OAuth callback failed:', error);
+      sessionStorage.removeItem('oauth_state');
+      throw error;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('oauth_state');
     setToken(null);
     setUser(null);
   };
@@ -155,8 +225,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const value = {
     user,
     token,
+    authConfig,
     login,
     register,
+    loginWithOAuth,
+    handleOAuthCallback,
     logout,
     loading
   };
