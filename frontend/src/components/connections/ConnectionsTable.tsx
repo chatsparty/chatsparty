@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { FaEdit, FaTrash, FaPlay, FaPause, FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
-import type { ModelConnection, ConnectionTestResult } from '@/types/connection';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  FaEdit,
+  FaTrash,
+  FaPlay,
+  FaPause,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaSpinner,
+} from "react-icons/fa";
+import type { ModelConnection, ConnectionTestResult } from "@/types/connection";
 
 interface ConnectionsTableProps {
   connections: ModelConnection[];
@@ -25,30 +31,32 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
   onEdit,
   onDelete,
   onTest,
-  onToggleActive
+  onToggleActive,
 }) => {
   const [testStates, setTestStates] = useState<TestState>({});
 
   const handleTest = async (connection: ModelConnection) => {
-    setTestStates(prev => ({
+    setTestStates((prev) => ({
       ...prev,
-      [connection.id]: { testing: true, result: null }
+      [connection.id]: { testing: true, result: null },
     }));
 
     try {
       const result = await onTest(connection.id);
-      setTestStates(prev => ({
+      setTestStates((prev) => ({
         ...prev,
-        [connection.id]: { testing: false, result }
+        [connection.id]: { testing: false, result },
       }));
     } catch (error) {
       const errorResult: ConnectionTestResult = {
         success: false,
-        message: 'Test failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+        message:
+          "Test failed: " +
+          (error instanceof Error ? error.message : "Unknown error"),
       };
-      setTestStates(prev => ({
+      setTestStates((prev) => ({
         ...prev,
-        [connection.id]: { testing: false, result: errorResult }
+        [connection.id]: { testing: false, result: errorResult },
       }));
     }
   };
@@ -63,23 +71,38 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="text-left px-4 py-3 font-medium text-sm">Connection</th>
-              <th className="text-left px-4 py-3 font-medium text-sm">Provider</th>
+              <th className="text-left px-4 py-3 font-medium text-sm">
+                Connection
+              </th>
+              <th className="text-left px-4 py-3 font-medium text-sm">
+                Provider
+              </th>
               <th className="text-left px-4 py-3 font-medium text-sm">Model</th>
-              <th className="text-center px-4 py-3 font-medium text-sm">Status</th>
-              <th className="text-center px-4 py-3 font-medium text-sm">Test</th>
-              <th className="text-center px-4 py-3 font-medium text-sm">Actions</th>
+              <th className="text-center px-4 py-3 font-medium text-sm">
+                Status
+              </th>
+              <th className="text-center px-4 py-3 font-medium text-sm">
+                Test
+              </th>
+              <th className="text-center px-4 py-3 font-medium text-sm">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white">
             {connections.map((connection) => {
               const testState = getTestState(connection.id);
               return (
-                <tr key={connection.id} className="border-b last:border-b-0 hover:bg-gray-50">
+                <tr
+                  key={connection.id}
+                  className="border-b last:border-b-0 hover:bg-gray-50"
+                >
                   {/* Connection Name & Description */}
                   <td className="px-4 py-3">
                     <div>
-                      <div className="font-medium text-sm">{connection.name}</div>
+                      <div className="font-medium text-sm">
+                        {connection.name}
+                      </div>
                       {(connection.description || connection.base_url) && (
                         <div className="text-sm text-muted-foreground truncate max-w-[200px] mt-1">
                           {connection.description || connection.base_url}
@@ -90,19 +113,26 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
 
                   {/* Provider */}
                   <td className="px-4 py-3">
-                    <span className="text-sm capitalize">{connection.provider}</span>
+                    <span className="text-sm capitalize">
+                      {connection.provider}
+                    </span>
                   </td>
 
                   {/* Model */}
                   <td className="px-4 py-3">
-                    <span className="text-sm font-mono">{connection.model_name}</span>
+                    <span className="text-sm font-mono">
+                      {connection.model_name}
+                    </span>
                   </td>
 
                   {/* Status */}
                   <td className="px-4 py-3 text-center">
-                    <div className={`inline-flex h-3 w-3 rounded-full ${
-                      connection.is_active ? 'bg-green-500' : 'bg-gray-300'
-                    }`} title={connection.is_active ? "Active" : "Inactive"} />
+                    <div
+                      className={`inline-flex h-3 w-3 rounded-full ${
+                        connection.is_active ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                      title={connection.is_active ? "Active" : "Inactive"}
+                    />
                   </td>
 
                   {/* Test Status */}
@@ -144,7 +174,9 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onToggleActive(connection.id, !connection.is_active)}
+                        onClick={() =>
+                          onToggleActive(connection.id, !connection.is_active)
+                        }
                         className="h-7 w-7 p-0"
                         title={connection.is_active ? "Deactivate" : "Activate"}
                       >
@@ -180,17 +212,20 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
           </tbody>
         </table>
       </div>
-      
+
       {/* Test Result Details */}
-      {Object.entries(testStates).some(([_, state]) => state.result && !state.result.success) && (
+      {Object.entries(testStates).some(
+        ([_, state]) => state.result && !state.result.success
+      ) && (
         <div className="border-t bg-red-50/50 px-3 py-2">
           <div className="text-xs text-red-600 space-y-1">
             {Object.entries(testStates).map(([connectionId, state]) => {
               if (!state.result || state.result.success) return null;
-              const connection = connections.find(c => c.id === connectionId);
+              const connection = connections.find((c) => c.id === connectionId);
               return (
                 <div key={connectionId}>
-                  <span className="font-medium">{connection?.name}:</span> {state.result.message}
+                  <span className="font-medium">{connection?.name}:</span>{" "}
+                  {state.result.message}
                 </div>
               );
             })}
