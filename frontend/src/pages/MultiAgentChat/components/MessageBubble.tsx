@@ -1,18 +1,21 @@
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import type { ConversationMessage } from '../types';
+import React from "react";
+import ReactMarkdown from "react-markdown";
+import type { ConversationMessage } from "../types";
 
 interface MessageBubbleProps {
   message: ConversationMessage;
   getAgentColor: (agentId: string) => string;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, getAgentColor }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({
+  message,
+  getAgentColor,
+}) => {
   const formatTime = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
+    return new Date(timestamp * 1000).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     });
   };
 
@@ -43,24 +46,34 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, getAgentColor })
           animation: messageSlide 0.3s ease-out;
         }
       `}</style>
-      <div className={`flex flex-col message-bubble ${
-        message.speaker === 'user' ? 'items-end' : 'items-start'
-      }`}>
+      <div
+        className={`flex flex-col message-bubble ${
+          message.speaker === "user" ? "items-end" : "items-start"
+        }`}
+      >
         <div className="flex items-center gap-3 mb-2">
-          {message.speaker !== 'user' && (
-            <div 
+          {message.speaker !== "user" && (
+            <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
-              style={{ backgroundColor: message.agent_id ? getAgentColor(message.agent_id) : '#6b7280' }}
+              style={{
+                backgroundColor: message.agent_id
+                  ? getAgentColor(message.agent_id)
+                  : "#6b7280",
+              }}
             >
-              {message.speaker ? message.speaker.charAt(0).toUpperCase() : 'A'}
+              {message.speaker ? message.speaker.charAt(0).toUpperCase() : "A"}
             </div>
           )}
           <div className="flex flex-col">
-            <span 
+            <span
               className="text-xs font-semibold"
-              style={{ color: message.agent_id ? getAgentColor(message.agent_id) : 'hsl(var(--foreground))' }}
+              style={{
+                color: message.agent_id
+                  ? getAgentColor(message.agent_id)
+                  : "hsl(var(--foreground))",
+              }}
             >
-              {message.speaker === 'user' ? 'You' : message.speaker}
+              {message.speaker === "user" ? "You" : message.speaker}
             </span>
             <span className="text-xs text-muted-foreground">
               {formatTime(message.timestamp)}
@@ -69,43 +82,46 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, getAgentColor })
         </div>
         <div
           className={`max-w-[85%] px-5 py-4 rounded-2xl shadow-sm whitespace-pre-wrap leading-relaxed relative transition-all hover:shadow-md ${
-            message.speaker === 'user' 
-              ? 'bg-primary text-primary-foreground ml-8' 
-              : 'bg-card border border-border text-card-foreground'
+            message.speaker === "user"
+              ? "bg-primary text-primary-foreground ml-8"
+              : "bg-card border border-border text-card-foreground"
           }`}
           style={{
-            backgroundColor: message.speaker === 'user' 
-              ? undefined
-              : message.agent_id
-              ? `${getAgentColor(message.agent_id)}08`
+            backgroundColor:
+              message.speaker === "user"
+                ? undefined
+                : message.agent_id
+                ? `${getAgentColor(message.agent_id)}08`
+                : undefined,
+            borderColor: message.agent_id
+              ? `${getAgentColor(message.agent_id)}20`
               : undefined,
-            borderColor: message.agent_id ? `${getAgentColor(message.agent_id)}20` : undefined
           }}
         >
-          {message.message === '...' ? (
+          {message.message === "..." ? (
             <div className="flex items-center gap-2 text-muted-foreground">
               <span className="text-sm">typing</span>
               <div className="flex gap-1">
-                <div 
+                <div
                   className="w-1.5 h-1.5 rounded-full bg-current opacity-60"
-                  style={{ 
-                    animation: 'typing 1.4s infinite ease-in-out',
-                    animationDelay: '0s'
-                  }} 
+                  style={{
+                    animation: "typing 1.4s infinite ease-in-out",
+                    animationDelay: "0s",
+                  }}
                 />
-                <div 
+                <div
                   className="w-1.5 h-1.5 rounded-full bg-current opacity-60"
-                  style={{ 
-                    animation: 'typing 1.4s infinite ease-in-out',
-                    animationDelay: '0.2s'
-                  }} 
+                  style={{
+                    animation: "typing 1.4s infinite ease-in-out",
+                    animationDelay: "0.2s",
+                  }}
                 />
-                <div 
+                <div
                   className="w-1.5 h-1.5 rounded-full bg-current opacity-60"
-                  style={{ 
-                    animation: 'typing 1.4s infinite ease-in-out',
-                    animationDelay: '0.4s'
-                  }} 
+                  style={{
+                    animation: "typing 1.4s infinite ease-in-out",
+                    animationDelay: "0.4s",
+                  }}
                 />
               </div>
             </div>
@@ -113,35 +129,51 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, getAgentColor })
             <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
               <ReactMarkdown
                 components={{
-                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                  code: ({ inline, children, ...props }: { inline?: boolean; children: React.ReactNode; [key: string]: unknown }) => (
-                    inline ? (
-                      <code 
-                        className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs"
+                  p: ({ children }) => (
+                    <p className="mb-2 last:mb-0">{children}</p>
+                  ),
+                  code: function CodeComponent({
+                    inline,
+                    children,
+                    ...props
+                  }: any) {
+                    return (
+                      <code
                         {...props}
+                        style={{
+                          background: inline ? "none" : "#f5f5f5",
+                          padding: inline ? 0 : "0.2em 0.4em",
+                          borderRadius: 4,
+                        }}
                       >
                         {children}
                       </code>
-                    ) : (
-                      <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto">
-                        <code className="text-xs" {...props}>
-                          {children}
-                        </code>
-                      </pre>
-                    )
+                    );
+                  },
+                  ul: ({ children }) => (
+                    <ul className="list-disc pl-4 space-y-1">{children}</ul>
                   ),
-                  ul: ({ children }) => <ul className="list-disc pl-4 space-y-1">{children}</ul>,
-                  ol: ({ children }) => <ol className="list-decimal pl-4 space-y-1">{children}</ol>,
+                  ol: ({ children }) => (
+                    <ol className="list-decimal pl-4 space-y-1">{children}</ol>
+                  ),
                   li: ({ children }) => <li className="text-sm">{children}</li>,
-                  h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-                  h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
-                  h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                  h1: ({ children }) => (
+                    <h1 className="text-lg font-bold mb-2">{children}</h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-base font-bold mb-2">{children}</h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-sm font-bold mb-1">{children}</h3>
+                  ),
                   blockquote: ({ children }) => (
                     <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
                       {children}
                     </blockquote>
                   ),
-                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                  strong: ({ children }) => (
+                    <strong className="font-semibold">{children}</strong>
+                  ),
                   em: ({ children }) => <em className="italic">{children}</em>,
                 }}
               >

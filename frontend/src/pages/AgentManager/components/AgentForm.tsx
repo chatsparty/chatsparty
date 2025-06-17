@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { useConnections } from '@/hooks/useConnections';
-import type { ModelConnection } from '@/types/connection';
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 interface ChatStyle {
-  friendliness: 'friendly' | 'neutral' | 'formal';
-  response_length: 'short' | 'medium' | 'long';
-  personality: 'enthusiastic' | 'balanced' | 'reserved';
-  humor: 'none' | 'light' | 'witty';
-  expertise_level: 'beginner' | 'intermediate' | 'expert';
+  friendliness: "friendly" | "neutral" | "formal";
+  response_length: "short" | "medium" | "long";
+  personality: "enthusiastic" | "balanced" | "reserved";
+  humor: "none" | "light" | "witty";
+  expertise_level: "beginner" | "intermediate" | "expert";
 }
 
 interface Agent {
@@ -37,7 +41,11 @@ interface AgentFormProps {
   formData: FormData;
   editingAgent: Agent | null;
   isLoading: boolean;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  onInputChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   onNavigateToConnections: () => void;
@@ -50,47 +58,38 @@ const AgentForm: React.FC<AgentFormProps> = ({
   onInputChange,
   onSubmit,
   onCancel,
-  onNavigateToConnections
+  onNavigateToConnections,
 }) => {
-  const { connections, getActiveConnections } = useConnections();
-  const activeConnections = getActiveConnections();
-
   const handleSelectChange = (field: string, value: string) => {
     const event = {
-      target: { name: field, value }
+      target: { name: field, value },
     } as React.ChangeEvent<HTMLSelectElement>;
     onInputChange(event);
   };
 
   const handleConnectionChange = (connectionId: string) => {
-    if (connectionId === 'add-new') {
+    if (connectionId === "add-new") {
       onNavigateToConnections();
       return;
     }
-    
+
     const event = {
-      target: { name: 'connection_id', value: connectionId }
+      target: { name: "connection_id", value: connectionId },
     } as React.ChangeEvent<HTMLInputElement>;
     onInputChange(event);
   };
-
-  const selectedConnection = activeConnections.find(conn => conn.id === formData.connection_id);
 
   return (
     <div className="flex flex-col h-full bg-card">
       <div className="flex justify-between items-center p-5 border-b border-border">
         <h2 className="text-lg font-semibold text-card-foreground">
-          {editingAgent ? 'Edit Agent' : 'Create New Agent'}
+          {editingAgent ? "Edit Agent" : "Create New Agent"}
         </h2>
-        <Button
-          onClick={onCancel}
-          variant="outline"
-          size="sm"
-        >
+        <Button onClick={onCancel} variant="outline" size="sm">
           Cancel
         </Button>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto">
         <form onSubmit={onSubmit} className="flex flex-col min-h-full">
           <div className="flex-1 p-5 pb-0">
@@ -109,7 +108,8 @@ const AgentForm: React.FC<AgentFormProps> = ({
                   required
                 />
                 <p className="text-sm text-muted-foreground mt-1">
-                  Unique identifier for the agent (cannot be changed after creation)
+                  Unique identifier for the agent (cannot be changed after
+                  creation)
                 </p>
               </div>
 
@@ -162,21 +162,21 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 <h3 className="mb-4 font-bold text-card-foreground text-lg">
                   Model Connection
                 </h3>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block mb-2 font-medium text-card-foreground">
                       Connection *
                     </label>
                     <Select
-                      value={formData.connection_id || ''}
+                      value={formData.connection_id || ""}
                       onValueChange={handleConnectionChange}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a connection" />
                       </SelectTrigger>
                       <SelectContent>
-                        {activeConnections.map((connection) => (
+                        {/* {activeConnections.map((connection) => (
                           <SelectItem key={connection.id} value={connection.id}>
                             <div className="flex flex-col">
                               <span>{connection.name}</span>
@@ -185,7 +185,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                               </span>
                             </div>
                           </SelectItem>
-                        ))}
+                        ))} */}
                         <SelectItem value="add-new">
                           <div className="flex items-center gap-2 text-primary">
                             <span>+ Add New Connection</span>
@@ -193,14 +193,14 @@ const AgentForm: React.FC<AgentFormProps> = ({
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    {activeConnections.length === 0 && (
+                    {/* {activeConnections.length === 0 && (
                       <p className="text-sm text-muted-foreground mt-1">
                         No active connections available. Create a connection first in the Connections tab.
                       </p>
-                    )}
+                    )} */}
                   </div>
 
-                  {selectedConnection && (
+                  {/* {selectedConnection && (
                     <div className="p-3 bg-muted rounded-lg">
                       <h4 className="font-medium mb-2">Selected Connection Details:</h4>
                       <div className="text-sm space-y-1">
@@ -211,7 +211,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                         )}
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
 
@@ -221,7 +221,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 <h3 className="mb-4 font-bold text-card-foreground text-lg">
                   Chat Style Settings
                 </h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block mb-2 font-medium text-card-foreground">
@@ -229,7 +229,9 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     </label>
                     <Select
                       value={formData.chat_style.friendliness}
-                      onValueChange={(value) => handleSelectChange('chat_style.friendliness', value)}
+                      onValueChange={(value) =>
+                        handleSelectChange("chat_style.friendliness", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -248,7 +250,9 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     </label>
                     <Select
                       value={formData.chat_style.response_length}
-                      onValueChange={(value) => handleSelectChange('chat_style.response_length', value)}
+                      onValueChange={(value) =>
+                        handleSelectChange("chat_style.response_length", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -267,13 +271,17 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     </label>
                     <Select
                       value={formData.chat_style.personality}
-                      onValueChange={(value) => handleSelectChange('chat_style.personality', value)}
+                      onValueChange={(value) =>
+                        handleSelectChange("chat_style.personality", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="enthusiastic">Enthusiastic</SelectItem>
+                        <SelectItem value="enthusiastic">
+                          Enthusiastic
+                        </SelectItem>
                         <SelectItem value="balanced">Balanced</SelectItem>
                         <SelectItem value="reserved">Reserved</SelectItem>
                       </SelectContent>
@@ -286,7 +294,9 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     </label>
                     <Select
                       value={formData.chat_style.humor}
-                      onValueChange={(value) => handleSelectChange('chat_style.humor', value)}
+                      onValueChange={(value) =>
+                        handleSelectChange("chat_style.humor", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -305,14 +315,20 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     </label>
                     <Select
                       value={formData.chat_style.expertise_level}
-                      onValueChange={(value) => handleSelectChange('chat_style.expertise_level', value)}
+                      onValueChange={(value) =>
+                        handleSelectChange("chat_style.expertise_level", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="beginner">Beginner-friendly</SelectItem>
-                        <SelectItem value="intermediate">Intermediate</SelectItem>
+                        <SelectItem value="beginner">
+                          Beginner-friendly
+                        </SelectItem>
+                        <SelectItem value="intermediate">
+                          Intermediate
+                        </SelectItem>
                         <SelectItem value="expert">Expert Level</SelectItem>
                       </SelectContent>
                     </Select>
@@ -321,7 +337,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
               </div>
             </div>
           </div>
-          
+
           {/* Submit button fixed at bottom */}
           <div className="border-t border-border p-5 flex-shrink-0">
             <Button
@@ -330,7 +346,11 @@ const AgentForm: React.FC<AgentFormProps> = ({
               disabled={isLoading}
               className="w-full"
             >
-              {isLoading ? 'Creating...' : editingAgent ? 'Update Agent' : 'Create Agent'}
+              {isLoading
+                ? "Creating..."
+                : editingAgent
+                ? "Update Agent"
+                : "Create Agent"}
             </Button>
           </div>
         </form>
