@@ -5,11 +5,12 @@ import {
   FaComments,
   FaStar,
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { ThemeToggle } from "../../components/ThemeToggle";
 
 interface LandingPageProps {
-  onGetStarted: () => void;
+  onGetStarted?: () => void;
 }
 
 function WebsiteHeader() {
@@ -60,7 +61,12 @@ function WebsiteHeader() {
   );
 }
 
-export function LandingPage({ onGetStarted }: LandingPageProps) {
+export function LandingPage({}: LandingPageProps) {
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    navigate('/agents');
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <WebsiteHeader />
@@ -80,7 +86,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
-              onClick={onGetStarted}
+              onClick={handleGetStarted}
               size="lg"
               className="flex items-center gap-3 px-10 py-6 text-lg"
             >
@@ -135,7 +141,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               AI today.
             </p>
             <Button
-              onClick={onGetStarted}
+              onClick={handleGetStarted}
               size="lg"
               className="flex items-center gap-3 mx-auto px-8 py-4 text-lg"
             >

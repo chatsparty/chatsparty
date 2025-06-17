@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import { FaRobot, FaUsers, FaPlug, FaSignOutAlt } from 'react-icons/fa'
 import { AgentManagerPage, MultiAgentChatPage, LandingPage } from './pages'
 import { ConnectionManagerPage } from './pages/ConnectionManager/ConnectionManagerPage'
@@ -8,17 +8,9 @@ import { AuthPage } from './components/auth/AuthPage'
 import { Button } from './components/ui/button'
 import './App.css'
 
-const MainApp = () => {
-  const [activeTab, setActiveTab] = useState<'landing' | 'agents' | 'connections' | 'multi-chat'>('landing')
-  const { user, logout, loading } = useAuth()
-
-  const tabs = [
-    { id: 'agents', label: 'Agents', icon: FaRobot },
-    { id: 'connections', label: 'Connections', icon: FaPlug },
-    { id: 'multi-chat', label: 'Chat', icon: FaUsers }
-  ]
-
-  // Show loading state
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth()
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -29,20 +21,23 @@ const MainApp = () => {
       </div>
     )
   }
-
-  // Landing page is public - no authentication required
-  if (activeTab === 'landing') {
-    return (
-      <div className="App h-screen w-screen bg-background overflow-auto">
-        <LandingPage onGetStarted={() => setActiveTab('agents')} />
-      </div>
-    )
-  }
-
-  // Protected features require authentication
+  
   if (!user) {
     return <AuthPage />
   }
+  
+  return <>{children}</>
+}
+
+const Layout = () => {
+  const { user, logout } = useAuth()
+  const location = useLocation()
+
+  const tabs = [
+    { path: '/agents', label: 'Agents', icon: FaRobot },
+    { path: '/connections', label: 'Connections', icon: FaPlug },
+    { path: '/chat', label: 'Chat', icon: FaUsers }
+  ]
 
   return (
     <div className="App h-screen w-screen bg-background overflow-hidden">
@@ -50,27 +45,27 @@ const MainApp = () => {
         {/* Header Menu */}
         <div className="bg-card border-b border-border px-6 py-4 shadow-sm flex-shrink-0">
           <div className="flex items-center justify-between">
-            <button 
-              onClick={() => setActiveTab('landing')}
+            <Link 
+              to="/"
               className="text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
             >
               ChatsParty
-            </button>
+            </Link>
             <div className="flex items-center">
               <nav className="flex items-center gap-8 mr-6">
                 {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                  <Link
+                    key={tab.path}
+                    to={tab.path}
                     className={`flex items-center gap-2 text-sm font-medium transition-colors duration-200 hover:text-primary cursor-pointer ${
-                      activeTab === tab.id 
+                      location.pathname === tab.path 
                         ? "text-primary" 
                         : "text-muted-foreground"
                     }`}
                   >
                     <tab.icon className="text-sm" />
                     <span>{tab.label}</span>
-                  </button>
+                  </Link>
                 ))}
               </nav>
               <div className="flex items-center gap-4">
@@ -94,20 +89,65 @@ const MainApp = () => {
 
         {/* Content Area */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          {activeTab === 'agents' && <AgentManagerPage onNavigateToConnections={() => setActiveTab('connections')} />}
-          {activeTab === 'connections' && <ConnectionManagerPage />}
-          {activeTab === 'multi-chat' && <MultiAgentChatPage />}
+          <Routes>
+            <Route path="/agents" element={
+              <ProtectedRoute>
+                <AgentManagerPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/connections" element={
+              <ProtectedRoute>
+                <ConnectionManagerPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/chat" element={
+              <ProtectedRoute>
+                <MultiAgentChatPage />
+              </ProtectedRoute>
+            } />
+            <Route path="*" element={<Navigate to="/agents" replace />} />
+          </Routes>
         </div>
       </div>
     </div>
   )
 }
 
+const MainApp = () => {
+  const { loading } = useAuth()
+  const location = useLocation()
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Landing page is public - no authentication required
+  if (location.pathname === '/') {
+    return (
+      <div className="App h-screen w-screen bg-background overflow-auto">
+        <LandingPage onGetStarted={() => {}} />
+      </div>
+    )
+  }
+
+  return <Layout />
+}
+
 function App() {
   return (
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
+    </Router>
   )
 }
 

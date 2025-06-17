@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,7 +49,6 @@ interface AgentFormProps {
   ) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
-  onNavigateToConnections: () => void;
 }
 
 const AgentForm: React.FC<AgentFormProps> = ({
@@ -58,8 +58,8 @@ const AgentForm: React.FC<AgentFormProps> = ({
   onInputChange,
   onSubmit,
   onCancel,
-  onNavigateToConnections,
 }) => {
+  const navigate = useNavigate();
   const handleSelectChange = (field: string, value: string) => {
     const event = {
       target: { name: field, value },
@@ -69,7 +69,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
   const handleConnectionChange = (connectionId: string) => {
     if (connectionId === "add-new") {
-      onNavigateToConnections();
+      navigate('/connections');
       return;
     }
 
