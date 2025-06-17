@@ -6,9 +6,10 @@ import {
   useLocation,
   Navigate,
 } from "react-router-dom";
-import { FaRobot, FaUsers, FaPlug, FaSignOutAlt } from "react-icons/fa";
+import { FaRobot, FaUsers, FaCog, FaSignOutAlt } from "react-icons/fa";
 import { AgentManagerPage, MultiAgentChatPage, LandingPage } from "./pages";
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
+import { SettingsPage } from "./pages/Settings/SettingsPage";
 import SharedConversationPage from "./pages/SharedConversation/SharedConversationPage";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -43,8 +44,8 @@ const Layout = () => {
 
   const tabs = [
     { path: "/agents", label: "Agents", icon: FaRobot },
-    { path: "/connections", label: "Connections", icon: FaPlug },
     { path: "/chat", label: "Chat", icon: FaUsers },
+    { path: "/settings", label: "Settings", icon: FaCog },
   ];
 
   return (
@@ -117,6 +118,14 @@ const Layout = () => {
               element={
                 <ProtectedRoute>
                   <MultiAgentChatPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
                 </ProtectedRoute>
               }
             />
