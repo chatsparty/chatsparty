@@ -285,6 +285,36 @@ async def update_conversation_sharing(
         raise HTTPException(status_code=500, detail=f"Failed to update conversation sharing: {str(e)}")
 
 
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user_dependency),
+    ai_service: AIServiceFacade = Depends(get_ai_service)
+):
+    """Delete a conversation and all its messages"""
+    try:
+        # First check if the conversation exists and belongs to the user
+        conversation = ai_service.get_conversation_by_id(conversation_id, current_user.id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Check if user owns the conversation
+        if conversation.get("user_id") != current_user.id:
+            raise HTTPException(status_code=403, detail="You can only delete your own conversations")
+        
+        # Delete the conversation
+        success = ai_service.delete_conversation(conversation_id, current_user.id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Failed to delete conversation")
+        
+        return {"message": f"Conversation {conversation_id} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
+
+
 @router.get("/shared/conversations/{conversation_id}", response_model=Dict[str, Any])
 async def get_shared_conversation(
     conversation_id: str,

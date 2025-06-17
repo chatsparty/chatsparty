@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
+import { Trash2, Users, MessageCircle, Plus } from 'lucide-react';
 import type { ActiveConversation, Agent } from '../types';
 
 interface ConversationSidebarProps {
@@ -23,6 +24,7 @@ interface ConversationSidebarProps {
   onStartConversation: () => void;
   onStopConversation: (conversationId: string) => void;
   onSelectConversation: (conversationId: string) => void;
+  onDeleteConversation: (conversationId: string) => void;
 }
 
 const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -41,6 +43,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onStartConversation,
   onStopConversation,
   onSelectConversation,
+  onDeleteConversation,
 }) => {
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], { 
@@ -55,17 +58,17 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <span className="text-lg">👥</span>
+            <Users className="w-5 h-5 text-primary" />
           </div>
           <h2 className="text-lg font-semibold text-foreground">Multi-Agent Chat</h2>
         </div>
         <Button
           onClick={() => onShowNewConversationForm(true)}
           disabled={agents.length < 2}
-          className="w-full h-11 text-sm font-medium"
+          className="w-full h-10 text-sm font-medium"
           variant={agents.length >= 2 ? "default" : "secondary"}
         >
-          <span className="mr-2">+</span> Start New Conversation
+          <Plus className="w-4 h-4 mr-2" /> Start New Conversation
         </Button>
         {agents.length < 2 && (
           <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
@@ -170,7 +173,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         {conversations.length === 0 ? (
           <div className="text-center text-muted-foreground p-8">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-              <span className="text-2xl opacity-50">💬</span>
+              <MessageCircle className="w-8 h-8 opacity-50" />
             </div>
             <p className="text-sm mb-2 font-medium">No conversations yet</p>
             <p className="text-xs opacity-75">Start your first multi-agent conversation!</p>
@@ -180,7 +183,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             {conversations.map((conv) => (
               <div
                 key={conv.id}
-                className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer group ${
+                className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer group relative ${
                   activeConversation === conv.id 
                     ? 'bg-primary/5 border-primary/20 shadow-sm' 
                     : 'bg-card border-border hover:bg-accent/30 hover:border-accent-foreground/20'
@@ -188,6 +191,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               >
                 <div 
                   onClick={() => onSelectConversation(conv.id)}
+                  className="pr-8"
                 >
                   <div className="font-semibold text-sm text-foreground mb-2 group-hover:text-primary transition-colors">
                     {conv.name}
@@ -210,21 +214,39 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                     }
                   </div>
                 </div>
-                {conv.isActive && (
-                  <div className="mt-3 pt-3 border-t border-border/50">
+                
+                {/* Action buttons positioned in top-right */}
+                <div className="absolute top-3 right-3 flex gap-1">
+                  {conv.isActive ? (
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         onStopConversation(conv.id);
                       }}
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50 transition-colors"
+                      className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Stop conversation"
                     >
-                      Stop Conversation
+                      <div className="w-3 h-3 bg-current rounded-sm"></div>
                     </Button>
-                  </div>
-                )}
+                  ) : (
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+                          onDeleteConversation(conv.id);
+                        }
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Delete conversation"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

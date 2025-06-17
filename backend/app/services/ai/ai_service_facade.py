@@ -182,3 +182,8 @@ class AIServiceFacade(AIServiceInterface):
         """Update the sharing status of a conversation"""
         with SessionManager.get_conversation_repository() as conv_repo:
             return conv_repo.update_conversation_sharing(conversation_id, is_shared, user_id)
+    
+    def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
+        """Delete a conversation and all its messages"""
+        with SessionManager.get_conversation_repository() as conv_repo:
+            return conv_repo.delete_conversation(conversation_id, user_id)

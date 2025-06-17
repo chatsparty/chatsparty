@@ -63,3 +63,15 @@ export const fetchConversations = async (
     throw error;
   }
 };
+
+export const deleteConversation = async (conversationId: string): Promise<void> => {
+  try {
+    await axios.delete(`${API_BASE_URL}/chat/conversations/${conversationId}`);
+  } catch (error) {
+    console.error(
+      "Failed to delete conversation:",
+      error instanceof Error ? error.message : String(error)
+    );
+    throw error;
+  }
+};
