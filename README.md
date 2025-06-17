@@ -2,6 +2,13 @@
 
 A full-stack AI chat application with FastAPI backend and React frontend featuring multi-agent conversations and Ollama integration.
 
+
+
+
+https://github.com/user-attachments/assets/14d0536f-4aea-4ef7-b019-b4356519ee63
+
+
+
 ## Project Structure
 
 ```
