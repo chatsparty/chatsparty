@@ -86,6 +86,8 @@ class Message:
     role: str
     content: str
     timestamp: Optional[datetime] = None
+    agent_id: Optional[str] = None
+    speaker: Optional[str] = None
 
 
 @dataclass

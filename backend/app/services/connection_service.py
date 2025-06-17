@@ -10,20 +10,20 @@ from app.models.chat import (
     ModelConfig
 )
 from app.services.ai.infrastructure.unified_model_service import UnifiedModelService
+from app.services.ai.infrastructure.database_repositories import RepositoryFactory
 
 
 class ConnectionService:
     """Service for managing model connections"""
     
     def __init__(self):
-        self.connections: Dict[str, Dict] = {}
         self.model_service = UnifiedModelService()
+        self.connection_repository = RepositoryFactory.create_connection_repository()
         self._initialize_default_connections()
     
     def create_connection(self, request: ConnectionCreateRequest) -> ConnectionResponse:
         """Create a new connection"""
         connection_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
         
         connection_data = {
             "id": connection_id,
@@ -33,55 +33,50 @@ class ConnectionService:
             "model_name": request.model_name,
             "api_key": request.api_key,
             "base_url": request.base_url,
-            "created_at": now,
-            "updated_at": now,
             "is_active": True
         }
         
-        self.connections[connection_id] = connection_data
-        return ConnectionResponse(**connection_data)
+        saved_connection = self.connection_repository.create_connection(connection_data)
+        self.connection_repository.commit()
+        return ConnectionResponse(**saved_connection)
     
     def get_connections(self) -> List[ConnectionResponse]:
         """Get all connections"""
-        return [ConnectionResponse(**conn) for conn in self.connections.values()]
+        connections = self.connection_repository.get_all_connections()
+        return [ConnectionResponse(**conn) for conn in connections]
     
     def get_connection(self, connection_id: str) -> Optional[ConnectionResponse]:
         """Get a specific connection"""
-        if connection_id in self.connections:
-            return ConnectionResponse(**self.connections[connection_id])
+        connection = self.connection_repository.get_connection(connection_id)
+        if connection:
+            return ConnectionResponse(**connection)
         return None
     
     def update_connection(self, connection_id: str, request: ConnectionUpdateRequest) -> Optional[ConnectionResponse]:
         """Update an existing connection"""
-        if connection_id not in self.connections:
-            return None
-        
-        connection = self.connections[connection_id]
         update_data = request.dict(exclude_unset=True)
         
-        for field, value in update_data.items():
-            connection[field] = value
-        
-        connection["updated_at"] = datetime.utcnow().isoformat()
-        
-        return ConnectionResponse(**connection)
+        updated_connection = self.connection_repository.update_connection(connection_id, update_data)
+        if updated_connection:
+            self.connection_repository.commit()
+            return ConnectionResponse(**updated_connection)
+        return None
     
     def delete_connection(self, connection_id: str) -> bool:
         """Delete a connection"""
-        if connection_id in self.connections:
-            del self.connections[connection_id]
-            return True
-        return False
+        success = self.connection_repository.delete_connection(connection_id)
+        if success:
+            self.connection_repository.commit()
+        return success
     
     def test_connection(self, connection_id: str) -> ConnectionTestResult:
         """Test a connection"""
-        if connection_id not in self.connections:
+        connection = self.connection_repository.get_connection(connection_id)
+        if not connection:
             return ConnectionTestResult(
                 success=False,
                 message="Connection not found"
             )
-        
-        connection = self.connections[connection_id]
         
         try:
             model_config = ModelConfig(
@@ -132,11 +127,8 @@ class ConnectionService:
     
     def get_active_connections(self) -> List[ConnectionResponse]:
         """Get only active connections"""
-        return [
-            ConnectionResponse(**conn) 
-            for conn in self.connections.values() 
-            if conn.get("is_active", True)
-        ]
+        connections = self.connection_repository.get_active_connections()
+        return [ConnectionResponse(**conn) for conn in connections]
     
     def get_connection_model_config(self, connection_id: str) -> Optional[ModelConfig]:
         """Get ModelConfig for a connection (for backward compatibility with agents)"""
@@ -152,6 +144,11 @@ class ConnectionService:
     
     def _initialize_default_connections(self):
         """Initialize some default connections for testing"""
+        # Only initialize if no connections exist
+        existing_connections = self.connection_repository.get_all_connections()
+        if existing_connections:
+            return
+        
         default_connections = [
             {
                 "name": "Ollama Local - Gemma2",
