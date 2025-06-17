@@ -13,10 +13,10 @@ function App() {
   ]
 
   return (
-    <div className="App h-screen w-screen overflow-hidden">
+    <div className="App h-screen w-screen bg-background overflow-hidden">
       <div className="flex flex-col h-full">
         {/* Header Menu */}
-        <div className="bg-card border-b border-border px-6 py-4 shadow-sm">
+        <div className="bg-card border-b border-border px-6 py-4 shadow-sm flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="text-lg font-semibold text-foreground">Chatsparty</div>
             <div className="flex items-center">
@@ -42,7 +42,7 @@ function App() {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-hidden bg-background">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === 'agents' && <AgentManagerPage />}
           {activeTab === 'multi-chat' && <MultiAgentChatPage />}
         </div>

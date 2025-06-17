@@ -27,7 +27,7 @@ const MultiAgentChatPage: React.FC = () => {
   const activeConv = conversations.find(c => c.id === activeConversation);
 
   return (
-    <div className="flex h-full bg-gray-50">
+    <div className="flex h-full bg-background">
       <ConversationSidebar
         agents={agents}
         conversations={conversations}
@@ -46,7 +46,7 @@ const MultiAgentChatPage: React.FC = () => {
         onSelectConversation={setActiveConversation}
       />
 
-      <div className="flex-1 flex flex-col bg-white">
+      <div className="flex-1 flex flex-col bg-card">
         <ChatArea
           activeConversation={activeConv}
           agents={agents}
