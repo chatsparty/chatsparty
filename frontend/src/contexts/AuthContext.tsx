@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 interface User {
   id: string;
@@ -34,7 +35,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Configure axios defaults
-const API_BASE_URL = 'http://localhost:8000';
 axios.defaults.baseURL = API_BASE_URL;
 
 // Add axios interceptor to include token in requests

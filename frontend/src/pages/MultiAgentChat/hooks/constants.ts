@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://localhost:8000';
+export { API_BASE_URL } from '../../../config/api';
 
 export const AGENT_COLORS = [
   '#007bff', '#28a745', '#dc3545', '#ffc107', 

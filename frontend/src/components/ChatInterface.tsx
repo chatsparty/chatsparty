@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 interface Message {
   id: string;
@@ -31,7 +32,7 @@ const ChatInterface: React.FC = () => {
 
   const processUserMessage = async (message: string) => {
     try {
-      const response = await axios.post('http://localhost:8000/chat', {
+      const response = await axios.post(`${API_BASE_URL}/chat`, {
         message: message
       });
 
@@ -188,7 +189,7 @@ const ChatInterface: React.FC = () => {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             placeholder="Type a message..."
             disabled={isLoading}
             style={{
