@@ -5,14 +5,21 @@ import asyncio
 import os
 from functools import wraps
 from .model_service import get_model_service
+from .unified_model_service import get_unified_model_service
 
 class Agent:
-    def __init__(self, agent_id: str, name: str, prompt: str, characteristics: str, model_name: str = None, chat_style: dict = None):
+    def __init__(self, agent_id: str, name: str, prompt: str, characteristics: str, 
+                 model_config: dict = None, chat_style: dict = None):
         self.agent_id = agent_id
         self.name = name
         self.prompt = prompt
         self.characteristics = characteristics
-        self.model_name = model_name
+        self.model_config = model_config or {
+            "provider": "ollama",
+            "model_name": "gemma3:4b",
+            "api_key": None,
+            "base_url": None
+        }
         self.chat_style = chat_style or {
             "friendliness": "friendly",  # friendly, neutral, formal
             "response_length": "medium",  # short, medium, long
@@ -80,46 +87,75 @@ Please respond in character according to your role, characteristics, and communi
 
 class AIService:
     def __init__(self, model_name: str = None):
-        self.model_name = model_name or os.getenv("OLLAMA_MODEL", "gemma3:4b")
+        self.model_name = model_name or os.getenv("OLLAMA_MODEL", "gemma2:2b")
         self.client = ollama.Client()
         self.model_service = get_model_service()
-        self.model_service.ensure_model_available()
+        self.unified_service = get_unified_model_service()
+        # Only ensure Ollama model is available if using Ollama
+        try:
+            self.model_service.ensure_model_available()
+        except:
+            pass  # Skip if Ollama is not available
         self.agents = {}
         self.conversations = {}
     
-    async def chat_completion(self, messages: List[Dict[str, str]], system_prompt: Optional[str] = None, model_name: Optional[str] = None) -> str:
-        """Generate a chat completion using the local model"""
+    async def chat_completion(self, messages: List[Dict[str, str]], system_prompt: Optional[str] = None, 
+                            model_config: Optional[dict] = None) -> str:
+        """Generate a chat completion using the specified model configuration"""
         try:
-            # Prepare messages for Ollama
-            formatted_messages = []
+            if not model_config:
+                # Fallback to Ollama for backward compatibility
+                model_config = {
+                    "provider": "ollama",
+                    "model_name": self.model_name,
+                    "api_key": None,
+                    "base_url": None
+                }
             
-            if system_prompt:
-                formatted_messages.append({
-                    "role": "system",
-                    "content": system_prompt
-                })
+            provider = model_config.get("provider", "ollama")
             
-            formatted_messages.extend(messages)
-            
-            # Make async call to Ollama
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.client.chat(
-                    model=model_name or self.model_name,
-                    messages=formatted_messages
+            if provider == "ollama":
+                # Use existing Ollama logic
+                formatted_messages = []
+                
+                if system_prompt:
+                    formatted_messages.append({
+                        "role": "system",
+                        "content": system_prompt
+                    })
+                
+                formatted_messages.extend(messages)
+                
+                # Make async call to Ollama
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: self.client.chat(
+                        model=model_config.get("model_name", self.model_name),
+                        messages=formatted_messages
+                    )
                 )
-            )
-            
-            return response['message']['content']
+                
+                return response['message']['content']
+            else:
+                # Use unified service for other providers
+                return await self.unified_service.chat_completion(
+                    messages=messages,
+                    system_prompt=system_prompt or "",
+                    provider=provider,
+                    model_name=model_config.get("model_name"),
+                    api_key=model_config.get("api_key"),
+                    base_url=model_config.get("base_url")
+                )
         
         except Exception as e:
             print(f"Error in chat completion: {e}")
             return f"I apologize, but I encountered an error: {str(e)}"
     
-    def create_agent(self, agent_id: str, name: str, prompt: str, characteristics: str, model_name: str = None, chat_style: dict = None) -> Agent:
+    def create_agent(self, agent_id: str, name: str, prompt: str, characteristics: str, 
+                   model_config: dict = None, chat_style: dict = None) -> Agent:
         """Create a new agent with specific characteristics and prompt"""
-        agent = Agent(agent_id, name, prompt, characteristics, model_name, chat_style)
+        agent = Agent(agent_id, name, prompt, characteristics, model_config, chat_style)
         self.agents[agent_id] = agent
         return agent
     
@@ -135,6 +171,7 @@ class AIService:
                 "name": agent.name,
                 "prompt": agent.prompt,
                 "characteristics": agent.characteristics,
+                "model_configuration": agent.model_config,
                 "chat_style": agent.chat_style
             }
             for agent in self.agents.values()
@@ -160,7 +197,7 @@ class AIService:
         response = await self.chat_completion(
             self.conversations[conversation_id],
             agent.get_system_prompt(),
-            agent.model_name
+            agent.model_config
         )
         
         # Add agent response to conversation
@@ -219,7 +256,7 @@ class AIService:
             response = await self.chat_completion(
                 context_messages,
                 current_agent.get_system_prompt(),
-                current_agent.model_name
+                current_agent.model_config
             )
             
             # Add to conversation log
@@ -300,7 +337,7 @@ class AIService:
             response = await self.chat_completion(
                 context_messages,
                 current_agent.get_system_prompt(),
-                current_agent.model_name
+                current_agent.model_config
             )
             
             # Send the agent's message

@@ -5,9 +5,11 @@ import json
 import asyncio
 from ..models.chat import (
     ChatMessage, ChatResponse, AgentCreateRequest, AgentResponse, 
-    AgentChatRequest, MultiAgentConversationRequest, ConversationMessage
+    AgentChatRequest, MultiAgentConversationRequest, ConversationMessage,
+    ModelConfig
 )
 from ..services.ai_service import get_ai_service, AIService
+from ..services.unified_model_service import get_unified_model_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -21,14 +23,18 @@ async def create_agent(
     try:
         chat_style_dict = None
         if agent_request.chat_style:
-            chat_style_dict = agent_request.chat_style.dict()
+            chat_style_dict = agent_request.chat_style.model_dump()
+        
+        model_config_dict = None
+        if agent_request.model_configuration:
+            model_config_dict = agent_request.model_configuration.model_dump()
         
         agent = ai_service.create_agent(
             agent_request.agent_id,
             agent_request.name,
             agent_request.prompt,
             agent_request.characteristics,
-            agent_request.model_name,
+            model_config_dict,
             chat_style_dict
         )
         return AgentResponse(
@@ -36,6 +42,7 @@ async def create_agent(
             name=agent.name,
             prompt=agent.prompt,
             characteristics=agent.characteristics,
+            model_configuration=agent_request.model_configuration,
             chat_style=agent_request.chat_style
         )
     except Exception as e:
@@ -146,3 +153,25 @@ async def list_available_models():
         return {"models": [model["name"] for model in models["models"]]}
     except Exception as e:
         return {"models": [], "error": str(e)}
+
+
+@router.get("/providers")
+async def get_available_providers():
+    """Get all available AI providers and their models"""
+    try:
+        unified_service = get_unified_model_service()
+        providers = unified_service.get_available_providers()
+        return {"providers": providers}
+    except Exception as e:
+        return {"providers": {}, "error": str(e)}
+
+
+@router.get("/providers/{provider}/models")
+async def get_provider_models(provider: str):
+    """Get available models for a specific provider"""
+    try:
+        unified_service = get_unified_model_service()
+        models = unified_service.get_models_for_provider(provider)
+        return {"provider": provider, "models": models}
+    except Exception as e:
+        return {"provider": provider, "models": [], "error": str(e)}

@@ -20,12 +20,19 @@ class ChatStyle(BaseModel):
     expertise_level: str = "expert" # beginner, intermediate, expert
 
 
+class ModelConfig(BaseModel):
+    provider: str = "ollama"  # ollama, openai, anthropic, gemini, groq
+    model_name: str = "gemma2:2b"
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None  # For Ollama or custom endpoints
+
+
 class AgentCreateRequest(BaseModel):
     agent_id: str
     name: str
     prompt: str
     characteristics: str
-    model_name: Optional[str] = None
+    model_configuration: ModelConfig
     chat_style: Optional[ChatStyle] = None
 
 
@@ -34,6 +41,7 @@ class AgentResponse(BaseModel):
     name: str
     prompt: str
     characteristics: str
+    model_configuration: ModelConfig
     chat_style: Optional[ChatStyle] = None
 
 
