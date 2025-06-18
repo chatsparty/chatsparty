@@ -4,3 +4,4 @@ CLAUDE.md
 backend/chatsparty.db
 backend/.env
 backend/fly.toml
+frontend/.cursor/rules/posthog-integration.mdc
