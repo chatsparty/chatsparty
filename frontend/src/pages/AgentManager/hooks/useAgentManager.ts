@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useTracking } from '../../../hooks/useTracking';
+import { useConnections } from '../../../hooks/useConnections';
 
 interface ChatStyle {
   friendliness: 'friendly' | 'neutral' | 'formal';
@@ -37,6 +39,8 @@ export const useAgentManager = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const { trackAgentCreated, trackAgentUpdated, trackAgentDeleted, trackError, trackFeatureUsed } = useTracking();
+  const { connections } = useConnections();
   const [formData, setFormData] = useState<FormData>({
     name: '',
     prompt: '',
@@ -100,10 +104,29 @@ export const useAgentManager = () => {
         chat_style: formData.chat_style
       });
       
+      const connection = connections.find(conn => conn.id === formData.connection_id);
+      
+      if (editingAgent) {
+        trackAgentUpdated(editingAgent.agent_id, formData.name);
+      } else {
+        trackAgentCreated({
+          agent_name: formData.name,
+          agent_type: 'custom',
+          provider: connection?.provider || 'unknown',
+          model_name: connection?.model_name || 'unknown',
+          chat_style_friendliness: formData.chat_style.friendliness,
+          chat_style_response_length: formData.chat_style.response_length,
+          chat_style_personality: formData.chat_style.personality,
+          chat_style_humor: formData.chat_style.humor,
+          chat_style_expertise_level: formData.chat_style.expertise_level
+        });
+      }
+      
       await fetchAgents();
       resetForm();
     } catch (error) {
       console.error('Failed to create agent:', error);
+      trackError('agent_creation_error', error instanceof Error ? error.message : 'Unknown error', 'agent_manager');
       alert('Failed to create agent. Make sure the agent ID is unique.');
     } finally {
       setIsLoading(false);
@@ -167,6 +190,8 @@ export const useAgentManager = () => {
   };
 
   const createPresetAgent = (preset: PresetAgent) => {
+    trackFeatureUsed('preset_agent_selected', { preset_name: preset.name });
+    
     setFormData({
       name: preset.name,
       prompt: preset.prompt,
@@ -184,6 +209,9 @@ export const useAgentManager = () => {
   };
 
   const handleDeleteAgent = async (agentId: string) => {
+    const agent = agents.find(a => a.agent_id === agentId);
+    const agentName = agent?.name || 'Unknown';
+    
     if (!window.confirm('Are you sure you want to delete this agent?')) {
       return;
     }
@@ -191,9 +219,11 @@ export const useAgentManager = () => {
     setIsLoading(true);
     try {
       await axios.delete(`/chat/agents/${agentId}`);
+      trackAgentDeleted(agentId, agentName);
       await fetchAgents();
     } catch (error) {
       console.error('Failed to delete agent:', error);
+      trackError('agent_deletion_error', error instanceof Error ? error.message : 'Unknown error', 'agent_manager');
       alert('Failed to delete agent. Please try again.');
     } finally {
       setIsLoading(false);

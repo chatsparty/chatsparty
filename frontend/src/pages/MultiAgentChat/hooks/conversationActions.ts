@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import type { ActiveConversation, Agent } from '../types';
 import { handleStreamConversation, createStreamMessageHandlers } from './streamHandlers';
 import { createAgentHelpers } from './helpers';
+import { useTracking } from '../../../hooks/useTracking';
 
 export const useConversationActions = (
   agents: Agent[],
@@ -18,6 +19,7 @@ export const useConversationActions = (
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const { getAgentName } = createAgentHelpers(agents);
   const { handleStreamMessage } = createStreamMessageHandlers(setConversations);
+  const { trackConversationStarted, trackMessageSent, trackError } = useTracking();
 
   const startConversation = useCallback(async (): Promise<void> => {
     if (selectedAgents.length < 2 || !initialMessage.trim()) return;
@@ -40,6 +42,21 @@ export const useConversationActions = (
       setConversations(prev => [...prev, newConversation]);
       setActiveConversation(conversationId);
       
+      // Track conversation started
+      trackConversationStarted({
+        conversation_id: conversationId,
+        agent_count: selectedAgents.length,
+        agent_names: selectedAgents.map(id => getAgentName(id)).join(', ')
+      });
+      
+      // Track initial message
+      trackMessageSent({
+        message_length: initialMessage.length,
+        conversation_type: 'multi_agent',
+        agent_count: selectedAgents.length,
+        conversation_id: conversationId
+      });
+      
       // Reset form
       setShowNewConversationForm(false);
       setSelectedAgents([]);
@@ -57,6 +74,7 @@ export const useConversationActions = (
       
     } catch (error) {
       console.error('Failed to start conversation:', error instanceof Error ? error.message : String(error));
+      trackError('conversation_start_error', error instanceof Error ? error.message : 'Unknown error', 'multi_agent_chat');
       alert('Failed to start conversation. Make sure all selected agents exist.');
       setConversations(prev => prev.filter(conv => conv.id !== conversationId));
     } finally {

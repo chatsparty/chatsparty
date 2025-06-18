@@ -5,6 +5,7 @@ import { Button } from "../../../components/ui/button";
 import { ShareModal } from "../../../components/ui/modal";
 import { ToastContainer } from "../../../components/ui/toast";
 import { useToast } from "../../../hooks/useToast";
+import { useTracking } from "../../../hooks/useTracking";
 import { Users, AlertTriangle, CheckCircle } from "lucide-react";
 import axios from "axios";
 
@@ -32,6 +33,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     string | null
   >(null);
   const { toasts, showToast, removeToast } = useToast();
+  const { trackConversationShared, trackConversationUnshared, trackShareLinkCopied, trackError } = useTracking();
 
   useEffect(() => {
     if (activeConversation) {
@@ -107,9 +109,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         const fullUrl = `${window.location.origin}${shareUrlFromResponse}`;
         setShareUrl(fullUrl);
         console.log("Setting share URL:", fullUrl);
+        
+        trackConversationShared({
+          conversation_id: activeConversation.id,
+          action: 'share',
+          message_count: activeConversation.messages.length
+        });
       } else {
         setShareUrl(null);
         console.log("Clearing share URL");
+        
+        trackConversationUnshared({
+          conversation_id: activeConversation.id,
+          action: 'unshare',
+          message_count: activeConversation.messages.length
+        });
       }
 
       setLastUpdatedConversationId(activeConversation.id);
@@ -119,19 +133,27 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       }, 500);
     } catch (error) {
       console.error("Error sharing conversation:", error);
+      trackError('conversation_share_error', error instanceof Error ? error.message : 'Unknown error', 'multi_agent_chat');
     } finally {
       setIsSharing(false);
     }
   };
 
   const handleCopyLink = async () => {
-    if (shareUrl) {
+    if (shareUrl && activeConversation) {
       try {
         await navigator.clipboard.writeText(shareUrl);
         showToast("Link copied to clipboard!", "success");
+        
+        trackShareLinkCopied({
+          conversation_id: activeConversation.id,
+          action: 'copy_link',
+          message_count: activeConversation.messages.length
+        });
       } catch (error) {
         console.error("Failed to copy link:", error);
         showToast("Failed to copy link", "error");
+        trackError('clipboard_error', error instanceof Error ? error.message : 'Unknown error', 'share_link_copy');
       }
     }
   };

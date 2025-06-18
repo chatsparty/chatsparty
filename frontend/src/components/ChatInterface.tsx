@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
+import { useTracking } from '../hooks/useTracking';
 
 interface Message {
   id: string;
@@ -21,6 +22,7 @@ const ChatInterface: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { trackMessageSent, trackMessageReceived, trackError, trackPageView } = useTracking();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -31,12 +33,15 @@ const ChatInterface: React.FC = () => {
   }, [messages]);
 
   const processUserMessage = async (message: string) => {
+    const startTime = Date.now();
+    
     try {
       const response = await axios.post(`${API_BASE_URL}/chat`, {
         message: message
       });
 
       const aiResponse = response.data;
+      const responseTime = Date.now() - startTime;
       
       const aiMessage: Message = {
         id: Date.now().toString(),
@@ -45,8 +50,12 @@ const ChatInterface: React.FC = () => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
+      
+      trackMessageReceived(responseTime, 'single_agent');
     } catch (error) {
       console.error('Error communicating with AI:', error);
+      
+      trackError('chat_api_error', error instanceof Error ? error.message : 'Unknown error', 'single_agent_chat');
       
       const errorMessage: Message = {
         id: Date.now().toString(),
@@ -72,6 +81,12 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true);
     
     const messageToProcess = inputValue;
+    
+    trackMessageSent({
+      message_length: messageToProcess.length,
+      conversation_type: 'single_agent'
+    });
+    
     setInputValue('');
 
     try {
