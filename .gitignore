@@ -3,3 +3,4 @@ CLAUDE.md
 .idea/*
 backend/chatsparty.db
 backend/.env
+backend/fly.toml
