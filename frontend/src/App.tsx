@@ -16,12 +16,46 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AuthPage } from "./components/auth/AuthPage";
 import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { Button } from "./components/ui/button";
+import { useTracking } from "./hooks/useTracking";
+import { useEffect, useRef } from "react";
 import "./App.css";
 
 
 const Layout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const { trackPageView, trackNavigation, trackUserLogout } = useTracking();
+  const previousLocationRef = useRef<string>('');
+
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const previousPath = previousLocationRef.current;
+    
+    // Track page view
+    const getPageName = (path: string) => {
+      if (path === '/agents') return 'agents';
+      if (path === '/chat') return 'multi_agent_chat';
+      if (path === '/settings') return 'settings';
+      if (path === '/connections') return 'connections';
+      if (path === '/') return 'landing';
+      if (path.startsWith('/shared/conversation/')) return 'shared_conversation';
+      return 'unknown';
+    };
+    
+    trackPageView(getPageName(currentPath));
+    
+    // Track navigation if not the first load
+    if (previousPath && previousPath !== currentPath) {
+      trackNavigation(getPageName(previousPath), getPageName(currentPath));
+    }
+    
+    previousLocationRef.current = currentPath;
+  }, [location.pathname, trackPageView, trackNavigation]);
+
+  const handleLogout = () => {
+    trackUserLogout();
+    logout();
+  };
 
   // If user is not authenticated, render AuthPage without layout
   if (!user) {
@@ -69,7 +103,7 @@ const Layout = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="flex items-center gap-2"
                 >
                   <FaSignOutAlt className="text-xs" />
