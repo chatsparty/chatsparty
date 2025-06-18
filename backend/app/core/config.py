@@ -58,6 +58,17 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 
+# Support dynamic environment file loading
+def get_settings(env_file_path: str = ".env") -> Settings:
+    """Get settings with custom environment file"""
+    class DynamicSettings(Settings):
+        class Config:
+            env_file = env_file_path
+    
+    return DynamicSettings()
+
+
+# Default settings instance
 settings = Settings()
 
 

@@ -12,6 +12,11 @@ from alembic import context
 # Add the project root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+# Load environment file if specified
+env_file = os.getenv('ENV_FILE', '.env')
+from dotenv import load_dotenv
+load_dotenv(env_file)
+
 from app.core.config import settings
 from app.core.database import Base
 
@@ -20,7 +25,11 @@ from app.core.database import Base
 config = context.config
 
 # Set the database URL from our settings
-config.set_main_option("sqlalchemy.url", settings.database_url_computed)
+# Handle URL encoding issues with alembic configuration parser
+db_url = settings.database_url_computed
+# Escape % characters for alembic configuration parser
+db_url = db_url.replace('%', '%%')
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
