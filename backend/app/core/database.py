@@ -26,7 +26,10 @@ class DatabaseManager:
         )
         
         # Sync engine for sync operations
-        sync_url = settings.database_url_computed.replace("+aiosqlite", "").replace("+asyncpg", "+psycopg2")
+        sync_url = settings.database_url_computed.replace("+aiosqlite", "").replace("+asyncpg", "")
+        # For PostgreSQL, use psycopg2 driver
+        if sync_url.startswith("postgresql://"):
+            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://")
         self.sync_engine = create_engine(sync_url, echo=False, future=True)
         self.sync_session_maker = sessionmaker(
             bind=self.sync_engine,
