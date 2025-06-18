@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 from pydantic_settings import BaseSettings
 from fastapi import FastAPI
@@ -26,7 +25,17 @@ class Settings(BaseSettings):
     google_client_secret: Optional[str] = None
     github_client_id: Optional[str] = None
     github_client_secret: Optional[str] = None
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: Optional[str] = None
+    backend_url: str = "http://localhost:8000"
+    
+    # OAuth redirect URIs (constructed from backend_url)
+    @property
+    def google_redirect_uri(self) -> str:
+        return f"{self.frontend_url}/auth/google/callback"
+    
+    @property
+    def github_redirect_uri(self) -> str:
+        return f"{self.frontend_url}/auth/github/callback"
     
     # Authentication mode settings
     # Set to true to disable traditional email/password auth (cloud mode)
@@ -54,7 +63,7 @@ def create_app(lifespan=None) -> FastAPI:
     
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=[settings.frontend_url],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
