@@ -4,6 +4,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from typing import List, Dict, Optional, Union
 import os
 import asyncio
+import httpx
 
 
 class UnifiedModelService:
@@ -34,12 +35,44 @@ class UnifiedModelService:
             'models': ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
             'requires_api_key': True,
             'base_url_required': False
+        },
+        'openrouter': {
+            'models': [], # To be populated dynamically
+            'requires_api_key': True,
+            'base_url_required': False # Assuming OpenRouter has a default base URL like api.openrouter.ai
         }
     }
     
     def __init__(self):
         self._agents = {}
         self._models = {}
+
+        openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
+        if openrouter_api_key:
+            print("Attempting to fetch OpenRouter models...")
+            try:
+                # This approach runs a new event loop for this specific task.
+                # It's generally okay if UnifiedModelService is instantiated
+                # outside an active asyncio event loop.
+                models = asyncio.run(self.fetch_openrouter_models_async(openrouter_api_key))
+                if models:
+                    # SUPPORTED_PROVIDERS is a class variable, so access via self.__class__
+                    # or by directly referencing UnifiedModelService.SUPPORTED_PROVIDERS
+                    # To ensure it updates the class variable for all instances (though it's a singleton):
+                    type(self).SUPPORTED_PROVIDERS['openrouter']['models'] = models
+                    print(f"Successfully fetched {len(models)} OpenRouter models.")
+                else:
+                    print("No models returned from OpenRouter or API key was missing for fetch method.")
+            except RuntimeError as e:
+                if "cannot be called when another loop is running" in str(e):
+                    print(f"Warning: Could not fetch OpenRouter models during init due to existing event loop: {e}")
+                    print("Consider calling an async initialization method for UnifiedModelService if models are needed at startup in an async context.")
+                else:
+                    print(f"Error fetching OpenRouter models during init: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred while fetching OpenRouter models during init: {e}")
+        else:
+            print("OPENROUTER_API_KEY not found in environment. Skipping dynamic OpenRouter model fetching.")
     
     def get_available_providers(self) -> Dict[str, Dict]:
         """Get all available providers and their models"""
@@ -49,6 +82,47 @@ class UnifiedModelService:
         """Get available models for a specific provider"""
         return self.SUPPORTED_PROVIDERS.get(provider, {}).get('models', [])
     
+    async def fetch_openrouter_models_async(self, api_key: str) -> List[str]:
+        if not api_key:
+            # Try to get from environment if not directly provided to this function
+            api_key = os.getenv('OPENROUTER_API_KEY')
+        if not api_key:
+            print("Error: OpenRouter API key not found for fetching models.")
+            return [] # Or raise an exception
+
+        headers = {
+            "Authorization": f"Bearer {api_key}"
+        }
+        # Using a common guess for the API endpoint.
+        # This might need to be changed if the actual endpoint is different.
+        url = "https://api.openrouter.ai/v1/models"
+
+        models = []
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
+
+                data = response.json()
+                # Assuming the response structure is similar to OpenAI's /v1/models
+                # e.g., { "object": "list", "data": [ { "id": "model1", ... }, { "id": "model2", ... } ] }
+                if isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
+                    for model_info in data["data"]:
+                        if isinstance(model_info, dict) and "id" in model_info:
+                            models.append(model_info["id"])
+                else:
+                    # Log unexpected structure
+                    print(f"Unexpected response structure from OpenRouter: {data}")
+
+        except httpx.HTTPStatusError as e:
+            print(f"HTTP error fetching OpenRouter models: {e.response.status_code} - {e.response.text}")
+        except httpx.RequestError as e:
+            print(f"Request error fetching OpenRouter models: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred fetching OpenRouter models: {e}")
+
+        return models
+
     def create_model(self, provider: str, model_name: str, api_key: Optional[str] = None, base_url: Optional[str] = None):
         """Create a model instance for the given provider and model"""
         try:
@@ -92,6 +166,18 @@ class UnifiedModelService:
                 os.environ['GROQ_API_KEY'] = api_key
                 return f'groq:{model_name}'
             
+            elif provider == 'openrouter':
+                if not api_key:
+                    api_key = os.getenv('OPENROUTER_API_KEY')
+                if not api_key:
+                    raise ValueError("OpenRouter API key is required")
+                os.environ['OPENROUTER_API_KEY'] = api_key
+                # Assuming pydantic-ai uses a string identifier or a generic model for OpenRouter
+                # similar to how other providers like openai, anthropic are handled.
+                # If pydantic-ai has a specific OpenRouterModel, this would be different.
+                # For now, following the pattern of returning a string:
+                return f'openrouter:{model_name}'
+
             else:
                 raise ValueError(f"Unsupported provider: {provider}")
                 
