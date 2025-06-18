@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     
+    # Encryption settings
+    encryption_master_key: Optional[str] = None
+    
     # OAuth settings
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
