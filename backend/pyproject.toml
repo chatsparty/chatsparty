@@ -26,4 +26,5 @@ dependencies = [
     "authlib>=1.6.0",
     "httpx>=0.28.1",
     "psycopg2-binary>=2.9.10",
+    "cryptography>=42.0.0",
 ]

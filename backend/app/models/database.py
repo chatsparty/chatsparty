@@ -99,7 +99,8 @@ class Connection(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     provider: Mapped[str] = mapped_column(String(100), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    api_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    api_key: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)  # Increased size for encrypted data
+    api_key_encrypted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # Track encryption status
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     

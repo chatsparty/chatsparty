@@ -1,4 +1,10 @@
+import os
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# Load environment variables as early as possible
+load_dotenv()
+
 from .core.config import create_app
 from .core.database import db_manager
 from .routers import health, chat, connections, auth
