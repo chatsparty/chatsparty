@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
+from sqlalchemy.exc import SQLAlchemyError
 from app.models.chat import (
     ConnectionCreateRequest,
     ConnectionUpdateRequest, 
@@ -8,6 +9,7 @@ from app.models.chat import (
 )
 from app.models.database import User
 from app.services.connection_service import connection_service
+from app.core.error_handler import DatabaseErrorHandler
 from .auth import get_current_user_dependency
 
 router = APIRouter()
@@ -22,10 +24,19 @@ async def create_connection(
     try:
         connection = connection_service.create_connection(request, current_user.id)
         return connection
+    except SQLAlchemyError as e:
+        raise DatabaseErrorHandler.handle_db_error(
+            e, 
+            operation="creating connection",
+            user_message="Failed to create connection",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create connection: {str(e)}"
+        raise DatabaseErrorHandler.handle_db_error(
+            e,
+            operation="creating connection", 
+            user_message="Failed to create connection",
+            status_code=status.HTTP_400_BAD_REQUEST
         )
 
 
@@ -35,11 +46,10 @@ async def get_connections(current_user: User = Depends(get_current_user_dependen
     try:
         connections = connection_service.get_connections(current_user.id)
         return connections
+    except SQLAlchemyError as e:
+        raise DatabaseErrorHandler.handle_query_error(e, "connections")
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch connections: {str(e)}"
-        )
+        raise DatabaseErrorHandler.handle_query_error(e, "connections")
 
 
 @router.get("/connections/active", response_model=List[ConnectionResponse])
@@ -48,11 +58,10 @@ async def get_active_connections(current_user: User = Depends(get_current_user_d
     try:
         connections = connection_service.get_active_connections(current_user.id)
         return connections
+    except SQLAlchemyError as e:
+        raise DatabaseErrorHandler.handle_query_error(e, "active connections")
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch active connections: {str(e)}"
-        )
+        raise DatabaseErrorHandler.handle_query_error(e, "active connections")
 
 
 @router.get("/connections/{connection_id}", response_model=ConnectionResponse)
