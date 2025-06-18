@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Set to true to disable traditional email/password auth (cloud mode)
     social_auth_only: bool = False
     
+    # Error handling settings
+    # Set to true to hide detailed database errors in production
+    hide_db_errors: bool = True
+    debug_mode: bool = False
+    
     @property
     def database_url_computed(self) -> str:
         if self.database_url:
