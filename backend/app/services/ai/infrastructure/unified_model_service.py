@@ -4,7 +4,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from typing import List, Dict, Optional, Union
 import os
 import asyncio
-import httpx
+from .model_fetchers import fetch_openrouter_models_async
 
 
 class UnifiedModelService:
@@ -54,7 +54,7 @@ class UnifiedModelService:
                 # This approach runs a new event loop for this specific task.
                 # It's generally okay if UnifiedModelService is instantiated
                 # outside an active asyncio event loop.
-                models = asyncio.run(self.fetch_openrouter_models_async(openrouter_api_key))
+                models = asyncio.run(fetch_openrouter_models_async(openrouter_api_key))
                 if models:
                     # SUPPORTED_PROVIDERS is a class variable, so access via self.__class__
                     # or by directly referencing UnifiedModelService.SUPPORTED_PROVIDERS
@@ -82,47 +82,6 @@ class UnifiedModelService:
         """Get available models for a specific provider"""
         return self.SUPPORTED_PROVIDERS.get(provider, {}).get('models', [])
     
-    async def fetch_openrouter_models_async(self, api_key: str) -> List[str]:
-        if not api_key:
-            # Try to get from environment if not directly provided to this function
-            api_key = os.getenv('OPENROUTER_API_KEY')
-        if not api_key:
-            print("Error: OpenRouter API key not found for fetching models.")
-            return [] # Or raise an exception
-
-        headers = {
-            "Authorization": f"Bearer {api_key}"
-        }
-        # Using a common guess for the API endpoint.
-        # This might need to be changed if the actual endpoint is different.
-        url = "https://api.openrouter.ai/v1/models"
-
-        models = []
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers)
-                response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
-
-                data = response.json()
-                # Assuming the response structure is similar to OpenAI's /v1/models
-                # e.g., { "object": "list", "data": [ { "id": "model1", ... }, { "id": "model2", ... } ] }
-                if isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
-                    for model_info in data["data"]:
-                        if isinstance(model_info, dict) and "id" in model_info:
-                            models.append(model_info["id"])
-                else:
-                    # Log unexpected structure
-                    print(f"Unexpected response structure from OpenRouter: {data}")
-
-        except httpx.HTTPStatusError as e:
-            print(f"HTTP error fetching OpenRouter models: {e.response.status_code} - {e.response.text}")
-        except httpx.RequestError as e:
-            print(f"Request error fetching OpenRouter models: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred fetching OpenRouter models: {e}")
-
-        return models
-
     def create_model(self, provider: str, model_name: str, api_key: Optional[str] = None, base_url: Optional[str] = None):
         """Create a model instance for the given provider and model"""
         try:
