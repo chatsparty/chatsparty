@@ -40,16 +40,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     string | null
   >(null);
 
-  // Podcast generation state
   const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
   const [podcastJobId, setPodcastJobId] = useState<string | null>(null);
   const [podcastStatus, setPodcastStatus] = useState<
     "idle" | "generating" | "completed" | "failed"
   >("idle");
   const [podcastProgress, setPodcastProgress] = useState<number>(0);
-  const [podcastDownloadUrl, setPodcastDownloadUrl] = useState<string | null>(
-    null
-  );
 
   const { toasts, showToast, removeToast } = useToast();
   const {
@@ -190,7 +186,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
   };
 
-  // Podcast generation functions
   const handleGeneratePodcast = async () => {
     console.log(
       "Starting podcast generation for conversation:",
@@ -280,7 +275,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
       if (status.status === "completed") {
         setPodcastStatus("completed");
-        setPodcastDownloadUrl(status.audio_url);
         setIsGeneratingPodcast(false);
         showToast(
           "Podcast generation completed! Click download to get your file.",
@@ -361,7 +355,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       setPodcastStatus("idle");
       setPodcastJobId(null);
       setPodcastProgress(0);
-      setPodcastDownloadUrl(null);
       setIsGeneratingPodcast(false);
     }
   }, [activeConversation?.id, lastUpdatedConversationId]);

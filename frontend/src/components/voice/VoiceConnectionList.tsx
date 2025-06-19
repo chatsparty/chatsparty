@@ -25,11 +25,9 @@ export const VoiceConnectionList: React.FC<VoiceConnectionListProps> = ({
   const {
     connections,
     loading,
-    error,
     createConnection,
     updateConnection,
     deleteConnection,
-    testConnection,
   } = useVoiceConnections();
 
   const [showForm, setShowForm] = useState(false);
