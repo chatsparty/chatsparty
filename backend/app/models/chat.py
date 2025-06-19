@@ -59,11 +59,17 @@ class AgentChatRequest(BaseModel):
     conversation_id: str = "default"
 
 
+class FileAttachment(BaseModel):
+    filename: str
+    content: str
+    file_type: str
+
 class MultiAgentConversationRequest(BaseModel):
     conversation_id: str
     agent_ids: List[str]
     initial_message: str
     max_turns: int = 10
+    file_attachments: Optional[List[FileAttachment]] = None
 
 
 class ConversationMessage(BaseModel):

@@ -172,12 +172,24 @@ async def start_multi_agent_conversation(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
+        file_attachments = None
+        if conversation_request.file_attachments:
+            file_attachments = [
+                {
+                    "filename": attachment.filename,
+                    "content": attachment.content,
+                    "file_type": attachment.file_type
+                }
+                for attachment in conversation_request.file_attachments
+            ]
+        
         conversation_log = await ai_service.multi_agent_conversation(
             conversation_request.conversation_id,
             conversation_request.agent_ids,
             conversation_request.initial_message,
             conversation_request.max_turns,
-            current_user.id
+            current_user.id,
+            file_attachments
         )
         return [ConversationMessage(**msg) for msg in conversation_log]
     except Exception as e:
@@ -194,12 +206,24 @@ async def stream_multi_agent_conversation(
     
     async def generate_conversation():
         try:
+            file_attachments = None
+            if conversation_request.file_attachments:
+                file_attachments = [
+                    {
+                        "filename": attachment.filename,
+                        "content": attachment.content,
+                        "file_type": attachment.file_type
+                    }
+                    for attachment in conversation_request.file_attachments
+                ]
+            
             async for message in ai_service.multi_agent_conversation_stream(
                 conversation_request.conversation_id,
                 conversation_request.agent_ids,
                 conversation_request.initial_message,
                 conversation_request.max_turns,
-                current_user.id
+                current_user.id,
+                file_attachments
             ):
                 data = json.dumps(message)
                 yield f"data: {data}\n\n"
@@ -262,16 +286,13 @@ async def update_conversation_sharing(
 ):
     """Update the sharing status of a conversation"""
     try:
-        # First check if the conversation exists and belongs to the user
         conversation = ai_service.get_conversation_by_id(conversation_id, current_user.id)
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
         
-        # Check if user owns the conversation
         if conversation.get("user_id") != current_user.id:
             raise HTTPException(status_code=403, detail="You can only share your own conversations")
         
-        # Update the sharing status
         success = ai_service.update_conversation_sharing(
             conversation_id, 
             share_request.is_shared, 
@@ -283,7 +304,6 @@ async def update_conversation_sharing(
         
         share_url = None
         if share_request.is_shared:
-            # Generate the share URL
             share_url = f"/shared/conversation/{conversation_id}"
         
         return ConversationShareResponse(
@@ -305,16 +325,13 @@ async def delete_conversation(
 ):
     """Delete a conversation and all its messages"""
     try:
-        # First check if the conversation exists and belongs to the user
         conversation = ai_service.get_conversation_by_id(conversation_id, current_user.id)
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
         
-        # Check if user owns the conversation
         if conversation.get("user_id") != current_user.id:
             raise HTTPException(status_code=403, detail="You can only delete your own conversations")
         
-        # Delete the conversation
         success = ai_service.delete_conversation(conversation_id, current_user.id)
         
         if not success:
@@ -338,11 +355,9 @@ async def get_shared_conversation(
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
         
-        # Check if the conversation is actually shared
         if not conversation.get("is_shared", False):
             raise HTTPException(status_code=404, detail="Conversation not found")
         
-        # Remove sensitive information before returning
         shared_conversation = {
             "id": conversation["id"],
             "participants": conversation["participants"],

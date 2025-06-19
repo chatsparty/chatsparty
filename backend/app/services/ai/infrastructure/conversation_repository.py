@@ -99,7 +99,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 messages.append({
                     "speaker": speaker_name,
                     "agent_id": msg.agent_id,
-                    "message": msg.content,
+                    "message": self._clean_message_for_display(msg.content, msg.role),
                     "timestamp": msg.created_at.timestamp() if msg.created_at else 0
                 })
             
@@ -157,7 +157,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             messages.append({
                 "speaker": speaker_name,
                 "agent_id": msg.agent_id,
-                "message": msg.content,
+                "message": self._clean_message_for_display(msg.content, msg.role),
                 "timestamp": msg.created_at.timestamp() if msg.created_at else 0
             })
         
@@ -202,12 +202,18 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         if not conversation:
             return False
         
-        # Delete all messages first (due to foreign key constraints)
         self.db_session.query(MessageModel).filter(
             MessageModel.conversation_id == conversation_id
         ).delete()
         
-        # Delete the conversation
         self.db_session.delete(conversation)
         self.db_session.commit()
         return True
+    
+    def _clean_message_for_display(self, content: str, role: str) -> str:
+        """Remove file context from user messages for display purposes"""
+        if role == "user" and "=== ATTACHED FILES CONTEXT ===" in content:
+            parts = content.split("=== END FILE CONTEXT ===\n\n")
+            if len(parts) > 1:
+                return parts[1]
+        return content
