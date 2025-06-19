@@ -57,12 +57,10 @@ class AIServiceFacade(AIServiceInterface):
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
             
-            # Get the existing agent first
             existing_agent = agent_service.get_agent(agent_id)
             if not existing_agent:
                 return None
             
-            # Create updated agent object
             model_configuration = ModelConfiguration(
                 provider=model_config.get("provider", "ollama"),
                 model_name=model_config.get("model_name", "gemma3:4b"),
@@ -109,7 +107,6 @@ class AIServiceFacade(AIServiceInterface):
         conversation_id: str = "default",
         user_id: str = None
     ) -> str:
-        # Use the same session for both agent and conversation operations
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
             chat_service = ChatService(
@@ -125,7 +122,8 @@ class AIServiceFacade(AIServiceInterface):
         agent_ids: List[str],
         initial_message: str,
         max_turns: int = 10,
-        user_id: str = None
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None
     ) -> List[Dict[str, Any]]:
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
@@ -135,7 +133,7 @@ class AIServiceFacade(AIServiceInterface):
                 conv_repo
             )
             conversation_messages = await chat_service.multi_agent_conversation(
-                conversation_id, agent_ids, initial_message, max_turns, user_id
+                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
             )
             return [
                 {
@@ -154,7 +152,8 @@ class AIServiceFacade(AIServiceInterface):
         agent_ids: List[str],
         initial_message: str,
         max_turns: int = 10,
-        user_id: str = None
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
@@ -164,7 +163,7 @@ class AIServiceFacade(AIServiceInterface):
                 conv_repo
             )
             async for message in chat_service.multi_agent_conversation_stream(
-                conversation_id, agent_ids, initial_message, max_turns, user_id
+                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
             ):
                 yield message
     
@@ -196,3 +195,11 @@ class AIServiceFacade(AIServiceInterface):
         """Delete a conversation and all its messages"""
         with SessionManager.get_conversation_repository() as conv_repo:
             return conv_repo.delete_conversation(conversation_id, user_id)
+    
+    async def simple_chat(self, message: str, user_id: str = None) -> str:
+        """Simple chat without agents for utility purposes like content enhancement"""
+        try:
+            response = await self._model_provider.chat(message, {})
+            return response
+        except Exception as e:
+            return f"Error processing with AI: {str(e)}"

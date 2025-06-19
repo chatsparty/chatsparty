@@ -56,7 +56,8 @@ class ChatService:
         agent_ids: List[str],
         initial_message: str,
         max_turns: int = 10,
-        user_id: str = None
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None
     ) -> List[ConversationMessage]:
         if len(agent_ids) < 2:
             return [ConversationMessage(
@@ -73,12 +74,19 @@ class ChatService:
                     timestamp=asyncio.get_event_loop().time()
                 )]
         
-        # Create or get existing conversation from database
         if not self._conversation_repository.get_conversation(conversation_id, user_id):
             self._conversation_repository.create_conversation(conversation_id, user_id or "default")
         
-        # Add initial user message to database
-        user_message = Message(role="user", content=initial_message, timestamp=datetime.now(), speaker="user")
+        enhanced_initial_message = initial_message
+        if file_attachments:
+            file_context = "\n\n=== ATTACHED FILES CONTEXT ===\n"
+            for attachment in file_attachments:
+                file_context += f"\n--- {attachment['filename']} ({attachment['file_type']}) ---\n"
+                file_context += f"{attachment['content']}\n"
+            file_context += "\n=== END FILE CONTEXT ===\n\n"
+            enhanced_initial_message = file_context + initial_message
+        
+        user_message = Message(role="user", content=enhanced_initial_message, timestamp=datetime.now(), speaker="user")
         self._conversation_repository.add_message(conversation_id, user_message)
         
         conversation_log = []
@@ -97,14 +105,19 @@ class ChatService:
             
             context_messages = []
             if len(conversation_log) > 1:
-                recent_messages = conversation_log[-5:]
+                recent_messages = conversation_log[-30:]
                 context = "Recent conversation:\n"
                 for msg in recent_messages:
-                    context += f"{msg.speaker}: {msg.message}\n"
+                    display_message = initial_message if msg.speaker == "user" and msg == conversation_log[0] else msg.message
+                    context += f"{msg.speaker}: {display_message}\n"
                 context += f"\nPlease continue the conversation naturally from your perspective."
+                
+                if file_attachments:
+                    context += f"\n\nRemember: The user has attached {len(file_attachments)} file(s) with relevant content for this conversation."
+                
                 context_messages = [Message(role="user", content=context)]
             else:
-                context_messages = [Message(role="user", content=initial_message)]
+                context_messages = [Message(role="user", content=enhanced_initial_message)]
             
             response = await self._model_provider.chat_completion(
                 context_messages,
@@ -112,7 +125,6 @@ class ChatService:
                 current_agent.model_config
             )
             
-            # Save agent response to database
             agent_message = Message(
                 role="assistant", 
                 content=response, 
@@ -142,7 +154,8 @@ class ChatService:
         agent_ids: List[str],
         initial_message: str,
         max_turns: int = 10,
-        user_id: str = None
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         if len(agent_ids) < 2:
             yield {"error": "At least 2 agents are required for a conversation"}
@@ -153,12 +166,19 @@ class ChatService:
                 yield {"error": f"Agent {agent_id} not found"}
                 return
         
-        # Create or get existing conversation from database
         if not self._conversation_repository.get_conversation(conversation_id, user_id):
             self._conversation_repository.create_conversation(conversation_id, user_id or "default")
         
-        # Add initial user message to database
-        user_message = Message(role="user", content=initial_message, timestamp=datetime.now(), speaker="user")
+        enhanced_initial_message = initial_message
+        if file_attachments:
+            file_context = "\n\n=== ATTACHED FILES CONTEXT ===\n"
+            for attachment in file_attachments:
+                file_context += f"\n--- {attachment['filename']} ({attachment['file_type']}) ---\n"
+                file_context += f"{attachment['content']}\n"
+            file_context += "\n=== END FILE CONTEXT ===\n\n"
+            enhanced_initial_message = file_context + initial_message
+        
+        user_message = Message(role="user", content=enhanced_initial_message, timestamp=datetime.now(), speaker="user")
         self._conversation_repository.add_message(conversation_id, user_message)
         
         conversation_log = []
@@ -190,11 +210,16 @@ class ChatService:
                 context = "Recent conversation:\n"
                 for msg in recent_messages:
                     if msg.get("type") == "message":
-                        context += f"{msg['speaker']}: {msg['message']}\n"
+                        display_message = initial_message if msg['speaker'] == "user" and msg == conversation_log[0] else msg['message']
+                        context += f"{msg['speaker']}: {display_message}\n"
                 context += f"\nPlease continue the conversation naturally from your perspective."
+                
+                if file_attachments:
+                    context += f"\n\nRemember: The user has attached {len(file_attachments)} file(s) with relevant content for this conversation."
+                
                 context_messages = [Message(role="user", content=context)]
             else:
-                context_messages = [Message(role="user", content=initial_message)]
+                context_messages = [Message(role="user", content=enhanced_initial_message)]
             
             response = await self._model_provider.chat_completion(
                 context_messages,
@@ -202,7 +227,6 @@ class ChatService:
                 current_agent.model_config
             )
             
-            # Save agent response to database
             agent_message = Message(
                 role="assistant", 
                 content=response, 
@@ -234,8 +258,16 @@ class ChatService:
         return [
             {
                 "role": msg.role,
-                "content": msg.content,
+                "content": self._clean_message_for_display(msg.content, msg.role),
                 "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
             }
             for msg in messages
         ]
+    
+    def _clean_message_for_display(self, content: str, role: str) -> str:
+        """Remove file context from user messages for display purposes"""
+        if role == "user" and "=== ATTACHED FILES CONTEXT ===" in content:
+            parts = content.split("=== END FILE CONTEXT ===\n\n")
+            if len(parts) > 1:
+                return parts[1]
+        return content

@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     hide_db_errors: bool = True
     debug_mode: bool = False
     
+    # Storage settings
+    storage_provider: str = "local"
+    local_storage_path: str = "./storage/uploads"
+    local_storage_url_base: str = "http://localhost:8000/files/download"
+    
     @property
     def database_url_computed(self) -> str:
         if self.database_url:
