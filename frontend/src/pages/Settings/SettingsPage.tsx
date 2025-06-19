@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaPlug, FaCog, FaUser, FaLock } from "react-icons/fa";
+import { FaPlug, FaCog, FaUser, FaLock, FaMicrophone } from "react-icons/fa";
 import { SettingsSidebar, SettingsContent } from "@/components/settings";
 import type { SettingsItem } from "@/components/settings";
 
@@ -20,6 +20,14 @@ export const SettingsPage: React.FC = () => {
       label: "Model Connections",
       description: "Manage your AI model connections and configurations",
       icon: FaPlug,
+    },
+    {
+      id: "voice-connections",
+      path: "/voice-connections",
+      label: "Voice Connections",
+      description:
+        "Manage your voice synthesis and speech recognition connections",
+      icon: FaMicrophone,
     },
     {
       id: "profile",

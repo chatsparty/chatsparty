@@ -21,6 +21,13 @@ class ChatStyle:
 
 
 @dataclass
+class VoiceConfig:
+    voice_enabled: bool = False
+    voice_connection_id: Optional[str] = None
+    podcast_settings: Optional[dict] = None
+
+
+@dataclass
 class Agent:
     agent_id: str
     name: str
@@ -29,6 +36,7 @@ class Agent:
     model_config: ModelConfiguration
     chat_style: ChatStyle
     connection_id: str
+    voice_config: Optional[VoiceConfig] = None
     
     def get_system_prompt(self) -> str:
         style_instructions = []

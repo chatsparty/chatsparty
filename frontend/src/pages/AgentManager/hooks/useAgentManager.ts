@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTracking } from '../../../hooks/useTracking';
 import { useConnections } from '../../../hooks/useConnections';
+import type { AgentVoiceConfig } from '../../../types/voice';
 
 interface ChatStyle {
   friendliness: 'friendly' | 'neutral' | 'formal';
@@ -18,6 +19,7 @@ interface Agent {
   characteristics: string;
   connection_id?: string;
   chat_style?: ChatStyle;
+  voice_config?: AgentVoiceConfig;
 }
 
 interface FormData {
@@ -26,6 +28,7 @@ interface FormData {
   characteristics: string;
   connection_id: string;
   chat_style: ChatStyle;
+  voice_config: AgentVoiceConfig;
 }
 
 interface PresetAgent {
@@ -52,6 +55,14 @@ export const useAgentManager = () => {
       personality: 'balanced',
       humor: 'light',
       expertise_level: 'expert'
+    },
+    voice_config: {
+      voice_enabled: false,
+      podcast_settings: {
+        intro_enabled: true,
+        outro_enabled: true,
+        background_music: false
+      }
     }
   });
 
@@ -96,13 +107,27 @@ export const useAgentManager = () => {
     setIsLoading(true);
     
     try {
-      await axios.post('/chat/agents', {
-        name: formData.name,
-        prompt: formData.prompt,
-        characteristics: formData.characteristics,
-        connection_id: formData.connection_id,
-        chat_style: formData.chat_style
-      });
+      if (editingAgent) {
+        // Update existing agent
+        await axios.put(`/chat/agents/${editingAgent.agent_id}`, {
+          name: formData.name,
+          prompt: formData.prompt,
+          characteristics: formData.characteristics,
+          connection_id: formData.connection_id,
+          chat_style: formData.chat_style,
+          voice_config: formData.voice_config
+        });
+      } else {
+        // Create new agent
+        await axios.post('/chat/agents', {
+          name: formData.name,
+          prompt: formData.prompt,
+          characteristics: formData.characteristics,
+          connection_id: formData.connection_id,
+          chat_style: formData.chat_style,
+          voice_config: formData.voice_config
+        });
+      }
       
       const connection = connections.find(conn => conn.id === formData.connection_id);
       
@@ -146,13 +171,25 @@ export const useAgentManager = () => {
         personality: 'balanced',
         humor: 'light',
         expertise_level: 'expert'
+      },
+      voice_config: agent.voice_config || {
+        voice_enabled: false,
+        podcast_settings: {
+          intro_enabled: true,
+          outro_enabled: true,
+          background_music: false
+        }
       }
     });
     setShowCreateForm(true);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const target = e.target;
+    const { name, value, type } = target;
+    
+    // For checkboxes, use the checked property instead of value
+    const actualValue = type === 'checkbox' ? (target as HTMLInputElement).checked : value;
     
     if (name.startsWith('chat_style.')) {
       const styleKey = name.split('.')[1];
@@ -160,13 +197,44 @@ export const useAgentManager = () => {
         ...formData,
         chat_style: {
           ...formData.chat_style,
-          [styleKey]: value
+          [styleKey]: actualValue
         }
       });
+    } else if (name.startsWith('voice_config.')) {
+      const configKey = name.split('.')[1];
+      if (configKey === 'voice_enabled') {
+        setFormData({
+          ...formData,
+          voice_config: {
+            ...formData.voice_config,
+            voice_enabled: typeof actualValue === 'boolean' ? actualValue : (actualValue === 'true' || actualValue === 'on')
+          }
+        });
+      } else if (configKey === 'voice_connection_id') {
+        setFormData({
+          ...formData,
+          voice_config: {
+            ...formData.voice_config,
+            voice_connection_id: actualValue as string
+          }
+        });
+      } else if (name.startsWith('voice_config.podcast_settings.')) {
+        const settingKey = name.split('.')[2];
+        setFormData({
+          ...formData,
+          voice_config: {
+            ...formData.voice_config,
+            podcast_settings: {
+              ...formData.voice_config.podcast_settings,
+              [settingKey]: typeof actualValue === 'boolean' ? actualValue : (actualValue === 'true' || actualValue === 'on')
+            }
+          }
+        });
+      }
     } else {
       setFormData({
         ...formData,
-        [name]: value
+        [name]: actualValue
       });
     }
   };
@@ -185,6 +253,14 @@ export const useAgentManager = () => {
         personality: 'balanced',
         humor: 'light',
         expertise_level: 'expert'
+      },
+      voice_config: {
+        voice_enabled: false,
+        podcast_settings: {
+          intro_enabled: true,
+          outro_enabled: true,
+          background_music: false
+        }
       }
     });
   };
@@ -203,6 +279,14 @@ export const useAgentManager = () => {
         personality: 'balanced',
         humor: 'light',
         expertise_level: 'expert'
+      },
+      voice_config: {
+        voice_enabled: false,
+        podcast_settings: {
+          intro_enabled: true,
+          outro_enabled: true,
+          background_music: false
+        }
       }
     });
     setShowCreateForm(true);
