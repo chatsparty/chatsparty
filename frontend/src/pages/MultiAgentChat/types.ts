@@ -29,3 +29,13 @@ export interface ActiveConversation {
   isActive: boolean;
   is_shared?: boolean;
 }
+
+export interface AttachedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  file: File;
+  extractedContent?: string;
+  isExtracting?: boolean;
+}
