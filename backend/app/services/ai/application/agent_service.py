@@ -1,7 +1,9 @@
 from typing import List, Dict, Any, Optional
 import uuid
-from ..domain.entities import Agent, ModelConfiguration, ChatStyle
+from sqlalchemy.orm import Session
+from ..domain.entities import Agent, ModelConfiguration, ChatStyle, VoiceConfig
 from ..domain.interfaces import AgentRepositoryInterface
+from ....models.database import VoiceConnection as VoiceConnectionModel
 
 
 class AgentService:
@@ -16,7 +18,8 @@ class AgentService:
         user_id: str,
         model_config: Optional[Dict] = None,
         chat_style: Optional[Dict] = None,
-        connection_id: Optional[str] = None
+        connection_id: Optional[str] = None,
+        voice_config: Optional[Dict] = None
     ) -> Agent:
         model_configuration = ModelConfiguration(
             provider=model_config.get("provider", "ollama"),
@@ -36,6 +39,12 @@ class AgentService:
             expertise_level=chat_style.get("expertise_level", "expert")
         ) if chat_style else ChatStyle()
         
+        voice_config_obj = VoiceConfig(
+            voice_enabled=voice_config.get("voice_enabled", False),
+            voice_connection_id=voice_config.get("voice_connection_id"),
+            podcast_settings=voice_config.get("podcast_settings")
+        ) if voice_config else VoiceConfig()
+        
         # Generate a unique UUID for the agent
         agent_id = str(uuid.uuid4())
         
@@ -46,7 +55,8 @@ class AgentService:
             characteristics=characteristics,
             model_config=model_configuration,
             chat_style=chat_style_obj,
-            connection_id=connection_id or "default"
+            connection_id=connection_id or "default",
+            voice_config=voice_config_obj
         )
         
         return self._agent_repository.create_agent(agent, user_id)
@@ -75,7 +85,12 @@ class AgentService:
                     "personality": agent.chat_style.personality,
                     "humor": agent.chat_style.humor,
                     "expertise_level": agent.chat_style.expertise_level
-                }
+                },
+                "voice_config": {
+                    "voice_enabled": agent.voice_config.voice_enabled if agent.voice_config else False,
+                    "voice_connection_id": agent.voice_config.voice_connection_id if agent.voice_config else None,
+                    "podcast_settings": agent.voice_config.podcast_settings if agent.voice_config else None
+                } if agent.voice_config else None
             }
             for agent in agents
         ]

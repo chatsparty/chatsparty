@@ -1,5 +1,6 @@
 import React from "react";
 import { ConnectionsManagement } from "./ConnectionsManagement";
+import { VoiceConnectionList } from "../voice/VoiceConnectionList";
 
 interface SettingsContentProps {
   selectedItem: string;
@@ -29,6 +30,8 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
         );
       case "connections":
         return <ConnectionsManagement />;
+      case "voice-connections":
+        return <VoiceConnectionList />;
       default:
         return (
           <div className="space-y-6">

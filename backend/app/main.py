@@ -7,7 +7,7 @@ load_dotenv()
 
 from .core.config import create_app
 from .core.database import db_manager
-from .routers import health, chat, connections, auth
+from .routers import health, chat, connections, auth, voice_connections, podcast
 
 
 @asynccontextmanager
@@ -25,6 +25,8 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(connections.router)
+app.include_router(voice_connections.router)
+app.include_router(podcast.router)
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, JSON, Boolean
+from sqlalchemy import String, Text, DateTime, ForeignKey, Integer, JSON, Boolean, Float
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -25,6 +25,7 @@ class User(Base):
     agents: Mapped[List["Agent"]] = relationship("Agent", back_populates="user")
     conversations: Mapped[List["Conversation"]] = relationship("Conversation", back_populates="user")
     connections: Mapped[List["Connection"]] = relationship("Connection", back_populates="user")
+    voice_connections: Mapped[List["VoiceConnection"]] = relationship("VoiceConnection", back_populates="user")
 
 
 class Agent(Base):
@@ -42,6 +43,11 @@ class Agent(Base):
     # Chat style as JSON
     chat_style: Mapped[dict] = mapped_column(JSON, nullable=False)
     
+    # Voice configuration
+    voice_connection_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("voice_connections.id"), nullable=True)
+    voice_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    podcast_settings: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -50,6 +56,7 @@ class Agent(Base):
     
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="agents")
+    voice_connection: Mapped[Optional["VoiceConnection"]] = relationship("VoiceConnection", back_populates="agents")
     conversations: Mapped[List["Conversation"]] = relationship("Conversation", back_populates="agent")
     messages: Mapped[List["Message"]] = relationship("Message", back_populates="agent")
 
@@ -112,3 +119,64 @@ class Connection(Base):
     
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="connections")
+
+
+class VoiceConnection(Base):
+    __tablename__ = "voice_connections"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    provider: Mapped[str] = mapped_column(String(100), nullable=False)  # 'elevenlabs', 'openai', 'google', etc.
+    provider_type: Mapped[str] = mapped_column(String(50), nullable=False)  # 'tts', 'stt', 'both'
+    
+    # Voice settings
+    voice_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # provider-specific voice identifier
+    speed: Mapped[float] = mapped_column(Float, default=1.0)
+    pitch: Mapped[float] = mapped_column(Float, default=1.0)
+    stability: Mapped[float] = mapped_column(Float, default=0.75)
+    clarity: Mapped[float] = mapped_column(Float, default=0.8)
+    style: Mapped[str] = mapped_column(String(100), default='conversational')  # conversational, podcast, professional
+    
+    # Authentication & Configuration
+    api_key: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)  # encrypted
+    api_key_encrypted: Mapped[bool] = mapped_column(Boolean, default=False)
+    base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_cloud_proxy: Mapped[bool] = mapped_column(Boolean, default=False)  # for ChatsParty cloud
+    
+    # User relationship
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="voice_connections")
+    agents: Mapped[List["Agent"]] = relationship("Agent", back_populates="voice_connection")
+
+
+class PodcastJob(Base):
+    __tablename__ = "podcast_jobs"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String, ForeignKey("conversations.id"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
+    
+    # Job status and tracking
+    status: Mapped[str] = mapped_column(String(50), default='queued')  # queued, processing, completed, failed
+    audio_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Job metadata
+    total_messages: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    processed_messages: Mapped[Optional[int]] = mapped_column(Integer, default=0)
+    duration_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    file_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    conversation: Mapped["Conversation"] = relationship("Conversation")
+    user: Mapped["User"] = relationship("User")

@@ -37,6 +37,10 @@ async def create_agent(
         
         model_config_dict = model_config.model_dump()
         
+        voice_config_dict = None
+        if agent_request.voice_config:
+            voice_config_dict = agent_request.voice_config.model_dump()
+        
         agent = ai_service.create_agent(
             agent_request.name,
             agent_request.prompt,
@@ -44,7 +48,8 @@ async def create_agent(
             current_user.id,
             model_config_dict,
             chat_style_dict,
-            agent_request.connection_id
+            agent_request.connection_id,
+            voice_config_dict
         )
         return AgentResponse(
             agent_id=agent.agent_id,
@@ -52,7 +57,8 @@ async def create_agent(
             prompt=agent.prompt,
             characteristics=agent.characteristics,
             connection_id=agent_request.connection_id,
-            chat_style=agent_request.chat_style
+            chat_style=agent_request.chat_style,
+            voice_config=agent_request.voice_config
         )
     except HTTPException:
         raise
@@ -91,6 +97,10 @@ async def update_agent(
         
         model_config_dict = model_config.model_dump()
         
+        voice_config_dict = None
+        if agent_request.voice_config:
+            voice_config_dict = agent_request.voice_config.model_dump()
+        
         agent = ai_service.update_agent(
             agent_id,
             agent_request.name,
@@ -98,7 +108,8 @@ async def update_agent(
             agent_request.characteristics,
             model_config_dict,
             chat_style_dict,
-            agent_request.connection_id
+            agent_request.connection_id,
+            voice_config_dict
         )
         
         if not agent:
@@ -110,7 +121,8 @@ async def update_agent(
             prompt=agent.prompt,
             characteristics=agent.characteristics,
             connection_id=agent_request.connection_id,
-            chat_style=agent_request.chat_style
+            chat_style=agent_request.chat_style,
+            voice_config=agent_request.voice_config
         )
     except HTTPException:
         raise

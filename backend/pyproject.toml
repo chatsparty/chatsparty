@@ -27,4 +27,6 @@ dependencies = [
     "httpx>=0.28.1",
     "psycopg2-binary>=2.9.10",
     "cryptography>=42.0.0",
+    "pydub>=0.25.1",
+    "ffmpeg-python>=0.2.0",
 ]
