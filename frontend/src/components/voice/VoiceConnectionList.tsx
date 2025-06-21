@@ -1,19 +1,12 @@
-import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { VoiceConnectionForm } from "./VoiceConnectionForm";
 import { useVoiceConnections } from "@/hooks/useVoiceConnections";
 import type {
-  VoiceConnection,
   CreateVoiceConnectionRequest,
+  VoiceConnection,
 } from "@/types/voice";
+import React, { useState } from "react";
+import { VoiceConnectionForm } from "./VoiceConnectionForm";
+import { VoiceConnectionsTable } from "./VoiceConnectionsTable";
 
 interface VoiceConnectionListProps {
   className?: string;
@@ -28,6 +21,7 @@ export const VoiceConnectionList: React.FC<VoiceConnectionListProps> = ({
     createConnection,
     updateConnection,
     deleteConnection,
+    testConnection,
   } = useVoiceConnections();
 
   const [showForm, setShowForm] = useState(false);
@@ -77,10 +71,13 @@ export const VoiceConnectionList: React.FC<VoiceConnectionListProps> = ({
     }
   };
 
-  const handleToggleActive = async (connection: VoiceConnection) => {
+  const handleToggleActive = async (
+    connectionId: string,
+    isActive: boolean
+  ) => {
     try {
-      await updateConnection(connection.id, {
-        is_active: !connection.is_active,
+      await updateConnection(connectionId, {
+        is_active: isActive,
       });
     } catch (error) {
       console.error("Failed to toggle connection status:", error);
@@ -95,49 +92,6 @@ export const VoiceConnectionList: React.FC<VoiceConnectionListProps> = ({
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingConnection(undefined);
-  };
-
-  const getProviderBadgeColor = (provider: string) => {
-    switch (provider) {
-      case "elevenlabs":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
-      case "openai":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "google":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "chatsparty":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
-    }
-  };
-
-  const getProviderName = (provider: string) => {
-    switch (provider) {
-      case "elevenlabs":
-        return "ElevenLabs";
-      case "openai":
-        return "OpenAI";
-      case "google":
-        return "Google Cloud";
-      case "chatsparty":
-        return "ChatsParty Cloud";
-      default:
-        return provider;
-    }
-  };
-
-  const getServiceTypeLabel = (type: string) => {
-    switch (type) {
-      case "tts":
-        return "Text-to-Speech";
-      case "stt":
-        return "Speech-to-Text";
-      case "both":
-        return "TTS + STT";
-      default:
-        return type;
-    }
   };
 
   if (showForm) {
@@ -189,108 +143,13 @@ export const VoiceConnectionList: React.FC<VoiceConnectionListProps> = ({
           </div>
         </div>
       ) : (
-        <div className="grid gap-4">
-          {connections.map((connection) => (
-            <Card key={connection.id} className="relative">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CardTitle className="text-lg">
-                        {connection.name}
-                      </CardTitle>
-                      <Badge
-                        variant={connection.is_active ? "default" : "secondary"}
-                        className={
-                          connection.is_active
-                            ? "bg-green-100 text-green-800"
-                            : ""
-                        }
-                      >
-                        {connection.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                      {connection.is_cloud_proxy && (
-                        <Badge variant="outline">Cloud Proxy</Badge>
-                      )}
-                    </div>
-                    <CardDescription>{connection.description}</CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(connection)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleActive(connection)}
-                    >
-                      {connection.is_active ? "Disable" : "Enable"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteConnection(connection.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="font-medium text-card-foreground">Provider</p>
-                    <Badge
-                      className={getProviderBadgeColor(connection.provider)}
-                    >
-                      {getProviderName(connection.provider)}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="font-medium text-card-foreground">
-                      Service Type
-                    </p>
-                    <p className="text-muted-foreground">
-                      {getServiceTypeLabel(connection.provider_type)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-card-foreground">
-                      Voice Style
-                    </p>
-                    <p className="text-muted-foreground capitalize">
-                      {connection.style}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-card-foreground">Settings</p>
-                    <p className="text-muted-foreground">
-                      Speed: {connection.speed}x, Stability:{" "}
-                      {connection.stability}
-                    </p>
-                  </div>
-                </div>
-                {connection.voice_id && (
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <p className="text-sm">
-                      <span className="font-medium text-card-foreground">
-                        Voice ID:
-                      </span>{" "}
-                      <span className="text-muted-foreground">
-                        {connection.voice_id}
-                      </span>
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <VoiceConnectionsTable
+          connections={connections}
+          onEdit={handleEdit}
+          onDelete={handleDeleteConnection}
+          onTest={testConnection}
+          onToggleActive={handleToggleActive}
+        />
       )}
     </div>
   );

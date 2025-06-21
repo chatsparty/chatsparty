@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import type { ModelConnection, ConnectionTestResult } from '@/types/connection';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import type { ConnectionTestResult, ModelConnection } from "@/types/connection";
+import React, { useState } from "react";
 
 interface ConnectionCardProps {
   connection: ModelConnection;
@@ -17,10 +23,12 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   onEdit,
   onDelete,
   onTest,
-  onToggleActive
+  onToggleActive,
 }) => {
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
+  const [testResult, setTestResult] = useState<ConnectionTestResult | null>(
+    null
+  );
 
   const handleTest = async () => {
     setTesting(true);
@@ -31,7 +39,9 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
     } catch (error) {
       setTestResult({
         success: false,
-        message: 'Test failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+        message:
+          "Test failed: " +
+          (error instanceof Error ? error.message : "Unknown error"),
       });
     } finally {
       setTesting(false);
@@ -47,9 +57,12 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-lg">{connection.name}</CardTitle>
-            <CardDescription className="mt-1">
-              {connection.description || `${connection.provider} • ${connection.model_name}`}
+            <CardTitle className="text-lg text-card-foreground">
+              {connection.name}
+            </CardTitle>
+            <CardDescription className="mt-1 text-muted-foreground">
+              {connection.description ||
+                `${connection.provider} • ${connection.model_name}`}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -59,42 +72,50 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="pt-0">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-medium text-muted-foreground">Provider:</span>
-              <p className="capitalize">{connection.provider}</p>
+              <span className="font-medium text-muted-foreground">
+                Provider:
+              </span>
+              <p className="capitalize text-card-foreground">
+                {connection.provider}
+              </p>
             </div>
             <div>
               <span className="font-medium text-muted-foreground">Model:</span>
-              <p>{connection.model_name}</p>
+              <p className="text-card-foreground">{connection.model_name}</p>
             </div>
           </div>
 
           {connection.base_url && (
             <div className="text-sm">
-              <span className="font-medium text-muted-foreground">Base URL:</span>
-              <p className="break-all">{connection.base_url}</p>
+              <span className="font-medium text-muted-foreground">
+                Base URL:
+              </span>
+              <p className="break-all text-card-foreground">
+                {connection.base_url}
+              </p>
             </div>
           )}
 
           {testResult && (
-            <div className={`p-2 rounded text-sm ${
-              testResult.success 
-                ? 'bg-green-50 text-green-700 border border-green-200' 
-                : 'bg-red-50 text-red-700 border border-red-200'
-            }`}>
+            <div
+              className={`p-3 rounded-md text-sm border ${
+                testResult.success
+                  ? "bg-green-50 border-green-200 text-green-800 dark:bg-green-950/50 dark:border-green-900/50 dark:text-green-300"
+                  : "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/50 dark:border-red-900/50 dark:text-red-300"
+              }`}
+            >
               <div className="flex items-center gap-2">
                 <span className="font-medium">
-                  {testResult.success ? '✓' : '✗'} Test Result:
+                  {testResult.success ? "✓" : "✗"} Test Result:
                 </span>
                 <span>{testResult.message}</span>
                 {testResult.latency && (
-                  <span className="text-muted-foreground">
-                    ({testResult.latency}ms)
-                  </span>
+                  <span className="opacity-70">({testResult.latency}ms)</span>
                 )}
               </div>
             </div>
@@ -107,7 +128,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
               onClick={handleTest}
               disabled={testing}
             >
-              {testing ? 'Testing...' : 'Test Connection'}
+              {testing ? "Testing..." : "Test Connection"}
             </Button>
             <Button
               variant="outline"
@@ -116,12 +137,8 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             >
               Edit
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleToggleActive}
-            >
-              {connection.is_active ? 'Deactivate' : 'Activate'}
+            <Button variant="outline" size="sm" onClick={handleToggleActive}>
+              {connection.is_active ? "Deactivate" : "Activate"}
             </Button>
             <Button
               variant="destructive"

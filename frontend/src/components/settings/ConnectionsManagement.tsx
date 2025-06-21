@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { ConnectionForm } from '@/components/connections/ConnectionForm';
-import { ConnectionsTable } from '@/components/connections/ConnectionsTable';
-import { useConnections } from '@/hooks/useConnections';
-import type { ModelConnection, CreateConnectionRequest } from '@/types/connection';
+import { Button } from "@/components/ui/button";
+import { useConnections } from "@/hooks/useConnections";
+import {
+  ConnectionForm,
+  ConnectionsTable,
+} from "@/pages/ConnectionManager/components";
+import type {
+  CreateConnectionRequest,
+  ModelConnection,
+} from "@/types/connection";
+import React, { useState } from "react";
 
 export const ConnectionsManagement: React.FC = () => {
   const {
@@ -13,11 +18,12 @@ export const ConnectionsManagement: React.FC = () => {
     createConnection,
     updateConnection,
     deleteConnection,
-    testConnection
+    testConnection,
   } = useConnections();
 
   const [showForm, setShowForm] = useState(false);
-  const [editingConnection, setEditingConnection] = useState<ModelConnection | null>(null);
+  const [editingConnection, setEditingConnection] =
+    useState<ModelConnection | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateConnection = async (data: CreateConnectionRequest) => {
@@ -26,7 +32,7 @@ export const ConnectionsManagement: React.FC = () => {
       await createConnection(data);
       setShowForm(false);
     } catch (error) {
-      console.error('Failed to create connection:', error);
+      console.error("Failed to create connection:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -34,25 +40,25 @@ export const ConnectionsManagement: React.FC = () => {
 
   const handleUpdateConnection = async (data: CreateConnectionRequest) => {
     if (!editingConnection) return;
-    
+
     setIsSubmitting(true);
     try {
       await updateConnection(editingConnection.id, data);
       setEditingConnection(null);
       setShowForm(false);
     } catch (error) {
-      console.error('Failed to update connection:', error);
+      console.error("Failed to update connection:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteConnection = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this connection?')) {
+    if (window.confirm("Are you sure you want to delete this connection?")) {
       try {
         await deleteConnection(id);
       } catch (error) {
-        console.error('Failed to delete connection:', error);
+        console.error("Failed to delete connection:", error);
       }
     }
   };
@@ -61,7 +67,7 @@ export const ConnectionsManagement: React.FC = () => {
     try {
       await updateConnection(id, { is_active: isActive });
     } catch (error) {
-      console.error('Failed to toggle connection status:', error);
+      console.error("Failed to toggle connection status:", error);
     }
   };
 
@@ -86,7 +92,7 @@ export const ConnectionsManagement: React.FC = () => {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-red-500">Error: {error}</div>
+        <div className="text-destructive">Error: {error}</div>
       </div>
     );
   }
@@ -111,7 +117,11 @@ export const ConnectionsManagement: React.FC = () => {
         <div className="mb-6">
           <ConnectionForm
             connection={editingConnection || undefined}
-            onSubmit={editingConnection ? handleUpdateConnection : handleCreateConnection}
+            onSubmit={
+              editingConnection
+                ? handleUpdateConnection
+                : handleCreateConnection
+            }
             onCancel={handleCancelForm}
             isLoading={isSubmitting}
           />
