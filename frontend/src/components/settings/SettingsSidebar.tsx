@@ -35,7 +35,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               }`}
               disabled={item.disabled}
             >
-              <item.icon className="text-sm" />
+              <item.icon className="text-xs" />
               <span className="text-sm font-medium">{item.label}</span>
               {item.disabled && (
                 <span className="ml-auto text-xs bg-muted px-2 py-1 rounded">

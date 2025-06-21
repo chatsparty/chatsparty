@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -159,163 +161,194 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   };
 
   return (
-    <div className="bg-card rounded-lg border border-border p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-card-foreground">
-          {connection ? "Edit Connection" : "Create New Connection"}
-        </h2>
-        <Button onClick={onCancel} variant="outline" size="sm">
-          Cancel
-        </Button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block mb-2 font-medium text-card-foreground">
-            Connection Name *
-          </label>
-          <Input
-            value={formData.name}
-            onChange={(e) => handleChange("name", e.target.value)}
-            placeholder="e.g., OpenAI GPT-4 Production"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block mb-2 font-medium text-card-foreground">
-            Description
-          </label>
-          <Textarea
-            value={formData.description}
-            onChange={(e) => handleChange("description", e.target.value)}
-            placeholder="Optional description of this connection..."
-            rows={2}
-          />
-        </div>
-
-        <div>
-          <label className="block mb-2 font-medium text-card-foreground">
-            AI Provider *
-          </label>
-          <Select
-            value={formData.provider}
-            onValueChange={(value) => handleChange("provider", value)}
-            disabled={loadingProviders}
-          >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  loadingProviders
-                    ? "Loading providers..."
-                    : "Select a provider"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(providers).map((provider) => (
-                <SelectItem key={provider} value={provider}>
-                  {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {!isMcpProvider && (
-          <div>
-            <label className="block mb-2 font-medium text-card-foreground">
-              Model *
-            </label>
-            <Select
-              value={formData.model_name}
-              onValueChange={(value) => handleChange("model_name", value)}
-              disabled={!formData.provider || availableModels.length === 0}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableModels.map((model) => (
-                  <SelectItem key={model} value={model}>
-                    {model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {requiresApiKey && (
-          <div>
-            <label className="block mb-2 font-medium text-card-foreground">
-              API Key *
-            </label>
-            <Input
-              type="password"
-              value={formData.api_key}
-              onChange={(e) => handleChange("api_key", e.target.value)}
-              placeholder="Enter your API key"
-              required
-            />
-          </div>
-        )}
-
-        {requiresBaseUrl && (
-          <div>
-            <label className="block mb-2 font-medium text-card-foreground">
-              Base URL *
-            </label>
-            <Input
-              value={formData.base_url}
-              onChange={(e) => handleChange("base_url", e.target.value)}
-              placeholder="https://api.openai.com/v1"
-              required
-            />
-          </div>
-        )}
-
-        {/* MCP-specific fields */}
-        {isMcpProvider && (
-          <>
+    <div className="h-[calc(100vh-12rem)] overflow-y-auto overflow-x-hidden scrollbar-hide">
+      <form onSubmit={handleSubmit} className="space-y-6 pb-6 max-w-full">
+        {/* Basic Information Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div>
-              <label className="block mb-2 font-medium text-card-foreground">
-                MCP Server URL *
-              </label>
+              <Label htmlFor="name" className="text-sm font-medium">
+                Connection Name *
+              </Label>
               <Input
-                value={formData.mcp_server_url}
-                onChange={(e) => handleChange("mcp_server_url", e.target.value)}
-                placeholder="ws://localhost:3000 or https://your-mcp-server.com"
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                placeholder="e.g., OpenAI GPT-4 Production"
                 required
               />
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleMcpTest}
-                disabled={testingMcp || !formData.mcp_server_url}
-                className="flex-1"
+            <div>
+              <Label htmlFor="description" className="text-sm font-medium">
+                Description
+              </Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleChange("description", e.target.value)}
+                placeholder="Optional description of this connection..."
+                rows={2}
+                className="resize-y"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Provider Configuration Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Provider Configuration</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="provider" className="text-sm font-medium">
+                AI Provider *
+              </Label>
+              <Select
+                value={formData.provider}
+                onValueChange={(value) => handleChange("provider", value)}
+                disabled={loadingProviders}
               >
-                {testingMcp ? "Testing..." : "Test MCP Connection"}
-              </Button>
+                <SelectTrigger className="mt-1">
+                  <SelectValue
+                    placeholder={
+                      loadingProviders
+                        ? "Loading providers..."
+                        : "Select a provider"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(providers).map((provider) => (
+                    <SelectItem key={provider} value={provider}>
+                      {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {mcpTestResult && (
-              <div
-                className={`p-3 rounded-lg text-sm ${
-                  mcpTestResult.success
-                    ? "bg-green-50 border border-green-200 text-green-800"
-                    : "bg-red-50 border border-red-200 text-red-800"
-                }`}
-              >
-                {mcpTestResult.message}
+            {!isMcpProvider && (
+              <div>
+                <Label htmlFor="model" className="text-sm font-medium">
+                  Model *
+                </Label>
+                <Select
+                  value={formData.model_name}
+                  onValueChange={(value) => handleChange("model_name", value)}
+                  disabled={!formData.provider || availableModels.length === 0}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
-          </>
+          </CardContent>
+        </Card>
+
+        {/* Authentication Section - Only show if needed */}
+        {(requiresApiKey || requiresBaseUrl) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Authentication</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {requiresApiKey && (
+                <div>
+                  <Label htmlFor="api_key" className="text-sm font-medium">
+                    API Key *
+                  </Label>
+                  <Input
+                    id="api_key"
+                    type="password"
+                    value={formData.api_key}
+                    onChange={(e) => handleChange("api_key", e.target.value)}
+                    placeholder="Enter your API key"
+                    required
+                  />
+                </div>
+              )}
+
+              {requiresBaseUrl && (
+                <div>
+                  <Label htmlFor="base_url" className="text-sm font-medium">
+                    Base URL *
+                  </Label>
+                  <Input
+                    id="base_url"
+                    value={formData.base_url}
+                    onChange={(e) => handleChange("base_url", e.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    required
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
+        {/* MCP Configuration Section - Only show for MCP provider */}
+        {isMcpProvider && (
+          <Card>
+            <CardHeader>
+              <CardTitle>MCP Server Configuration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="mcp_server_url" className="text-sm font-medium">
+                  MCP Server URL *
+                </Label>
+                <Input
+                  id="mcp_server_url"
+                  value={formData.mcp_server_url}
+                  onChange={(e) =>
+                    handleChange("mcp_server_url", e.target.value)
+                  }
+                  placeholder="ws://localhost:3000 or https://your-mcp-server.com"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMcpTest}
+                  disabled={testingMcp || !formData.mcp_server_url}
+                  className="flex-1"
+                >
+                  {testingMcp ? "Testing..." : "Test MCP Connection"}
+                </Button>
+              </div>
+
+              {mcpTestResult && (
+                <div
+                  className={`p-3 rounded-lg text-sm ${
+                    mcpTestResult.success
+                      ? "bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200"
+                      : "bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200"
+                  }`}
+                >
+                  {mcpTestResult.message}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Actions Section */}
         <div className="flex justify-end space-x-3 pt-6">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

@@ -1,7 +1,8 @@
 from typing import Optional
-from pydantic_settings import BaseSettings
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -14,15 +15,22 @@ class Settings(BaseSettings):
     sqlite_db_path: str = "chatsparty.db"
     use_sqlite: bool = True
     ollama_model: str = "gemma3:4b"
-    
+
+    # AI Provider API Keys
+    openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+
     # Authentication settings
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
-    
+
     # Encryption settings
     encryption_master_key: Optional[str] = None
-    
+
     # OAuth settings
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
@@ -30,40 +38,40 @@ class Settings(BaseSettings):
     github_client_secret: Optional[str] = None
     frontend_url: Optional[str] = None
     backend_url: str = "http://localhost:8000"
-    
+
     # OAuth redirect URIs (constructed from backend_url)
     @property
     def google_redirect_uri(self) -> str:
         return f"{self.frontend_url}/auth/google/callback"
-    
+
     @property
     def github_redirect_uri(self) -> str:
         return f"{self.frontend_url}/auth/github/callback"
-    
+
     # Authentication mode settings
     # Set to true to disable traditional email/password auth (cloud mode)
     social_auth_only: bool = False
-    
+
     # Error handling settings
     # Set to true to hide detailed database errors in production
     hide_db_errors: bool = True
     debug_mode: bool = False
-    
+
     # Storage settings
     storage_provider: str = "local"
     local_storage_path: str = "./storage/uploads"
     local_storage_url_base: str = "http://localhost:8000/files/download"
-    
+
     @property
     def database_url_computed(self) -> str:
         if self.database_url:
             return self.database_url
-        
+
         if self.use_sqlite:
             return f"sqlite+aiosqlite:///{self.sqlite_db_path}"
         else:
             return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-    
+
     class Config:
         env_file = ".env"
 
@@ -74,7 +82,7 @@ def get_settings(env_file_path: str = ".env") -> Settings:
     class DynamicSettings(Settings):
         class Config:
             env_file = env_file_path
-    
+
     return DynamicSettings()
 
 
@@ -83,14 +91,16 @@ settings = Settings()
 
 
 def create_app(lifespan=None) -> FastAPI:
-    app = FastAPI(title="Wisty AI API", version="1.0.0", lifespan=lifespan)
-    
+    app = FastAPI(title="ChatsParty API", version="1.0.0", lifespan=lifespan)
+    allowed_origins = [
+        settings.frontend_url] if settings.frontend_url else ["*"]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.frontend_url],
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     return app
