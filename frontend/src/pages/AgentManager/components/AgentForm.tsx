@@ -170,7 +170,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
   return (
     <div className="h-[calc(100vh-12rem)] overflow-y-auto overflow-x-hidden scrollbar-hide">
-      <form onSubmit={onSubmit} className="space-y-6 pb-6 max-w-none">
+      <form onSubmit={onSubmit} className="space-y-6 pb-6 max-w-full">
         {/* Quick Templates Section */}
         {!editingAgent && (
           <Card>
@@ -213,7 +213,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 onChange={onInputChange}
                 placeholder="e.g., Business Analyst"
                 required
-                className="mt-1"
+                className="mt-1 w-full"
               />
             </div>
 
@@ -228,7 +228,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 onChange={onInputChange}
                 rows={3}
                 placeholder="Describe the agent's personality, expertise, and behavioral traits..."
-                className="mt-1 resize-y"
+                className="mt-1 resize-y w-full"
                 required
               />
             </div>
@@ -244,7 +244,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 onChange={onInputChange}
                 rows={6}
                 placeholder="Detailed instructions for how the agent should behave and respond..."
-                className="mt-1 resize-y"
+                className="mt-1 resize-y w-full"
                 required
               />
             </div>
@@ -264,7 +264,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 value={formData.connection_id || ""}
                 onValueChange={handleConnectionChange}
               >
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className="mt-1 w-full">
                   <SelectValue placeholder="Select a connection" />
                 </SelectTrigger>
                 <SelectContent>
@@ -286,7 +286,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
             <CardTitle>Chat Style Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="friendliness" className="text-sm font-medium">
                   Friendliness
@@ -297,7 +297,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     handleSelectChange("chat_style.friendliness", value)
                   }
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -321,7 +321,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     handleSelectChange("chat_style.response_length", value)
                   }
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -342,7 +342,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     handleSelectChange("chat_style.personality", value)
                   }
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -363,7 +363,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     handleSelectChange("chat_style.humor", value)
                   }
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -387,7 +387,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     handleSelectChange("chat_style.expertise_level", value)
                   }
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -514,7 +514,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-end space-x-3 pt-6 sticky bottom-0 bg-background border-t border-border p-4 -mx-6">
+        <div className="flex justify-end space-x-3 pt-6 sticky bottom-0 bg-background border-t border-border p-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>

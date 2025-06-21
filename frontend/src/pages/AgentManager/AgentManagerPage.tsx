@@ -19,12 +19,12 @@ const AgentManagerPage: React.FC = () => {
   } = useAgentManager();
 
   return (
-    <div className="min-h-screen bg-background p-6 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-4 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-4">
         {showCreateForm ? (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-xl font-bold text-foreground">
                 {editingAgent ? "Edit Agent" : "Create New Agent"}
               </h1>
               <button
