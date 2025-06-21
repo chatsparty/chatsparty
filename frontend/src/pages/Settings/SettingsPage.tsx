@@ -1,10 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { FaPlug, FaCog, FaUser, FaLock, FaMicrophone } from "react-icons/fa";
+import { Server } from "lucide-react";
 import { SettingsSidebar, SettingsContent } from "@/components/settings";
 import type { SettingsItem } from "@/components/settings";
 
 export const SettingsPage: React.FC = () => {
+  const location = useLocation();
   const [selectedItem, setSelectedItem] = useState("general");
+
+  useEffect(() => {
+    // Check if there's an activeTab in the navigation state
+    if (location.state?.activeTab) {
+      setSelectedItem(location.state.activeTab);
+    }
+  }, [location.state]);
 
   const settingsItems: SettingsItem[] = [
     {
@@ -28,6 +38,13 @@ export const SettingsPage: React.FC = () => {
       description:
         "Manage your voice synthesis and speech recognition connections",
       icon: FaMicrophone,
+    },
+    {
+      id: "mcp-servers",
+      path: "/mcp-servers",
+      label: "MCP Servers",
+      description: "Manage Model Context Protocol servers that provide tools for your agents",
+      icon: Server,
     },
     {
       id: "profile",

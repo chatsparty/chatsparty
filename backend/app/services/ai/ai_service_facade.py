@@ -2,6 +2,7 @@ from typing import List, Dict, Any, AsyncGenerator, Optional
 from .domain.interfaces import AIServiceInterface
 from .application.agent_service import AgentService
 from .application.chat_service import ChatService
+from .application.enhanced_chat_service import EnhancedChatService
 from .infrastructure.repositories import InMemoryConversationRepository
 from .infrastructure.model_providers import UnifiedModelProvider
 from .infrastructure.session_manager import SessionManager
@@ -25,12 +26,14 @@ class AIServiceFacade(AIServiceInterface):
         model_config: dict = None,
         chat_style: dict = None,
         connection_id: str = None,
-        voice_config: dict = None
+        voice_config: dict = None,
+        mcp_tools: List[str] = None,
+        mcp_tool_config: dict = None
     ):
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
             return agent_service.create_agent(
-                name, prompt, characteristics, user_id, model_config, chat_style, connection_id, voice_config
+                name, prompt, characteristics, user_id, model_config, chat_style, connection_id, voice_config, mcp_tools, mcp_tool_config
             )
     
     def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
@@ -52,7 +55,9 @@ class AIServiceFacade(AIServiceInterface):
         model_config: dict = None,
         chat_style: dict = None,
         connection_id: str = None,
-        voice_config: dict = None
+        voice_config: dict = None,
+        mcp_tools: List[str] = None,
+        mcp_tool_config: dict = None
     ):
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
@@ -90,7 +95,9 @@ class AIServiceFacade(AIServiceInterface):
                 model_config=model_configuration,
                 chat_style=chat_style_obj,
                 connection_id=connection_id or existing_agent.connection_id,
-                voice_config=voice_config_obj
+                voice_config=voice_config_obj,
+                selected_mcp_tools=mcp_tools if mcp_tools is not None else getattr(existing_agent, 'selected_mcp_tools', None),
+                mcp_tool_config=mcp_tool_config if mcp_tool_config is not None else getattr(existing_agent, 'mcp_tool_config', None)
             )
             
             return agent_service.update_agent(updated_agent)
@@ -109,12 +116,14 @@ class AIServiceFacade(AIServiceInterface):
     ) -> str:
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
-            chat_service = ChatService(
+            base_chat_service = ChatService(
                 self._model_provider,
                 agent_repo,
                 conv_repo
             )
-            return await chat_service.agent_chat(agent_id, message, conversation_id, user_id)
+            # Use enhanced chat service for MCP tool support
+            enhanced_chat_service = EnhancedChatService(base_chat_service)
+            return await enhanced_chat_service.agent_chat(agent_id, message, conversation_id, user_id)
     
     async def multi_agent_conversation(
         self,
@@ -127,12 +136,14 @@ class AIServiceFacade(AIServiceInterface):
     ) -> List[Dict[str, Any]]:
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
-            chat_service = ChatService(
+            base_chat_service = ChatService(
                 self._model_provider,
                 agent_repo,
                 conv_repo
             )
-            conversation_messages = await chat_service.multi_agent_conversation(
+            # Use enhanced chat service for MCP tool support
+            enhanced_chat_service = EnhancedChatService(base_chat_service)
+            conversation_messages = await enhanced_chat_service.multi_agent_conversation(
                 conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
             )
             return [

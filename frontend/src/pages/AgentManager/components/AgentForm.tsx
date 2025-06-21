@@ -15,7 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useConnections } from "@/hooks/useConnections";
 import { useVoiceConnections } from "@/hooks/useVoiceConnections";
+import MCPServerSelector from "@/components/mcp/MCPServerSelector";
 import type { AgentVoiceConfig } from "@/types/voice";
+import type { ModelConnection } from "@/types/connection";
 
 interface ChatStyle {
   friendliness: "friendly" | "neutral" | "formal";
@@ -33,6 +35,9 @@ interface Agent {
   connection_id?: string;
   chat_style?: ChatStyle;
   voice_config?: AgentVoiceConfig;
+  mcp_server_id?: string;
+  selected_mcp_tools?: string[];
+  mcp_tool_config?: Record<string, any>;
 }
 
 interface FormData {
@@ -42,6 +47,9 @@ interface FormData {
   connection_id: string;
   chat_style: ChatStyle;
   voice_config: AgentVoiceConfig;
+  mcp_server_id: string;
+  selected_mcp_tools: string[];
+  mcp_tool_config: Record<string, any>;
 }
 
 interface AgentFormProps {
@@ -114,6 +122,20 @@ const AgentForm: React.FC<AgentFormProps> = ({
   const handlePodcastSettingChange = (setting: string, checked: boolean) => {
     const event = {
       target: { name: `voice_config.podcast_settings.${setting}`, value: checked },
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    onInputChange(event);
+  };
+
+  const handleMCPServerChange = (serverId: string) => {
+    const event = {
+      target: { name: "mcp_server_id", value: serverId },
+    } as React.ChangeEvent<HTMLInputElement>;
+    onInputChange(event);
+  };
+
+  const handleMCPToolsChange = (selectedTools: string[]) => {
+    const event = {
+      target: { name: "selected_mcp_tools", value: selectedTools },
     } as unknown as React.ChangeEvent<HTMLInputElement>;
     onInputChange(event);
   };
@@ -230,6 +252,40 @@ const AgentForm: React.FC<AgentFormProps> = ({
                         {selectedConnection.description && (
                           <p><span className="font-medium">Description:</span> {selectedConnection.description}</p>
                         )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* MCP Server & Tools Section */}
+              <Separator />
+              <div>
+                <h3 className="mb-4 font-bold text-card-foreground text-lg">
+                  MCP Tools & Capabilities
+                </h3>
+                <div className="space-y-4">
+                  <MCPServerSelector
+                    selectedServerId={formData.mcp_server_id}
+                    selectedTools={formData.selected_mcp_tools}
+                    onServerChange={handleMCPServerChange}
+                    onToolsChange={handleMCPToolsChange}
+                  />
+                  
+                  {formData.mcp_server_id && formData.selected_mcp_tools.length > 0 && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="text-sm text-blue-800">
+                        <strong>🔧 Agent Capabilities:</strong> This agent will automatically use the selected MCP tools 
+                        to help users with tasks like file management, web searches, git operations, and more.
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!formData.mcp_server_id && (
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="text-sm text-gray-700">
+                        <strong>💡 Enhanced Agent:</strong> Add MCP tools to give your agent powerful capabilities 
+                        like file operations, web search, git commands, database access, and more!
                       </div>
                     </div>
                   )}

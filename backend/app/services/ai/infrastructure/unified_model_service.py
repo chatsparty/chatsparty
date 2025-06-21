@@ -34,6 +34,14 @@ class UnifiedModelService:
             'models': ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
             'requires_api_key': True,
             'base_url_required': False
+        },
+        'mcp': {
+            'models': [],  # MCP servers don't have traditional models
+            'requires_api_key': False,
+            'base_url_required': True,  # MCP server URL
+            'supports_tools': True,
+            'supports_resources': True,
+            'connection_type': 'mcp_server'
         }
     }
     
@@ -91,6 +99,13 @@ class UnifiedModelService:
                     raise ValueError("Groq API key is required")
                 os.environ['GROQ_API_KEY'] = api_key
                 return f'groq:{model_name}'
+            
+            elif provider == 'mcp':
+                # MCP provider doesn't use traditional models
+                # Return a special MCP provider identifier
+                if not base_url:
+                    raise ValueError("MCP server URL is required")
+                return f'mcp:{base_url}'
             
             else:
                 raise ValueError(f"Unsupported provider: {provider}")

@@ -48,6 +48,10 @@ class Agent(Base):
     voice_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     podcast_settings: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     
+    # MCP tool configuration
+    selected_mcp_tools: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    mcp_tool_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -110,6 +114,12 @@ class Connection(Base):
     api_key_encrypted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # Track encryption status
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    # MCP-specific fields
+    mcp_server_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    mcp_server_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    available_tools: Mapped[Optional[List[dict]]] = mapped_column(JSON, nullable=True)
+    mcp_capabilities: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     
     # User relationship
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)

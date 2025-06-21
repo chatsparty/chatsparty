@@ -41,6 +41,9 @@ class AgentCreateRequest(BaseModel):
     connection_id: str
     chat_style: Optional[ChatStyle] = None
     voice_config: Optional[AgentVoiceConfig] = None
+    mcp_server_id: Optional[str] = None
+    mcp_tools: Optional[List[str]] = None
+    mcp_tool_config: Optional[Dict[str, Any]] = None
 
 
 class AgentResponse(BaseModel):
@@ -51,6 +54,9 @@ class AgentResponse(BaseModel):
     connection_id: str
     chat_style: Optional[ChatStyle] = None
     voice_config: Optional[AgentVoiceConfig] = None
+    mcp_server_id: Optional[str] = None
+    selected_mcp_tools: Optional[List[str]] = None
+    mcp_tool_config: Optional[Dict[str, Any]] = None
 
 
 class AgentChatRequest(BaseModel):

@@ -19,7 +19,9 @@ class AgentService:
         model_config: Optional[Dict] = None,
         chat_style: Optional[Dict] = None,
         connection_id: Optional[str] = None,
-        voice_config: Optional[Dict] = None
+        voice_config: Optional[Dict] = None,
+        mcp_tools: Optional[List[str]] = None,
+        mcp_tool_config: Optional[Dict] = None
     ) -> Agent:
         model_configuration = ModelConfiguration(
             provider=model_config.get("provider", "ollama"),
@@ -56,7 +58,9 @@ class AgentService:
             model_config=model_configuration,
             chat_style=chat_style_obj,
             connection_id=connection_id or "default",
-            voice_config=voice_config_obj
+            voice_config=voice_config_obj,
+            selected_mcp_tools=mcp_tools,
+            mcp_tool_config=mcp_tool_config
         )
         
         return self._agent_repository.create_agent(agent, user_id)
@@ -90,7 +94,9 @@ class AgentService:
                     "voice_enabled": agent.voice_config.voice_enabled if agent.voice_config else False,
                     "voice_connection_id": agent.voice_config.voice_connection_id if agent.voice_config else None,
                     "podcast_settings": agent.voice_config.podcast_settings if agent.voice_config else None
-                } if agent.voice_config else None
+                } if agent.voice_config else None,
+                "selected_mcp_tools": agent.selected_mcp_tools,
+                "mcp_tool_config": agent.mcp_tool_config
             }
             for agent in agents
         ]

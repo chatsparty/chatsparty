@@ -33,4 +33,6 @@ dependencies = [
     "python-docx>=1.2.0",
     "aiofiles>=24.1.0",
     "boto3>=1.38.37",
+    "mcp>=1.9.4",
+    "aiohttp>=3.12.13",
 ]
