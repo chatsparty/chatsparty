@@ -38,7 +38,7 @@ interface Agent {
   voice_config?: AgentVoiceConfig;
   mcp_server_id?: string;
   selected_mcp_tools?: string[];
-  mcp_tool_config?: Record<string, any>;
+  mcp_tool_config?: Record<string, unknown>;
 }
 
 interface FormData {
@@ -50,7 +50,7 @@ interface FormData {
   voice_config: AgentVoiceConfig;
   mcp_server_id: string;
   selected_mcp_tools: string[];
-  mcp_tool_config: Record<string, any>;
+  mcp_tool_config: Record<string, unknown>;
 }
 
 interface AgentFormProps {
@@ -80,13 +80,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
   const { getTTSConnections } = useVoiceConnections();
 
   const activeConnections = getActiveConnections();
-  const selectedConnection = activeConnections.find(
-    (conn) => conn.id === formData.connection_id
-  );
   const voiceConnections = getTTSConnections();
-  const selectedVoiceConnection = voiceConnections.find(
-    (conn) => conn.id === formData.voice_config.voice_connection_id
-  );
 
   const presetTemplates = [
     {
@@ -126,7 +120,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
   const handleConnectionChange = (connectionId: string) => {
     if (connectionId === "add-new") {
-      navigate("/connections");
+      navigate("/settings/connections");
       return;
     }
 
@@ -138,7 +132,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
   const handleVoiceConnectionChange = (connectionId: string) => {
     if (connectionId === "add-new") {
-      navigate("/settings", { state: { activeTab: "voice-connections" } });
+      navigate("/settings/voice-connections");
       return;
     }
 

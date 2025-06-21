@@ -171,7 +171,17 @@ const Layout = () => {
             <Route path="/agents" element={<AgentManagerPage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/settings"
+              element={<Navigate to="/settings/general" replace />}
+            />
+            <Route path="/settings/general" element={<SettingsPage />} />
+            <Route path="/settings/connections" element={<SettingsPage />} />
+            <Route
+              path="/settings/voice-connections"
+              element={<SettingsPage />}
+            />
+            <Route path="/settings/mcp-servers" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/agents" replace />} />
           </Routes>
         </div>
