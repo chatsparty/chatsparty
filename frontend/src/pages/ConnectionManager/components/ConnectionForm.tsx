@@ -63,15 +63,18 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
     success: boolean;
     message: string;
   } | null>(null);
-  const [discoveringTools, setDiscoveringTools] = useState(false);
 
   useEffect(() => {
     const fetchProviders = async () => {
       try {
         const response = await axios.get("/chat/providers");
         setProviders(response.data.providers || {});
-      } catch (error) {
-        console.error("Failed to fetch providers:", error);
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          console.error("Failed to fetch providers:", error.message);
+        } else {
+          console.error("Failed to fetch providers:", error);
+        }
       } finally {
         setLoadingProviders(false);
       }
@@ -137,12 +140,19 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
         success: response.data.success,
         message: response.data.message,
       });
-    } catch (error: any) {
-      setMcpTestResult({
-        success: false,
-        message:
-          error.response?.data?.detail || "Failed to test MCP connection",
-      });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        setMcpTestResult({
+          success: false,
+          message:
+            error.response?.data?.detail || "Failed to test MCP connection",
+        });
+      } else {
+        setMcpTestResult({
+          success: false,
+          message: "Failed to test MCP connection",
+        });
+      }
     } finally {
       setTestingMcp(false);
     }
