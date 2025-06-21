@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     
+    # Encryption settings
+    encryption_master_key: Optional[str] = None
+    
     # OAuth settings
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
@@ -41,6 +44,16 @@ class Settings(BaseSettings):
     # Set to true to disable traditional email/password auth (cloud mode)
     social_auth_only: bool = False
     
+    # Error handling settings
+    # Set to true to hide detailed database errors in production
+    hide_db_errors: bool = True
+    debug_mode: bool = False
+    
+    # Storage settings
+    storage_provider: str = "local"
+    local_storage_path: str = "./storage/uploads"
+    local_storage_url_base: str = "http://localhost:8000/files/download"
+    
     @property
     def database_url_computed(self) -> str:
         if self.database_url:
@@ -55,6 +68,17 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 
+# Support dynamic environment file loading
+def get_settings(env_file_path: str = ".env") -> Settings:
+    """Get settings with custom environment file"""
+    class DynamicSettings(Settings):
+        class Config:
+            env_file = env_file_path
+    
+    return DynamicSettings()
+
+
+# Default settings instance
 settings = Settings()
 
 

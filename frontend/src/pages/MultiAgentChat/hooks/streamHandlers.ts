@@ -8,7 +8,8 @@ export const handleStreamConversation = async (
   message: string,
   maxTurns: number,
   abortController: AbortController,
-  onMessage: (conversationId: string, message: StreamMessage) => void
+  onMessage: (conversationId: string, message: StreamMessage) => void,
+  fileAttachments?: Array<{filename: string, content: string, file_type: string}>
 ): Promise<void> => {
   try {
     const token = localStorage.getItem('access_token');
@@ -22,7 +23,8 @@ export const handleStreamConversation = async (
         conversation_id: conversationId,
         agent_ids: agentIds,
         initial_message: message,
-        max_turns: maxTurns
+        max_turns: maxTurns,
+        file_attachments: fileAttachments || null
       }),
       signal: abortController.signal
     });

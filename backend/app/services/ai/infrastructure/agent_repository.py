@@ -1,8 +1,8 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
-from ....models.database import Agent as AgentModel
-from ..domain.entities import Agent, ModelConfiguration, ChatStyle
+from ....models.database import Agent as AgentModel, VoiceConnection as VoiceConnectionModel
+from ..domain.entities import Agent, ModelConfiguration, ChatStyle, VoiceConfig
 from ..domain.interfaces import AgentRepositoryInterface
 from .base_repository import BaseRepository
 
@@ -13,6 +13,22 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
     
     def create_agent(self, agent: Agent, user_id: str) -> Agent:
         def _create():
+            # Validate voice connection exists if specified
+            voice_connection_id = None
+            if (agent.voice_config and 
+                agent.voice_config.voice_enabled and 
+                agent.voice_config.voice_connection_id):
+                
+                voice_conn = self.db_session.query(VoiceConnectionModel).filter(
+                    VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
+                    VoiceConnectionModel.user_id == user_id,
+                    VoiceConnectionModel.is_active == True
+                ).first()
+                
+                if voice_conn:
+                    voice_connection_id = agent.voice_config.voice_connection_id
+                # If voice connection doesn't exist, we'll set it to None (voice disabled)
+            
             db_agent = AgentModel(
                 id=agent.agent_id,
                 name=agent.name,
@@ -32,7 +48,10 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
                     "personality": agent.chat_style.personality,
                     "humor": agent.chat_style.humor,
                     "expertise_level": agent.chat_style.expertise_level,
-                }
+                },
+                voice_enabled=bool(voice_connection_id),  # Only enable voice if we have a valid connection
+                voice_connection_id=voice_connection_id,
+                podcast_settings=agent.voice_config.podcast_settings if agent.voice_config else None
             )
             
             self.db_session.add(db_agent)
@@ -81,6 +100,24 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
                 "humor": agent.chat_style.humor,
                 "expertise_level": agent.chat_style.expertise_level,
             }
+            # Validate voice connection exists if specified  
+            voice_connection_id = None
+            if (agent.voice_config and 
+                agent.voice_config.voice_enabled and 
+                agent.voice_config.voice_connection_id):
+                
+                voice_conn = self.db_session.query(VoiceConnectionModel).filter(
+                    VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
+                    VoiceConnectionModel.user_id == db_agent.user_id,
+                    VoiceConnectionModel.is_active == True
+                ).first()
+                
+                if voice_conn:
+                    voice_connection_id = agent.voice_config.voice_connection_id
+            
+            db_agent.voice_enabled = bool(voice_connection_id)
+            db_agent.voice_connection_id = voice_connection_id
+            db_agent.podcast_settings = agent.voice_config.podcast_settings if agent.voice_config else None
         
         return agent
     
@@ -113,6 +150,12 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             expertise_level=db_agent.chat_style.get("expertise_level", "expert"),
         )
         
+        voice_config = VoiceConfig(
+            voice_enabled=getattr(db_agent, 'voice_enabled', False),
+            voice_connection_id=getattr(db_agent, 'voice_connection_id', None),
+            podcast_settings=getattr(db_agent, 'podcast_settings', None)
+        )
+        
         return Agent(
             agent_id=db_agent.id,
             name=db_agent.name,
@@ -121,4 +164,5 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             model_config=model_config,
             chat_style=chat_style,
             connection_id=db_agent.connection_id,
+            voice_config=voice_config
         )

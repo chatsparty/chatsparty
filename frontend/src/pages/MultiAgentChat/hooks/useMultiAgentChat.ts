@@ -2,11 +2,22 @@ import { useState, useEffect, useCallback } from "react";
 import type { Agent, ActiveConversation } from "../types";
 import type { UseMultiAgentChatReturn } from "./types";
 import { DEFAULT_MAX_TURNS } from "./constants";
-import { fetchAgents, fetchConversations, deleteConversation as apiDeleteConversation } from "./api";
+import {
+  fetchAgents,
+  fetchConversations,
+  deleteConversation as apiDeleteConversation,
+} from "./api";
 import { createAgentHelpers } from "./helpers";
 import { useConversationActions } from "./conversationActions";
 
-export const useMultiAgentChat = (): UseMultiAgentChatReturn => {
+export const useMultiAgentChat = (
+  attachedFiles?: Array<{
+    id: string;
+    name: string;
+    extractedContent?: string;
+    file: File;
+  }>
+): UseMultiAgentChatReturn => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [conversations, setConversations] = useState<ActiveConversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(
@@ -31,37 +42,43 @@ export const useMultiAgentChat = (): UseMultiAgentChatReturn => {
       setShowNewConversationForm,
       setSelectedAgents,
       setInitialMessage,
-      setIsLoading
+      setIsLoading,
+      attachedFiles
     );
 
   const loadAgents = useCallback(async (): Promise<void> => {
     try {
       const agentsData = await fetchAgents();
       setAgents(agentsData);
-    } catch {}
+    } catch (error) {
+      console.error("Failed to load agents:", error);
+    }
   }, []);
 
   const loadConversations = useCallback(async (): Promise<void> => {
     try {
       const conversationsData = await fetchConversations(agents);
       setConversations(conversationsData);
-    } catch {}
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
+    }
   }, [agents]);
 
-  const deleteConversation = useCallback(async (conversationId: string): Promise<void> => {
-    try {
-      await apiDeleteConversation(conversationId);
-      // If the deleted conversation was active, clear the active conversation
-      if (activeConversation === conversationId) {
-        setActiveConversation(null);
+  const deleteConversation = useCallback(
+    async (conversationId: string): Promise<void> => {
+      try {
+        await apiDeleteConversation(conversationId);
+        if (activeConversation === conversationId) {
+          setActiveConversation(null);
+        }
+        await loadConversations();
+      } catch (error) {
+        console.error("Failed to delete conversation:", error);
+        throw error;
       }
-      // Reload conversations to reflect the deletion
-      await loadConversations();
-    } catch (error) {
-      console.error('Failed to delete conversation:', error);
-      throw error;
-    }
-  }, [activeConversation, loadConversations]);
+    },
+    [activeConversation, loadConversations]
+  );
 
   useEffect(() => {
     loadAgents();

@@ -1,0 +1,38 @@
+# SSH keys and sensitive files
+ssh/
+*.pem
+*.key
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Node modules (if any are installed in devcontainer)
+node_modules/
+
+# IDE files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db 

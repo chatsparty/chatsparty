@@ -5,7 +5,7 @@ from .application.chat_service import ChatService
 from .infrastructure.repositories import InMemoryConversationRepository
 from .infrastructure.model_providers import UnifiedModelProvider
 from .infrastructure.session_manager import SessionManager
-from .domain.entities import Agent, ModelConfiguration, ChatStyle
+from .domain.entities import Agent, ModelConfiguration, ChatStyle, VoiceConfig
 import os
 
 
@@ -24,12 +24,13 @@ class AIServiceFacade(AIServiceInterface):
         user_id: str,
         model_config: dict = None,
         chat_style: dict = None,
-        connection_id: str = None
+        connection_id: str = None,
+        voice_config: dict = None
     ):
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
             return agent_service.create_agent(
-                name, prompt, characteristics, user_id, model_config, chat_style, connection_id
+                name, prompt, characteristics, user_id, model_config, chat_style, connection_id, voice_config
             )
     
     def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
@@ -50,17 +51,16 @@ class AIServiceFacade(AIServiceInterface):
         characteristics: str,
         model_config: dict = None,
         chat_style: dict = None,
-        connection_id: str = None
+        connection_id: str = None,
+        voice_config: dict = None
     ):
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
             
-            # Get the existing agent first
             existing_agent = agent_service.get_agent(agent_id)
             if not existing_agent:
                 return None
             
-            # Create updated agent object
             model_configuration = ModelConfiguration(
                 provider=model_config.get("provider", "ollama"),
                 model_name=model_config.get("model_name", "gemma3:4b"),
@@ -76,6 +76,12 @@ class AIServiceFacade(AIServiceInterface):
                 expertise_level=chat_style.get("expertise_level", "expert")
             ) if chat_style else existing_agent.chat_style
             
+            voice_config_obj = VoiceConfig(
+                voice_enabled=voice_config.get("voice_enabled", False),
+                voice_connection_id=voice_config.get("voice_connection_id"),
+                podcast_settings=voice_config.get("podcast_settings")
+            ) if voice_config else existing_agent.voice_config
+            
             updated_agent = Agent(
                 agent_id=agent_id,
                 name=name,
@@ -83,7 +89,8 @@ class AIServiceFacade(AIServiceInterface):
                 characteristics=characteristics,
                 model_config=model_configuration,
                 chat_style=chat_style_obj,
-                connection_id=connection_id or existing_agent.connection_id
+                connection_id=connection_id or existing_agent.connection_id,
+                voice_config=voice_config_obj
             )
             
             return agent_service.update_agent(updated_agent)
@@ -100,7 +107,6 @@ class AIServiceFacade(AIServiceInterface):
         conversation_id: str = "default",
         user_id: str = None
     ) -> str:
-        # Use the same session for both agent and conversation operations
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
             chat_service = ChatService(
@@ -116,7 +122,8 @@ class AIServiceFacade(AIServiceInterface):
         agent_ids: List[str],
         initial_message: str,
         max_turns: int = 10,
-        user_id: str = None
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None
     ) -> List[Dict[str, Any]]:
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
@@ -126,7 +133,7 @@ class AIServiceFacade(AIServiceInterface):
                 conv_repo
             )
             conversation_messages = await chat_service.multi_agent_conversation(
-                conversation_id, agent_ids, initial_message, max_turns, user_id
+                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
             )
             return [
                 {
@@ -145,7 +152,8 @@ class AIServiceFacade(AIServiceInterface):
         agent_ids: List[str],
         initial_message: str,
         max_turns: int = 10,
-        user_id: str = None
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         with SessionManager.get_agent_repository() as agent_repo, \
              SessionManager.get_conversation_repository() as conv_repo:
@@ -155,7 +163,7 @@ class AIServiceFacade(AIServiceInterface):
                 conv_repo
             )
             async for message in chat_service.multi_agent_conversation_stream(
-                conversation_id, agent_ids, initial_message, max_turns, user_id
+                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
             ):
                 yield message
     
@@ -187,3 +195,11 @@ class AIServiceFacade(AIServiceInterface):
         """Delete a conversation and all its messages"""
         with SessionManager.get_conversation_repository() as conv_repo:
             return conv_repo.delete_conversation(conversation_id, user_id)
+    
+    async def simple_chat(self, message: str, user_id: str = None) -> str:
+        """Simple chat without agents for utility purposes like content enhancement"""
+        try:
+            response = await self._model_provider.chat(message, {})
+            return response
+        except Exception as e:
+            return f"Error processing with AI: {str(e)}"

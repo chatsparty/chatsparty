@@ -14,7 +14,8 @@ export const useConversationActions = (
   setShowNewConversationForm: (show: boolean) => void,
   setSelectedAgents: React.Dispatch<React.SetStateAction<string[]>>,
   setInitialMessage: (message: string) => void,
-  setIsLoading: (loading: boolean) => void
+  setIsLoading: (loading: boolean) => void,
+  attachedFiles?: Array<{id: string, name: string, extractedContent?: string, file: File}>
 ) => {
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const { getAgentName } = createAgentHelpers(agents);
@@ -62,6 +63,15 @@ export const useConversationActions = (
       setSelectedAgents([]);
       setInitialMessage('');
 
+      // Prepare file attachments for API
+      const fileAttachments = attachedFiles
+        ?.filter(file => file.extractedContent)
+        .map(file => ({
+          filename: file.name,
+          content: file.extractedContent!,
+          file_type: file.file.type || 'application/octet-stream'
+        }));
+
       // Start streaming conversation
       await handleStreamConversation(
         conversationId,
@@ -69,7 +79,8 @@ export const useConversationActions = (
         initialMessage,
         maxTurns,
         abortController,
-        handleStreamMessage
+        handleStreamMessage,
+        fileAttachments
       );
       
     } catch (error) {
@@ -92,7 +103,11 @@ export const useConversationActions = (
     setShowNewConversationForm,
     setSelectedAgents,
     setInitialMessage,
-    setIsLoading
+    setIsLoading,
+    attachedFiles,
+    trackConversationStarted,
+    trackMessageSent,
+    trackError
   ]);
 
   const stopConversation = useCallback((conversationId: string): void => {

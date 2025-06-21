@@ -1,8 +1,7 @@
-import React from 'react';
-import { useAgentManager } from './hooks/useAgentManager';
-import AgentSidebar from './components/AgentSidebar';
-import AgentForm from './components/AgentForm';
-import PresetTemplates from './components/PresetTemplates';
+import React from "react";
+import AgentForm from "./components/AgentForm";
+import AgentTable from "./components/AgentTable";
+import { useAgentManager } from "./hooks/useAgentManager";
 
 const AgentManagerPage: React.FC = () => {
   const {
@@ -11,39 +10,46 @@ const AgentManagerPage: React.FC = () => {
     showCreateForm,
     editingAgent,
     formData,
-    presetAgents,
     setShowCreateForm,
     handleCreateAgent,
     handleEditAgent,
     handleInputChange,
     resetForm,
-    createPresetAgent,
-    handleDeleteAgent
+    handleDeleteAgent,
   } = useAgentManager();
 
   return (
-    <div className="flex h-full w-full bg-background">
-      <AgentSidebar
-        agents={agents}
-        onCreateAgent={() => setShowCreateForm(true)}
-        onEditAgent={handleEditAgent}
-        onDeleteAgent={handleDeleteAgent}
-      />
-
-      <div className="flex-1 flex flex-col min-h-0">
+    <div className="min-h-screen bg-background p-4 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-4">
         {showCreateForm ? (
-          <AgentForm
-            formData={formData}
-            editingAgent={editingAgent}
-            isLoading={isLoading}
-            onInputChange={handleInputChange}
-            onSubmit={handleCreateAgent}
-            onCancel={resetForm}
-          />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-foreground">
+                {editingAgent ? "Edit Agent" : "Create New Agent"}
+              </h1>
+              <button
+                onClick={resetForm}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Back to Agents
+              </button>
+            </div>
+            <AgentForm
+              formData={formData}
+              editingAgent={editingAgent}
+              isLoading={isLoading}
+              onInputChange={handleInputChange}
+              onSubmit={handleCreateAgent}
+              onCancel={resetForm}
+            />
+          </div>
         ) : (
-          <PresetTemplates
-            presetAgents={presetAgents}
-            onSelectPreset={createPresetAgent}
+          <AgentTable
+            agents={agents}
+            isLoading={isLoading}
+            onCreateAgent={() => setShowCreateForm(true)}
+            onEditAgent={handleEditAgent}
+            onDeleteAgent={handleDeleteAgent}
           />
         )}
       </div>
