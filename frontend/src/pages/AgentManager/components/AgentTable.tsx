@@ -66,7 +66,6 @@ const AgentTable: React.FC<AgentTableProps> = ({
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <div className="flex items-center space-x-2">
-          <Bot className="h-5 w-5 text-primary" />
           <CardTitle className="text-xl font-semibold">Agent Manager</CardTitle>
           <Badge variant="secondary" className="ml-2">
             {agents.length} {agents.length === 1 ? "Agent" : "Agents"}

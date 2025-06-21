@@ -93,7 +93,7 @@
     "source=${localWorkspaceFolder}/.devcontainer/ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
   ],
 
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/chatsparty,type=bind,consistency=cached",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/chatsparty,type=bind,consistency=delegated",
   "workspaceFolder": "/workspaces/chatsparty",
 
   "runArgs": [
@@ -104,6 +104,9 @@
   "containerEnv": {
     "DEBIAN_FRONTEND": "noninteractive",
     "PYTHONUNBUFFERED": "1",
-    "NODE_ENV": "development"
+    "NODE_ENV": "development",
+    "CHOKIDAR_USEPOLLING": "true",
+    "CHOKIDAR_INTERVAL": "1000",
+    "WATCHPACK_POLLING": "true"
   }
 } 
