@@ -15,7 +15,13 @@ import { AuthPage } from "./components/auth/AuthPage";
 import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { useTracking } from "./hooks/useTracking";
-import { AgentManagerPage, LandingPage, MultiAgentChatPage } from "./pages";
+import {
+  AgentManagerPage,
+  LandingPage,
+  MultiAgentChatPage,
+  ProjectsPage,
+  ProjectDetailsPage,
+} from "./pages";
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
 import SharedConversationPage from "./pages/SharedConversation/SharedConversationPage";
@@ -34,6 +40,8 @@ const Layout = () => {
 
     // Track page view
     const getPageName = (path: string) => {
+      if (path === "/projects") return "projects";
+      if (path.startsWith("/projects/")) return "project_details";
       if (path === "/agents") return "agents";
       if (path === "/chat") return "multi_agent_chat";
       if (path === "/settings") return "settings";
@@ -81,6 +89,7 @@ const Layout = () => {
   }
 
   const tabs = [
+    { path: "/projects", label: "Projects" },
     { path: "/agents", label: "Agents" },
     { path: "/chat", label: "Chat" },
     { path: "/settings", label: "Settings" },
@@ -168,6 +177,7 @@ const Layout = () => {
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
+            <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/agents" element={<AgentManagerPage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
@@ -182,7 +192,7 @@ const Layout = () => {
               element={<SettingsPage />}
             />
             <Route path="/settings/mcp-servers" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/agents" replace />} />
+            <Route path="*" element={<Navigate to="/projects" replace />} />
           </Routes>
         </div>
       </div>
@@ -201,6 +211,17 @@ const MainApp = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Handle ProjectDetailsPage outside of main layout
+  if (location.pathname.startsWith("/projects/") && location.pathname !== "/projects") {
+    return (
+      <div className="h-screen w-screen bg-background">
+        <Routes>
+          <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
+        </Routes>
       </div>
     );
   }

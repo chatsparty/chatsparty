@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    e2b_api_key: Optional[str] = None
 
     # Authentication settings
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
@@ -36,14 +37,14 @@ class Settings(BaseSettings):
     frontend_url: Optional[str] = None
     backend_url: str = "http://localhost:8000"
 
-    # OAuth redirect URIs (constructed from backend_url)
+    # OAuth redirect URIs (constructed from frontend_url)
     @property
     def google_redirect_uri(self) -> str:
-        return f"{self.frontend_url}/auth/google/callback"
+        return f"{self.frontend_url}/auth/callback/google"
 
     @property
     def github_redirect_uri(self) -> str:
-        return f"{self.frontend_url}/auth/github/callback"
+        return f"{self.frontend_url}/auth/callback/github"
 
     # Authentication mode settings
     # Set to true to disable traditional email/password auth (cloud mode)

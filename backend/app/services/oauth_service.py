@@ -1,12 +1,13 @@
 import uuid
 from typing import Optional
-from authlib.integrations.httpx_client import AsyncOAuth2Client
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
-import httpx
 
-from ..models.database import User
+import httpx
+from authlib.integrations.httpx_client import AsyncOAuth2Client
+from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..core.config import settings
+from ..models.database import User
 from .auth_service import auth_service
 
 
@@ -25,20 +26,20 @@ class OAuthService:
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="Google OAuth not configured"
             )
-        
+
         redirect_uri = f"{self.frontend_url}/auth/callback/google"
-        
+
         client = AsyncOAuth2Client(
             client_id=self.google_client_id,
             redirect_uri=redirect_uri,
         )
-        
+
         authorization_url, _ = client.create_authorization_url(
             "https://accounts.google.com/o/oauth2/auth",
             scope="openid email profile",
             state=state
         )
-        
+
         return authorization_url
 
     def get_github_auth_url(self, state: str) -> str:
@@ -48,20 +49,20 @@ class OAuthService:
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="GitHub OAuth not configured"
             )
-        
+
         redirect_uri = f"{self.frontend_url}/auth/callback/github"
-        
+
         client = AsyncOAuth2Client(
             client_id=self.github_client_id,
             redirect_uri=redirect_uri,
         )
-        
+
         authorization_url, _ = client.create_authorization_url(
             "https://github.com/login/oauth/authorize",
             scope="user:email",
             state=state
         )
-        
+
         return authorization_url
 
     async def handle_google_callback(self, db: AsyncSession, code: str) -> User:
@@ -71,44 +72,53 @@ class OAuthService:
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="Google OAuth not configured"
             )
-        
+
         redirect_uri = f"{self.frontend_url}/auth/callback/google"
-        
+
         client = AsyncOAuth2Client(
             client_id=self.google_client_id,
             client_secret=self.google_client_secret,
             redirect_uri=redirect_uri,
         )
-        
+
         try:
             # Exchange code for token
             token = await client.fetch_token(
                 "https://oauth2.googleapis.com/token",
                 code=code
             )
-            
+
             # Get user info from Google
             async with httpx.AsyncClient() as http_client:
                 response = await http_client.get(
                     "https://www.googleapis.com/oauth2/v2/userinfo",
-                    headers={"Authorization": f"Bearer {token['access_token']}"}
+                    headers={
+                        "Authorization": f"Bearer {token['access_token']}"}
                 )
                 response.raise_for_status()
                 user_info = response.json()
-            
+
             return await self._create_or_get_oauth_user(
-                db, 
+                db,
                 email=user_info["email"],
                 first_name=user_info.get("given_name"),
                 last_name=user_info.get("family_name"),
                 provider="google",
                 provider_id=user_info["id"]
             )
-            
+
         except Exception as e:
+            # Enhanced error logging for debugging
+            error_details = str(e)
+            if "invalid_grant" in error_details.lower():
+                error_details += f" | Redirect URI used: {redirect_uri} | Check Google Cloud Console configuration"
+
+            # Server-side logging
+            print(f"Google OAuth Error Details: {error_details}")
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to authenticate with Google: {str(e)}"
+                detail=f"Failed to authenticate with Google: {error_details}"
             )
 
     async def handle_github_callback(self, db: AsyncSession, code: str) -> User:
@@ -118,56 +128,58 @@ class OAuthService:
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="GitHub OAuth not configured"
             )
-        
+
         redirect_uri = f"{self.frontend_url}/auth/callback/github"
-        
+
         client = AsyncOAuth2Client(
             client_id=self.github_client_id,
             client_secret=self.github_client_secret,
             redirect_uri=redirect_uri,
         )
-        
+
         try:
             # Exchange code for token
             token = await client.fetch_token(
                 "https://github.com/login/oauth/access_token",
                 code=code
             )
-            
+
             # Get user info from GitHub
             async with httpx.AsyncClient() as http_client:
                 # Get user profile
                 user_response = await http_client.get(
                     "https://api.github.com/user",
-                    headers={"Authorization": f"Bearer {token['access_token']}"}
+                    headers={
+                        "Authorization": f"Bearer {token['access_token']}"}
                 )
                 user_response.raise_for_status()
                 user_info = user_response.json()
-                
+
                 # Get user emails (GitHub might not return email in profile)
                 email_response = await http_client.get(
                     "https://api.github.com/user/emails",
-                    headers={"Authorization": f"Bearer {token['access_token']}"}
+                    headers={
+                        "Authorization": f"Bearer {token['access_token']}"}
                 )
                 email_response.raise_for_status()
                 emails = email_response.json()
-                
+
                 # Find primary email
                 primary_email = None
                 for email_obj in emails:
                     if email_obj.get("primary", False):
                         primary_email = email_obj["email"]
                         break
-                
+
                 if not primary_email:
                     primary_email = user_info.get("email")
-                
+
                 if not primary_email:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="No email found in GitHub profile"
                     )
-            
+
             return await self._create_or_get_oauth_user(
                 db,
                 email=primary_email,
@@ -176,7 +188,7 @@ class OAuthService:
                 provider="github",
                 provider_id=str(user_info["id"])
             )
-            
+
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -184,10 +196,10 @@ class OAuthService:
             )
 
     async def _create_or_get_oauth_user(
-        self, 
-        db: AsyncSession, 
-        email: str, 
-        first_name: Optional[str], 
+        self,
+        db: AsyncSession,
+        email: str,
+        first_name: Optional[str],
         last_name: Optional[str],
         provider: str,
         provider_id: str
@@ -195,15 +207,15 @@ class OAuthService:
         """Create or get user from OAuth provider info"""
         # Check if user already exists
         existing_user = await auth_service.get_user_by_email(db, email)
-        
+
         if existing_user:
             return existing_user
-        
+
         # Create new user with OAuth info
         # Generate a random password since OAuth users don't need it
         random_password = str(uuid.uuid4())
         hashed_password = auth_service.get_password_hash(random_password)
-        
+
         db_user = User(
             id=str(uuid.uuid4()),
             email=email,
@@ -212,7 +224,7 @@ class OAuthService:
             last_name=last_name,
             is_verified=True,  # OAuth users are considered verified
         )
-        
+
         db.add(db_user)
         await db.commit()
         await db.refresh(db_user)

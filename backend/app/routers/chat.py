@@ -1,22 +1,27 @@
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import StreamingResponse
-from typing import Dict, Any, List
-import json
 import asyncio
+import json
+from typing import Any, Dict, List
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from ..models.chat import (
-    ChatResponse, AgentCreateRequest, AgentResponse, 
-    AgentChatRequest, MultiAgentConversationRequest, ConversationMessage,
-    ConversationShareRequest, ConversationShareResponse
+    AgentChatRequest,
+    AgentCreateRequest,
+    AgentResponse,
+    ChatResponse,
+    ConversationMessage,
+    ConversationShareRequest,
+    ConversationShareResponse,
+    MultiAgentConversationRequest,
 )
 from ..models.database import User
-from ..services.ai import get_ai_service, AIServiceFacade
+from ..services.ai import AIServiceFacade, get_ai_service
 from ..services.ai.infrastructure.unified_model_service import get_unified_model_service
 from ..services.connection_service import connection_service
 from .auth import get_current_user_dependency
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-
 
 
 @router.post("/agents", response_model=AgentResponse)
@@ -27,20 +32,22 @@ async def create_agent(
 ):
     """Create an agent using connection_id"""
     try:
-        model_config = connection_service.get_connection_model_config(agent_request.connection_id, current_user.id)
+        model_config = connection_service.get_connection_model_config(
+            agent_request.connection_id, current_user.id)
         if not model_config:
-            raise HTTPException(status_code=404, detail=f"Connection {agent_request.connection_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Connection {agent_request.connection_id} not found")
+
         chat_style_dict = None
         if agent_request.chat_style:
             chat_style_dict = agent_request.chat_style.model_dump()
-        
+
         model_config_dict = model_config.model_dump()
-        
+
         voice_config_dict = None
         if agent_request.voice_config:
             voice_config_dict = agent_request.voice_config.model_dump()
-        
+
         agent = ai_service.create_agent(
             agent_request.name,
             agent_request.prompt,
@@ -68,7 +75,8 @@ async def create_agent(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create agent: {str(e)}")
 
 
 @router.get("/agents", response_model=List[AgentResponse])
@@ -80,7 +88,8 @@ async def list_agents(
         agents_data = ai_service.list_agents(current_user.id)
         return [AgentResponse(**agent) for agent in agents_data]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list agents: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list agents: {str(e)}")
 
 
 @router.put("/agents/{agent_id}", response_model=AgentResponse)
@@ -92,20 +101,22 @@ async def update_agent(
 ):
     """Update an existing agent"""
     try:
-        model_config = connection_service.get_connection_model_config(agent_request.connection_id, current_user.id)
+        model_config = connection_service.get_connection_model_config(
+            agent_request.connection_id, current_user.id)
         if not model_config:
-            raise HTTPException(status_code=404, detail=f"Connection {agent_request.connection_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Connection {agent_request.connection_id} not found")
+
         chat_style_dict = None
         if agent_request.chat_style:
             chat_style_dict = agent_request.chat_style.model_dump()
-        
+
         model_config_dict = model_config.model_dump()
-        
+
         voice_config_dict = None
         if agent_request.voice_config:
             voice_config_dict = agent_request.voice_config.model_dump()
-        
+
         agent = ai_service.update_agent(
             agent_id,
             agent_request.name,
@@ -118,10 +129,11 @@ async def update_agent(
             agent_request.mcp_tools,
             agent_request.mcp_tool_config
         )
-        
+
         if not agent:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Agent {agent_id} not found")
+
         return AgentResponse(
             agent_id=agent.agent_id,
             name=agent.name,
@@ -137,7 +149,8 @@ async def update_agent(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update agent: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update agent: {str(e)}")
 
 
 @router.delete("/agents/{agent_id}")
@@ -149,12 +162,14 @@ async def delete_agent(
     try:
         success = ai_service.delete_agent(agent_id, current_user.id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Agent {agent_id} not found")
         return {"message": f"Agent {agent_id} deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete agent: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete agent: {str(e)}")
 
 
 @router.post("/agents/chat", response_model=ChatResponse)
@@ -172,7 +187,8 @@ async def chat_with_agent(
         )
         return ChatResponse(response=response, type="agent_response")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent chat error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Agent chat error: {str(e)}")
 
 
 @router.post("/agents/conversation", response_model=List[ConversationMessage])
@@ -192,18 +208,20 @@ async def start_multi_agent_conversation(
                 }
                 for attachment in conversation_request.file_attachments
             ]
-        
+
         conversation_log = await ai_service.multi_agent_conversation(
             conversation_request.conversation_id,
             conversation_request.agent_ids,
             conversation_request.initial_message,
             conversation_request.max_turns,
             current_user.id,
-            file_attachments
+            file_attachments,
+            conversation_request.project_id
         )
         return [ConversationMessage(**msg) for msg in conversation_log]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Multi-agent conversation error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Multi-agent conversation error: {str(e)}")
 
 
 @router.post("/agents/conversation/stream")
@@ -213,7 +231,7 @@ async def stream_multi_agent_conversation(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     """Stream a multi-agent conversation in real-time using Server-Sent Events"""
-    
+
     async def generate_conversation():
         try:
             file_attachments = None
@@ -226,26 +244,27 @@ async def stream_multi_agent_conversation(
                     }
                     for attachment in conversation_request.file_attachments
                 ]
-            
+
             async for message in ai_service.multi_agent_conversation_stream(
                 conversation_request.conversation_id,
                 conversation_request.agent_ids,
                 conversation_request.initial_message,
                 conversation_request.max_turns,
                 current_user.id,
-                file_attachments
+                file_attachments,
+                conversation_request.project_id
             ):
                 data = json.dumps(message)
                 yield f"data: {data}\n\n"
-                
+
                 await asyncio.sleep(0.1)
-                
+
         except Exception as e:
             error_message = {"error": f"Stream error: {str(e)}"}
             yield f"data: {json.dumps(error_message)}\n\n"
-        
+
         yield f"data: {json.dumps({'type': 'complete'})}\n\n"
-    
+
     return StreamingResponse(
         generate_conversation(),
         media_type="text/plain",
@@ -268,7 +287,9 @@ async def list_conversations(
         conversations = ai_service.get_all_conversations(current_user.id)
         return conversations
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list conversations: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list conversations: {str(e)}")
+
 
 @router.get("/conversations/{conversation_id}", response_model=Dict[str, Any])
 async def get_conversation_by_id(
@@ -277,14 +298,17 @@ async def get_conversation_by_id(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
-        conversation = ai_service.get_conversation_by_id(conversation_id, current_user.id)
+        conversation = ai_service.get_conversation_by_id(
+            conversation_id, current_user.id)
         if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+            raise HTTPException(
+                status_code=404, detail="Conversation not found")
         return conversation
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get conversation: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get conversation: {str(e)}")
 
 
 @router.put("/conversations/{conversation_id}/share", response_model=ConversationShareResponse)
@@ -296,26 +320,30 @@ async def update_conversation_sharing(
 ):
     """Update the sharing status of a conversation"""
     try:
-        conversation = ai_service.get_conversation_by_id(conversation_id, current_user.id)
+        conversation = ai_service.get_conversation_by_id(
+            conversation_id, current_user.id)
         if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        
+            raise HTTPException(
+                status_code=404, detail="Conversation not found")
+
         if conversation.get("user_id") != current_user.id:
-            raise HTTPException(status_code=403, detail="You can only share your own conversations")
-        
+            raise HTTPException(
+                status_code=403, detail="You can only share your own conversations")
+
         success = ai_service.update_conversation_sharing(
-            conversation_id, 
-            share_request.is_shared, 
+            conversation_id,
+            share_request.is_shared,
             current_user.id
         )
-        
+
         if not success:
-            raise HTTPException(status_code=404, detail="Failed to update conversation sharing")
-        
+            raise HTTPException(
+                status_code=404, detail="Failed to update conversation sharing")
+
         share_url = None
         if share_request.is_shared:
             share_url = f"/shared/conversation/{conversation_id}"
-        
+
         return ConversationShareResponse(
             conversation_id=conversation_id,
             is_shared=share_request.is_shared,
@@ -324,7 +352,8 @@ async def update_conversation_sharing(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update conversation sharing: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update conversation sharing: {str(e)}")
 
 
 @router.delete("/conversations/{conversation_id}")
@@ -335,23 +364,29 @@ async def delete_conversation(
 ):
     """Delete a conversation and all its messages"""
     try:
-        conversation = ai_service.get_conversation_by_id(conversation_id, current_user.id)
+        conversation = ai_service.get_conversation_by_id(
+            conversation_id, current_user.id)
         if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        
+            raise HTTPException(
+                status_code=404, detail="Conversation not found")
+
         if conversation.get("user_id") != current_user.id:
-            raise HTTPException(status_code=403, detail="You can only delete your own conversations")
-        
-        success = ai_service.delete_conversation(conversation_id, current_user.id)
-        
+            raise HTTPException(
+                status_code=403, detail="You can only delete your own conversations")
+
+        success = ai_service.delete_conversation(
+            conversation_id, current_user.id)
+
         if not success:
-            raise HTTPException(status_code=404, detail="Failed to delete conversation")
-        
+            raise HTTPException(
+                status_code=404, detail="Failed to delete conversation")
+
         return {"message": f"Conversation {conversation_id} deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete conversation: {str(e)}")
 
 
 @router.get("/shared/conversations/{conversation_id}", response_model=Dict[str, Any])
@@ -361,13 +396,16 @@ async def get_shared_conversation(
 ):
     """Get a shared conversation (public access, no authentication required)"""
     try:
-        conversation = ai_service.get_conversation_by_id(conversation_id, user_id=None)
+        conversation = ai_service.get_conversation_by_id(
+            conversation_id, user_id=None)
         if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        
+            raise HTTPException(
+                status_code=404, detail="Conversation not found")
+
         if not conversation.get("is_shared", False):
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        
+            raise HTTPException(
+                status_code=404, detail="Conversation not found")
+
         shared_conversation = {
             "id": conversation["id"],
             "participants": conversation["participants"],
@@ -376,12 +414,13 @@ async def get_shared_conversation(
             "updated_at": conversation["updated_at"],
             "isActive": False
         }
-        
+
         return shared_conversation
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get shared conversation: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get shared conversation: {str(e)}")
 
 
 @router.get("/models")

@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from pydantic_ai import Agent as PydanticAgent
 from pydantic_ai.models.openai import OpenAIModel
@@ -49,9 +49,9 @@ class UnifiedModelService:
             'base_url_required': False
         },
         'mcp': {
-            'models': [],  # MCP servers don't have traditional models
+            'models': [],
             'requires_api_key': False,
-            'base_url_required': True,  # MCP server URL
+            'base_url_required': True,
             'supports_tools': True,
             'supports_resources': True,
             'connection_type': 'mcp_server'

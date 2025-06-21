@@ -1,13 +1,22 @@
-import os
+from .routers import (
+    auth,
+    chat,
+    connections,
+    files,
+    health,
+    mcp,
+    podcast,
+    projects,
+    voice_connections,
+)
+from .core.database import db_manager
+from .core.config import create_app
 from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 
 # Load environment variables as early as possible
 load_dotenv()
-
-from .core.config import create_app
-from .core.database import db_manager
-from .routers import health, chat, connections, auth, voice_connections, podcast, files, mcp
 
 
 @asynccontextmanager
@@ -23,6 +32,7 @@ app = create_app(lifespan=lifespan)
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(projects.router)
 app.include_router(chat.router)
 app.include_router(connections.router)
 app.include_router(voice_connections.router)

@@ -1,5 +1,6 @@
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
 
 
 class AgentVoiceConfig(BaseModel):
@@ -70,12 +71,14 @@ class FileAttachment(BaseModel):
     content: str
     file_type: str
 
+
 class MultiAgentConversationRequest(BaseModel):
     conversation_id: str
     agent_ids: List[str]
     initial_message: str
     max_turns: int = 10
     file_attachments: Optional[List[FileAttachment]] = None
+    project_id: Optional[str] = None
 
 
 class ConversationMessage(BaseModel):
@@ -223,7 +226,7 @@ class PodcastJobStatus(BaseModel):
     error_message: Optional[str] = None
     created_at: str
     completed_at: Optional[str] = None
-    
+
     audio_url: Optional[str] = None
     duration_seconds: Optional[float] = None
     file_size_bytes: Optional[int] = None
@@ -235,5 +238,3 @@ class PodcastDownloadResponse(BaseModel):
     download_url: Optional[str] = None
     filename: Optional[str] = None
     file_size_bytes: Optional[int] = None
-
-
