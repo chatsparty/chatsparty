@@ -38,31 +38,44 @@ class AgentRepositoryInterface(ABC):
 
 class ConversationRepositoryInterface(ABC):
     @abstractmethod
-    def create_conversation(self, conversation_id: str, user_id: str, is_shared: bool = False) -> List[Message]:
+    def create_conversation(self, conversation_id: str, user_id: str, is_shared: bool = False, agent_ids: Optional[List[str]] = None, current_agent_index: Optional[int] = None) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def get_conversation_details(self, conversation_id: str, user_id: str = None) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    def get_conversation_messages(self, conversation_id: str, user_id: str = None) -> List[Message]:
         pass
     
     @abstractmethod
-    def get_conversation(self, conversation_id: str, user_id: str = None) -> List[Message]:
+    def add_message(self, conversation_id: str, message: Message, user_id: str = None) -> None:
         pass
     
     @abstractmethod
-    def add_message(self, conversation_id: str, message: Message) -> None:
+    def update_conversation_metadata(self, conversation_id: str, user_id: str = None, **kwargs) -> bool:
         pass
-    
+
     @abstractmethod
-    def clear_conversation(self, conversation_id: str) -> None:
+    def clear_conversation(self, conversation_id: str, user_id: str = None) -> None:
         pass
     
     @abstractmethod
     def get_all_conversations(self, user_id: str = None) -> List[dict]:
         pass
     
+    # This might be replaced by get_conversation_details or augmented
     @abstractmethod
     def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> dict:
         pass
     
     @abstractmethod
     def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
         pass
 
 

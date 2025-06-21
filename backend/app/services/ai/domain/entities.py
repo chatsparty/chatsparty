@@ -96,6 +96,7 @@ class Message:
     timestamp: Optional[datetime] = None
     agent_id: Optional[str] = None
     speaker: Optional[str] = None
+    user_id: Optional[str] = None
 
 
 @dataclass
@@ -104,6 +105,7 @@ class ConversationMessage:
     message: str
     timestamp: float
     agent_id: Optional[str] = None
+    user_id: Optional[str] = None
     message_type: str = "message"
 
 

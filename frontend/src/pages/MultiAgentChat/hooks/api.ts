@@ -15,6 +15,24 @@ export const fetchAgents = async (): Promise<Agent[]> => {
   }
 };
 
+export const postUserMessageToConversation = async (
+  conversationId: string,
+  message: string,
+  // Token will be handled by axios interceptor
+): Promise<void> => {
+  try {
+    await axios.post(`${API_BASE_URL}/chat/conversations/${conversationId}/message`, {
+      message,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to post user message:",
+      error instanceof Error ? error.message : String(error)
+    );
+    throw error;
+  }
+};
+
 export const fetchConversations = async (
   agents: Agent[]
 ): Promise<ActiveConversation[]> => {

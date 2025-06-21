@@ -7,10 +7,12 @@ import asyncio
 from ..models.chat import (
     ChatResponse, AgentCreateRequest, AgentResponse, 
     AgentChatRequest, MultiAgentConversationRequest, ConversationMessage,
-    ConversationShareRequest, ConversationShareResponse
+    ConversationShareRequest, ConversationShareResponse, FileAttachment
 )
 from ..models.database import User
 from ..services.ai import get_ai_service, AIServiceFacade
+from ..services.ai.domain.entities import Message as DomainMessage # For type hinting internal objects
+from datetime import datetime
 from ..services.ai.infrastructure.unified_model_service import get_unified_model_service
 from ..services.connection_service import connection_service
 from .auth import get_current_user_dependency
@@ -228,24 +230,89 @@ async def stream_multi_agent_conversation(
                 data = json.dumps(message)
                 yield f"data: {data}\n\n"
                 
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.1) # Keep some delay for stream chunking
                 
         except Exception as e:
-            error_message = {"error": f"Stream error: {str(e)}"}
+            error_message = {"type": "error", "message": f"Stream error: {str(e)}"}
             yield f"data: {json.dumps(error_message)}\n\n"
         
-        yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+        yield f"data: {json.dumps({'type': 'complete', 'message': 'Stream ended.'})}\n\n"
     
     return StreamingResponse(
         generate_conversation(),
-        media_type="text/plain",
+        media_type="text/event-stream", # Correct media type for SSE
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Cache-Control"
+            "Access-Control-Allow-Origin": "*", # Consider restricting this in production
+            "Access-Control-Allow-Headers": "Cache-Control" # Allow specific headers if needed
         }
     )
+
+class UserConversationMessageRequest(BaseModel):
+    message: str
+    # file_attachments: Optional[List[FileAttachment]] = None # Future: allow attaching files mid-convo
+
+@router.post("/conversations/{conversation_id}/message", status_code=202) # 202 Accepted
+async def post_user_message_to_conversation(
+    conversation_id: str,
+    message_request: UserConversationMessageRequest,
+    current_user: User = Depends(get_current_user_dependency),
+    ai_service: AIServiceFacade = Depends(get_ai_service)
+):
+    """Allows a user to post a message to an ongoing multi-agent conversation."""
+    try:
+        # Basic validation: Does conversation exist? Is user part of it (or allowed)?
+        # The conversation repository's get_conversation_details should handle some of this.
+        conv_details = ai_service._conversation_repository.get_conversation_details(conversation_id, current_user.id)
+        if not conv_details:
+            raise HTTPException(status_code=404, detail="Conversation not found or access denied.")
+
+        # TODO: Handle file attachments if added to UserConversationMessageRequest
+        # For now, message_request.message is plain text. If it can contain file context,
+        # it needs to be processed similar to initial_message in the stream.
+
+        user_message_content = message_request.message
+
+        # Create the message object (using the domain entity)
+        user_msg_obj = DomainMessage(
+            role="user",
+            content=user_message_content,
+            timestamp=datetime.now(),
+            speaker="user", # Or current_user.username, current_user.email etc.
+            user_id=current_user.id
+        )
+
+        # Add message to the repository
+        ai_service._conversation_repository.add_message(conversation_id, user_msg_obj, current_user.id)
+
+        # Signal the active stream (if any) that a new message has arrived.
+        # The ChatService instance within AIServiceFacade needs to be accessed.
+        # This assumes ai_service has an instance of ChatService that holds _active_conversation_events
+        if hasattr(ai_service, '_chat_service_instance') and ai_service._chat_service_instance: # Make sure this attribute exists
+             await ai_service._chat_service_instance.signal_new_message(conversation_id)
+        else:
+            # Fallback or log if direct signaling isn't possible (e.g. if ChatService is instantiated per call)
+            # In our current AIServiceFacade, ChatService is instantiated per method call,
+            # so direct signaling to an existing stream via an instance variable in ChatService won't work
+            # without further refactoring of AIServiceFacade or ChatService instantiation.
+            # For now, the stream will pick up the new message from history on its next agent turn.
+            # This is a critical point for "immediate" reaction vs. "next turn reaction".
+            # To make it immediate, ChatService needs to be a singleton or managed instance
+            # within AIServiceFacade, or active_conversation_events needs to be managed globally (less ideal).
+            # print(f"DEBUG: ChatService instance not directly available for signaling {conversation_id}")
+            # Call the facade's signaling method
+            await ai_service.signal_user_message_in_conversation(conversation_id, current_user.id)
+
+
+        return {"message": "Message accepted and added to conversation."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log the full error for debugging
+        print(f"Error in post_user_message_to_conversation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to post message: {str(e)}")
 
 
 @router.get("/conversations", response_model=List[Dict[str, Any]])

@@ -130,7 +130,31 @@ export const createStreamMessageHandlers = (
             };
             return {
               ...conv,
-              messages: [...filteredMessages, newMessage]
+              messages: [...filteredMessages, newMessage],
+              isActive: true, // Keep active on new messages
+            };
+          }
+          return conv;
+        })
+      );
+    } else if (message.type === 'error' || message.type === 'info') {
+      // Handle system-generated error or info messages from the stream
+      setConversations(prev =>
+        prev.map(conv => {
+          if (conv.id === conversationId) {
+            const systemMessage: ConversationMessage = {
+              speaker: message.type === 'error' ? 'System Error' : 'System Info',
+              message: message.message || (message.type === 'error' ? 'An error occurred.' : 'Information'),
+              timestamp: message.timestamp || Date.now() / 1000,
+              type: message.type, // Keep the original type for styling
+              agent_id: message.agent_id // Could be null
+            };
+            // Remove any previous typing indicator
+            const filteredMessages = conv.messages.filter(msg => msg.message !== '...');
+            return {
+              ...conv,
+              messages: [...filteredMessages, systemMessage],
+              // isActive: message.type !== 'error', // Optionally deactivate on error
             };
           }
           return conv;

@@ -75,6 +75,7 @@ class MultiAgentConversationRequest(BaseModel):
 class ConversationMessage(BaseModel):
     speaker: str
     agent_id: Optional[str] = None
+    user_id: Optional[str] = None
     message: str
     timestamp: float
 

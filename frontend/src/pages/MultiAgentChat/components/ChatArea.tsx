@@ -22,6 +22,7 @@ interface ChatAreaProps {
   getAgentName: (agentId: string) => string;
   getAgentColor: (agentId: string) => string;
   onConversationUpdated: () => Promise<void>;
+  onSendMessage: (message: string, conversationId: string) => Promise<void>; // New prop
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
@@ -30,8 +31,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   getAgentName,
   getAgentColor,
   onConversationUpdated,
+  onSendMessage, // New prop
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [userInput, setUserInput] = useState(""); // New state for user input
+  const [isSending, setIsSending] = useState(false); // New state for sending status
   const [isSharing, setIsSharing] = useState(false);
   const [isShared, setIsShared] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -88,6 +92,27 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleSendMessage = async () => {
+    if (!userInput.trim() || !activeConversation || !activeConversation.isActive) return;
+    setIsSending(true);
+    try {
+      // The actual sending logic will be passed via onSendMessage prop
+      // This function will also handle optimistic update in the hook
+      await onSendMessage(userInput, activeConversation.id);
+      setUserInput(""); // Clear input after sending
+    } catch (error) {
+      console.error("Error sending message:", error);
+      showToast("Failed to send message.", "error");
+      trackError(
+        "send_user_message_error",
+        error instanceof Error ? error.message : "Unknown error",
+        "multi_agent_chat_input"
+      );
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleOpenShareModal = () => {
@@ -538,6 +563,39 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* User Input Area */}
+      {activeConversation && (
+        <div className="p-4 border-t border-border bg-card">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder="Type your message..."
+              className="flex-1 p-3 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-background text-foreground placeholder-muted-foreground"
+              disabled={isSending || !activeConversation?.isActive}
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={isSending || !userInput.trim() || !activeConversation?.isActive}
+              className="px-6 py-3"
+            >
+              {isSending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                "Send"
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ShareModal
         isOpen={showShareModal}

@@ -22,6 +22,9 @@ export interface UseMultiAgentChatReturn {
   handleSelectAgent: (agentId: string, checked: boolean) => void;
   loadConversations: () => Promise<void>;
   
+  loadConversations: () => Promise<void>;
+  sendUserMessage: (messageText: string, conversationId: string) => Promise<void>; // Added
+
   // Helpers
   getAgentName: (agentId: string) => string;
   getAgentColor: (agentId: string) => string;

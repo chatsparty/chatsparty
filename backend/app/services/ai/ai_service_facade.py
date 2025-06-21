@@ -15,6 +15,7 @@ class AIServiceFacade(AIServiceInterface):
     def __init__(self, model_name: str = None):
         self.model_name = model_name or os.getenv("OLLAMA_MODEL", "gemma2:2b")
         self._model_provider = UnifiedModelProvider()
+        # Repositories and ChatService will be instantiated within methods using SessionManager
     
     def create_agent(
         self, 
@@ -162,16 +163,64 @@ class AIServiceFacade(AIServiceInterface):
                 agent_repo,
                 conv_repo
             )
+            # The chat_service instance here is local to this method call.
+            # Signaling must rely on the module-level event dictionary in chat_service.py
             async for message in chat_service.multi_agent_conversation_stream(
                 conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
             ):
                 yield message
-    
+
+    async def signal_user_message_in_conversation(self, conversation_id: str, user_id: str):
+        """Signals a conversation stream that a new user message has been posted."""
+        # This method needs to interact with the module-level event system in ChatService.
+        # It can do so by calling a static method on ChatService or instantiating it
+        # just to call the signal_new_message method, which then uses the module-level dict.
+        # For this to work, ChatService needs to be importable here.
+        from .application.chat_service import ChatService as ConcreteChatService
+
+        # We don't need a full ChatService instance if signal_new_message is independent enough
+        # or if we make it a static/classmethod that accesses the module-level dictionary.
+        # For now, let's assume ChatService's signal_new_message can be called like this.
+        # This is slightly awkward due to ChatService normally needing repo instances.
+        # A dedicated static method in ChatService would be cleaner for just signaling.
+
+        # Let's assume ChatService.signal_new_message is adapted to be callable without full init
+        # or we call it on a temporarily instantiated ChatService that doesn't need live repos for signaling.
+        # Given signal_new_message in ChatService uses `_module_active_conversation_events`,
+        # we can call it via a temporary instance or make it a static method.
+        # To avoid complex init for a temp instance, let's assume we'll make it static or refactor ChatService signal.
+
+        # For now, to make progress, let the router directly call a static/module method.
+        # This facade method is thus a placeholder if direct router call is chosen.
+        # OR, the ChatService class itself needs to expose a static method for signaling.
+
+        # Let's assume we add a static method to ChatService: ChatService.static_signal_new_message(conversation_id)
+        # from .application.chat_service import ChatService as ConcreteChatService
+        # await ConcreteChatService.static_signal_new_message(conversation_id) # Requires static method
+
+        # For now, the router directly accesses the conversation repository and can then
+        # call a static signal method on ChatService.
+        # This facade method might not be strictly necessary if the router handles adding the message
+        # and signaling. Let's assume the router will call ChatService's signal method.
+        # The post_user_message_to_conversation in router already adds to repo.
+        # It then needs to signal. The easiest way is to make ChatService.signal_new_message
+        # callable without requiring a fully initialized ChatService instance for *this specific action*.
+        # The current implementation of signal_new_message in ChatService is an instance method but only touches module dict.
+
+        # Simplest path: Router calls a new static method on ChatService.
+        # This facade method is less useful if ChatService methods are mostly static or module-level for events.
+
+        # If the router calls this facade method:
+        temp_chat_service = ConcreteChatService(None, None, None) # Repos not needed for this signal
+        await temp_chat_service.signal_new_message(conversation_id)
+
+
     def get_conversation_history(self, conversation_id: str, user_id: str = None) -> List[Dict[str, Any]]:
         with SessionManager.get_conversation_repository() as conv_repo:
+            # Agent repo not strictly needed for history if messages are self-contained
             chat_service = ChatService(
                 self._model_provider,
-                None, 
+                None, # Or a dummy/InMemoryAgentRepository if ChatService constructor requires it
                 conv_repo
             )
             return chat_service.get_conversation_history(conversation_id, user_id)

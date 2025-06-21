@@ -17,8 +17,10 @@ export interface Agent {
 export interface ConversationMessage {
   speaker: string;
   agent_id?: string;
+  user_id?: string; // Added user_id
   message: string;
   timestamp: number;
+  type?: 'message' | 'typing' | 'error' | 'info' | 'complete' | 'user_message'; // Added type, including user_message
 }
 
 export interface ActiveConversation {

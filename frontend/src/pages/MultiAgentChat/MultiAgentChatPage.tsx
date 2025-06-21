@@ -30,6 +30,7 @@ const MultiAgentChatPage: React.FC = () => {
     getAgentColor,
     handleSelectAgent,
     loadConversations,
+    sendUserMessage, // New function from the hook
   } = useMultiAgentChat(attachedFiles);
   const [isExtractingContent, setIsExtractingContent] = useState(false);
 
@@ -104,6 +105,7 @@ const MultiAgentChatPage: React.FC = () => {
           getAgentName={getAgentName}
           getAgentColor={getAgentColor}
           onConversationUpdated={loadConversations}
+           onSendMessage={sendUserMessage} // Pass the new function
         />
       </div>
 
