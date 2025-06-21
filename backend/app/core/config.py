@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     sqlite_db_path: str = "chatsparty.db"
     use_sqlite: bool = True
     ollama_model: str = "gemma3:4b"
+    openrouter_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
     
     # Authentication settings
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
