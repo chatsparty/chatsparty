@@ -122,8 +122,7 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
             return False
 
         # Update VM fields
-        db_project.e2b_sandbox_id = vm_info.get('sandbox_id')
-        db_project.e2b_template_id = vm_info.get('template_id')
+        db_project.vm_container_id = vm_info.get('container_id')
         db_project.vm_url = vm_info.get('vm_url')
         db_project.vm_config = vm_info.get('vm_config', {})
         db_project.last_vm_activity = datetime.now()
@@ -186,10 +185,10 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
             logger.error(f"[REPO] ❌ Project {project_id} not found for detailed VM update")
             return False
 
-        old_sandbox_id = db_project.e2b_sandbox_id
+        old_container_id = db_project.vm_container_id
         old_status = db_project.vm_status
         
-        db_project.e2b_sandbox_id = sandbox_id
+        db_project.vm_container_id = sandbox_id
         db_project.vm_status = vm_status
         db_project.vm_config = vm_config
         db_project.last_vm_activity = datetime.now()
@@ -198,7 +197,7 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         try:
             self.session.commit()
             logger.info(f"[REPO] ✅ Detailed VM info updated successfully")
-            logger.info(f"[REPO] Sandbox: {old_sandbox_id} -> {sandbox_id}")
+            logger.info(f"[REPO] Container: {old_container_id} -> {sandbox_id}")
             logger.info(f"[REPO] Status: {old_status} -> {vm_status}")
             return True
         except Exception as e:
@@ -231,8 +230,7 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
             name=db_project.name,
             description=db_project.description,
             user_id=db_project.user_id,
-            e2b_sandbox_id=db_project.e2b_sandbox_id,
-            e2b_template_id=db_project.e2b_template_id,
+            vm_container_id=db_project.vm_container_id,
             vm_status=db_project.vm_status,
             vm_config=db_project.vm_config,
             vm_url=db_project.vm_url,

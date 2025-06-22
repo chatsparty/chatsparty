@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 class DockerFacade:
     """
-    Facade for Docker container operations, providing the same interface
-    as E2B service for seamless replacement
+    Facade for Docker container operations, providing VM services
+    for project workspaces
     """
 
     def __init__(self):
@@ -22,12 +22,11 @@ class DockerFacade:
         self.file_manager = DockerFileManager(self.container_manager)
         self.command_executor = DockerCommandExecutor(self.container_manager)
 
-    # Container Management Methods (E2B compatible interface)
     async def create_project_sandbox(
         self,
         project_id: str,
         template_id: Optional[str] = None,
-        environment_type: str = "full"
+        environment_type: str = "minimal"
     ) -> Dict[str, Any]:
         """Create a new Docker container for a project"""
         logger.info(f"[VM] Creating sandbox for project {project_id} with environment: {environment_type}")

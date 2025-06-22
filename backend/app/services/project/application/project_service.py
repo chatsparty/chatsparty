@@ -65,7 +65,7 @@ class ProjectService:
 
         This automatically:
         1. Creates the project in database
-        2. Sets up VM workspace (E2B sandbox)
+        2. Sets up VM workspace (Docker container)
         3. Initializes storage mount
         4. Prepares MCP tools for agents
         """
@@ -173,7 +173,7 @@ class ProjectService:
                 updated_project = self.project_repo.get_by_id_only(project_id)
                 if updated_project:
                     logger.info(f"[PROJECT_SERVICE] 🔍 Verified project status: {updated_project.vm_status}")
-                    logger.info(f"[PROJECT_SERVICE] 🔍 Verified sandbox ID: {updated_project.e2b_sandbox_id}")
+                    logger.info(f"[PROJECT_SERVICE] 🔍 Verified container ID: {updated_project.vm_container_id}")
                 else:
                     logger.error(f"[PROJECT_SERVICE] ❌ Could not verify project update")
             else:
@@ -248,15 +248,15 @@ class ProjectService:
             logger.warning(f"[PROJECT_SERVICE] ⚠️ No VM tools found for project {project_id}. Attempting to create them.")
             # Try to create VM tools if they don't exist and the project has an active VM
             project = self.project_repo.get_by_id_only(project_id)
-            logger.info(f"[PROJECT_SERVICE] 📋 Project {project_id} details: vm_status={project.vm_status if project else 'None'}, sandbox_id={project.e2b_sandbox_id if project else 'None'}")
+            logger.info(f"[PROJECT_SERVICE] 📋 Project {project_id} details: vm_status={project.vm_status if project else 'None'}, container_id={project.vm_container_id if project else 'None'}")
             if project and project.vm_status == "active":
-                if project.e2b_sandbox_id:
-                    logger.info(f"[PROJECT_SERVICE] 🔄 Project {project_id} has active VM status, attempting to reconnect to sandbox {project.e2b_sandbox_id}")
+                if project.vm_container_id:
+                    logger.info(f"[PROJECT_SERVICE] 🔄 Project {project_id} has active VM status, attempting to reconnect to container {project.vm_container_id}")
                     try:
-                        # First try to reconnect to the existing sandbox
-                        reconnected = await self.vm_service.reconnect_to_sandbox(project_id, project.e2b_sandbox_id)
+                        # First try to reconnect to the existing container
+                        reconnected = await self.vm_service.reconnect_to_sandbox(project_id, project.vm_container_id)
                         if reconnected:
-                            logger.info(f"[PROJECT_SERVICE] ✅ Successfully reconnected to sandbox {project.e2b_sandbox_id}")
+                            logger.info(f"[PROJECT_SERVICE] ✅ Successfully reconnected to container {project.vm_container_id}")
                             # Now create VM tools
                             self.active_vm_tools[project_id] = ProjectVMTools(
                                 self.vm_service,
@@ -265,7 +265,7 @@ class ProjectService:
                             vm_tools = self.active_vm_tools[project_id]
                             logger.info(f"[PROJECT_SERVICE] ✅ Successfully created VM tools for project {project_id}")
                         else:
-                            logger.error(f"[PROJECT_SERVICE] ❌ Failed to reconnect to sandbox {project.e2b_sandbox_id}")
+                            logger.error(f"[PROJECT_SERVICE] ❌ Failed to reconnect to container {project.vm_container_id}")
                             logger.info(f"[PROJECT_SERVICE] 🔄 Attempting to create new sandbox for project {project_id}")
                             vm_tools = await self._create_new_sandbox_and_tools(project_id)
                     except Exception as e:
@@ -327,18 +327,48 @@ class ProjectService:
         working_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """Execute command in project VM on behalf of an agent"""
-        logger.info(f"[PROJECT_SERVICE] 🤖 Agent command execution for project {project_id}: {command}")
-        logger.info(f"[PROJECT_SERVICE] 📂 Working directory: {working_dir or 'default'}")
+        logger.info(f"[PROJECT_SERVICE] 🤖 Agent command execution requested")
+        logger.info(f"[PROJECT_SERVICE] 📋 Project ID: {project_id}")
+        logger.info(f"[PROJECT_SERVICE] 🔨 Command: {command}")
+        logger.info(f"[PROJECT_SERVICE] 📂 Working directory: {working_dir or '/workspace (default)'}")
         
-        vm_tools = await self.get_vm_tools_for_project(project_id)
-        result = await vm_tools.execute_command(command, working_dir)
-        
-        if result.get('success'):
-            logger.info(f"[PROJECT_SERVICE] ✅ Agent command executed successfully")
-        else:
-            logger.warning(f"[PROJECT_SERVICE] ⚠️ Agent command failed: {result.get('stderr', 'Unknown error')}")
-        
-        return result
+        try:
+            vm_tools = await self.get_vm_tools_for_project(project_id)
+            if not vm_tools:
+                logger.error(f"[PROJECT_SERVICE] ❌ No VM tools available for project {project_id}")
+                return {
+                    'success': False,
+                    'error': 'No VM tools available',
+                    'exit_code': 1,
+                    'stdout': '',
+                    'stderr': 'VM tools not available'
+                }
+                
+            logger.info(f"[PROJECT_SERVICE] ✅ VM tools found, executing command...")
+            result = await vm_tools.execute_command(command, working_dir)
+            
+            if result.get('success'):
+                logger.info(f"[PROJECT_SERVICE] ✅ Agent command executed successfully")
+                logger.info(f"[PROJECT_SERVICE] 📊 Exit code: {result.get('exit_code', 'N/A')}")
+                if result.get('stdout'):
+                    logger.info(f"[PROJECT_SERVICE] 📤 Output: {result.get('stdout', '')[:200]}{'...' if len(result.get('stdout', '')) > 200 else ''}")
+            else:
+                logger.error(f"[PROJECT_SERVICE] ❌ Agent command failed")
+                logger.error(f"[PROJECT_SERVICE] 📊 Exit code: {result.get('exit_code', 'N/A')}")
+                logger.error(f"[PROJECT_SERVICE] 🚨 Error: {result.get('stderr', 'Unknown error')}")
+                logger.error(f"[PROJECT_SERVICE] 📤 STDOUT: {result.get('stdout', 'No output')}")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"[PROJECT_SERVICE] ❌ Exception during agent command execution: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'exit_code': 1,
+                'stdout': '',
+                'stderr': f'Exception: {str(e)}'
+            }
 
     # ============= FILE MANAGEMENT =============
 
@@ -500,7 +530,7 @@ class ProjectService:
             "project_id": project_id,
             "vm_status": project.vm_status,
             "vm_url": project.vm_url,
-            "sandbox_id": project.e2b_sandbox_id,
+            "container_id": project.vm_container_id,
             "services": [
                 {
                     "name": service.service_name,
@@ -527,7 +557,7 @@ class ProjectService:
             "project_id": project.id,
             "vm_status": project.vm_status,
             "vm_url": project.vm_url,
-            "sandbox_id": project.e2b_sandbox_id,
+            "container_id": project.vm_container_id,
             "services": [
                 {
                     "name": service.service_name,

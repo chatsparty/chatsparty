@@ -34,16 +34,21 @@ class DockerCommandExecutor:
         try:
             start_time = datetime.now()
 
-            logger.info(f"[VM] Executing command in project {project_id}: {command}")
-            logger.info(f"[VM] Working directory: {work_dir}, Timeout: {cmd_timeout}s")
+            full_command = f"cd {work_dir} && {command}"
+            logger.info(f"[VM] 🚀 Executing command in project {project_id}")
+            logger.info(f"[VM] 📋 Container ID: {container.id[:12]}")
+            logger.info(f"[VM] 📂 Working directory: {work_dir}")
+            logger.info(f"[VM] ⏱️ Timeout: {cmd_timeout}s")
+            logger.info(f"[VM] 🔨 Full command: {full_command}")
 
             # Execute command in container using thread pool
             def _exec_command():
+                # Use bash to execute the command properly
                 return container.exec_run(
-                    f"cd {work_dir} && {command}",
+                    ["bash", "-c", full_command],
                     user="root",
                     workdir=work_dir,
-                    environment={"HOME": "/workspace"},
+                    environment={"HOME": "/workspace", "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
                     demux=True  # Separate stdout and stderr
                 )
             
@@ -76,11 +81,25 @@ class DockerCommandExecutor:
             if result.exit_code == 0:
                 logger.info(f"[VM] ✅ Command succeeded in {execution_time:.2f}s")
                 if stdout:
-                    logger.info(f"[VM] Output: {stdout[:200]}{'...' if len(stdout) > 200 else ''}")
-            else:
-                logger.warning(f"[VM] ❌ Command failed with exit code {result.exit_code} in {execution_time:.2f}s")
+                    logger.info(f"[VM] 📤 STDOUT: {stdout[:500]}{'...' if len(stdout) > 500 else ''}")
                 if stderr:
-                    logger.warning(f"[VM] Error: {stderr[:200]}{'...' if len(stderr) > 200 else ''}")
+                    logger.info(f"[VM] 📤 STDERR: {stderr[:500]}{'...' if len(stderr) > 500 else ''}")
+            else:
+                logger.error(f"[VM] ❌ Command failed with exit code {result.exit_code} in {execution_time:.2f}s")
+                logger.error(f"[VM] 🔍 Failed command: {full_command}")
+                if stdout:
+                    logger.error(f"[VM] 📤 STDOUT: {stdout[:500]}{'...' if len(stdout) > 500 else ''}")
+                if stderr:
+                    logger.error(f"[VM] 📤 STDERR: {stderr[:500]}{'...' if len(stderr) > 500 else ''}")
+                else:
+                    logger.error(f"[VM] 🚨 No error output - likely 'command not found' (exit 127)")
+                
+                # Special handling for exit code 127 (command not found)
+                if result.exit_code == 127:
+                    logger.error(f"[VM] 💡 Exit code 127 usually means 'command not found'")
+                    logger.error(f"[VM] 💡 Check if the command exists in the container PATH")
+                    # Try to debug the PATH and available commands
+                    logger.error(f"[VM] 🔍 Attempting to debug container environment...")
             
             return cmd_result
 

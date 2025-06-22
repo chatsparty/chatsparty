@@ -30,8 +30,7 @@ def project_to_dict(project) -> Dict:
         "name": project.name,
         "description": project.description,
         "user_id": project.user_id,
-        "e2b_sandbox_id": project.e2b_sandbox_id,
-        "e2b_template_id": project.e2b_template_id,
+        "vm_container_id": project.vm_container_id,
         "vm_status": project.vm_status,
         "vm_config": project.vm_config,
         "vm_url": project.vm_url,
@@ -283,29 +282,42 @@ async def execute_vm_command(
 ) -> Dict:
     """Execute a command in the project's VM"""
     try:
-        logger.info(f"Executing VM command for project {project_id}, user {current_user.id}")
+        logger.info(f"[API] 🚀 VM command request received")
+        logger.info(f"[API] 📋 Project ID: {project_id}")
+        logger.info(f"[API] 👤 User ID: {current_user.id}")
+        logger.info(f"[API] 📦 Command data: {command_data}")
         
         # Verify project exists and user owns it
         project = project_service.get_project(project_id, current_user.id)
         if not project:
-            logger.warning(f"Project {project_id} not found for user {current_user.id}")
+            logger.warning(f"[API] ❌ Project {project_id} not found for user {current_user.id}")
             raise HTTPException(status_code=404, detail="Project not found")
+        
+        logger.info(f"[API] ✅ Project found: {project.name}")
+        logger.info(f"[API] 🖥️ VM Status: {project.vm_status}")
         
         # Extract command and working directory
         command = command_data.get("command", "")
         working_dir = command_data.get("working_directory") or command_data.get("working_dir")
         
         if not command:
+            logger.error(f"[API] ❌ No command provided in request")
             raise HTTPException(status_code=400, detail="Command is required")
         
-        logger.info(f"Executing command: {command}")
+        logger.info(f"[API] 🔨 Extracted command: {command}")
+        logger.info(f"[API] 📂 Working directory: {working_dir or 'Not specified'}")
         
         # Execute command in VM
+        logger.info(f"[API] ➡️ Forwarding to project service...")
         result = await project_service.execute_agent_command(
             project_id=project_id,
             command=command,
             working_dir=working_dir
         )
+        
+        logger.info(f"[API] ⬅️ Received result from project service")
+        logger.info(f"[API] 📊 Success: {result.get('success', False)}")
+        logger.info(f"[API] 📊 Exit code: {result.get('exit_code', 'N/A')}")
         
         return {
             "result": result

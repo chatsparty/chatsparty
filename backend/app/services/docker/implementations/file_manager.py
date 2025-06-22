@@ -103,7 +103,7 @@ class DockerFileManager:
 
             # Set permissions if specified
             if permissions:
-                container.exec_run(f"chmod {permissions} {file_path}")
+                container.exec_run(["sh", "-c", f"chmod {permissions} {file_path}"])
 
             return True
 
@@ -122,7 +122,7 @@ class DockerFileManager:
             raise ValueError(f"No active container for project {project_id}")
 
         try:
-            result = container.exec_run(f"ls -la {path}")
+            result = container.exec_run(["sh", "-c", f"ls -la {path}"])
             if result.exit_code != 0:
                 logger.error(f"Failed to list directory {path}")
                 return []

@@ -19,7 +19,6 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
-    e2b_api_key: Optional[str] = None
     vm_provider: str = "docker"
 
     # Authentication settings

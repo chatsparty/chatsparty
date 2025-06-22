@@ -36,10 +36,22 @@ class ProjectVMTools:
             Dict with stdout, stderr, exit_code, execution_time
         """
         try:
+            logger.info(f"[VM_TOOLS] 🔧 Executing command for project {self.project_id}")
+            logger.info(f"[VM_TOOLS] 💬 Command: {command}")
+            logger.info(f"[VM_TOOLS] 📁 Working dir: {working_dir or '/workspace (default)'}")
+            
             result = await self.vm_service.execute_command(
                 self.project_id, command, working_dir
             )
 
+            logger.info(f"[VM_TOOLS] 📊 Command completed with exit code: {result.exit_code}")
+            logger.info(f"[VM_TOOLS] ⏱️ Execution time: {result.execution_time:.2f}s")
+            
+            if result.exit_code == 0:
+                logger.info(f"[VM_TOOLS] ✅ Command succeeded")
+            else:
+                logger.error(f"[VM_TOOLS] ❌ Command failed")
+                
             return {
                 "stdout": result.stdout,
                 "stderr": result.stderr,
@@ -49,7 +61,7 @@ class ProjectVMTools:
             }
 
         except Exception as e:
-            logger.error(f"VM command execution failed: {e}")
+            logger.error(f"[VM_TOOLS] ❌ VM command execution failed: {e}")
             return {
                 "stdout": "",
                 "stderr": f"Tool execution error: {str(e)}",
@@ -324,29 +336,27 @@ class ProjectVMTools:
         """
         try:
             environments = {
-                "python": [
+                "minimal": [
                     "apt-get update",
-                    "apt-get install -y python3-pip python3-venv git curl wget",
-                    "pip3 install jupyter pandas numpy matplotlib seaborn scikit-learn",
-                    "pip3 install flask django fastapi uvicorn requests beautifulsoup4"
+                    "apt-get install -y git curl wget vim nano"
+                ],
+                "python": [
+                    "apt-get update", 
+                    "apt-get install -y python3-pip git curl wget vim nano",
+                    "pip3 install --upgrade pip"
                 ],
                 "nodejs": [
                     "apt-get update",
-                    "curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -",
-                    "apt-get install -y nodejs git curl wget",
-                    "npm install -g typescript @types/node ts-node nodemon",
-                    "npm install -g create-react-app @vue/cli @angular/cli"
+                    "apt-get install -y nodejs npm git curl wget vim nano"
                 ],
                 "full": [
                     "apt-get update",
-                    "apt-get install -y python3-pip nodejs npm git curl wget vim nano htop tree",
-                    "apt-get install -y docker.io postgresql-client redis-tools",
-                    "pip3 install jupyter pandas numpy matplotlib flask django fastapi",
-                    "npm install -g typescript ts-node nodemon create-react-app"
+                    "apt-get install -y python3-pip nodejs npm git curl wget vim nano build-essential",
+                    "pip3 install --upgrade pip"
                 ]
             }
 
-            commands = environments.get(env_type, environments["full"])
+            commands = environments.get(env_type, environments["minimal"])
             results = []
 
             for command in commands:

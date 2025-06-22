@@ -267,10 +267,8 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # E2B VM Integration
-    e2b_sandbox_id: Mapped[Optional[str]] = mapped_column(
-        String(255), nullable=True)
-    e2b_template_id: Mapped[Optional[str]] = mapped_column(
+    # VM Integration
+    vm_container_id: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True)
     # inactive, starting, active, error, stopped
     vm_status: Mapped[str] = mapped_column(String(50), default='inactive')

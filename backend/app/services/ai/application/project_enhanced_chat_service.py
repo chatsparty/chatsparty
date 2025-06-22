@@ -429,7 +429,7 @@ class ProjectEnhancedChatService(EnhancedChatService):
 🚀 Project: {project.name}
 📝 Description: {project.description or 'No description'}
 🖥️ VM Status: {project_status.get('vm_status', 'inactive')}
-🔧 VM Sandbox ID: {project.e2b_sandbox_id or 'Not set'}
+🔧 VM Container ID: {project.vm_container_id or 'Not set'}
 
 AVAILABLE RESOURCES:
 - Full Linux VM with root access

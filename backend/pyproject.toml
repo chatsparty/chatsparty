@@ -35,7 +35,6 @@ dependencies = [
     "boto3>=1.38.37",
     "mcp>=1.9.4",
     "aiohttp>=3.12.13",
-    "e2b-code-interpreter>=1.5.1",
     "docker>=7.0.0",
 ]
 

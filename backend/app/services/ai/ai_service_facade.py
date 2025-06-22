@@ -148,7 +148,6 @@ class AIServiceFacade(AIServiceInterface):
             )
             # Use project-enhanced chat service for full VM access when in projects
             try:
-                from ...e2b import E2BService
                 from ...project.application.project_service import ProjectService
                 from ...project.infrastructure.project_repository import (
                     ProjectRepository,
@@ -157,12 +156,10 @@ class AIServiceFacade(AIServiceInterface):
                 # Create project service (simplified dependency injection)
                 # In production, you'd use proper DI container
                 project_repo = ProjectRepository(conv_repo.db_session)
-                e2b_service = E2BService()
                 project_service = ProjectService(
                     project_repo=project_repo,
                     file_repo=None,  # TODO: Implement when needed
                     vm_service_repo=None,  # TODO: Implement when needed
-                    e2b_service=e2b_service
                 )
 
                 # Use project-enhanced chat service
@@ -210,19 +207,16 @@ class AIServiceFacade(AIServiceInterface):
 
             # Use project-enhanced chat service for streaming as well
             try:
-                from ...e2b import E2BService
                 from ...project.application.project_service import ProjectService
                 from ...project.infrastructure.project_repository import (
                     ProjectRepository,
                 )
 
                 project_repo = ProjectRepository(conv_repo.db_session)
-                e2b_service = E2BService()
                 project_service = ProjectService(
                     project_repo=project_repo,
                     file_repo=None,
                     vm_service_repo=None,
-                    e2b_service=e2b_service
                 )
 
                 enhanced_chat_service = ProjectEnhancedChatService(

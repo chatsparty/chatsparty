@@ -104,6 +104,17 @@ class ContainerManager(IContainerManager):
             loop = asyncio.get_event_loop()
             container = await loop.run_in_executor(self.executor, _create_container)
 
+            # Create project workspace directory inside container
+            logger.info(f"[VM] Creating project workspace directory in container")
+            try:
+                # Create the project-specific directory inside /workspace
+                container.exec_run(["sh", "-c", f"mkdir -p /workspace/{project_id}"])
+                container.exec_run(["sh", "-c", f"chown -R root:root /workspace"])
+                container.exec_run(["sh", "-c", f"chmod -R 755 /workspace"])
+                logger.info(f"[VM] Project workspace directory created: /workspace/{project_id}")
+            except Exception as dir_error:
+                logger.error(f"[VM] Failed to create project directory: {dir_error}")
+                
             # Setup development environment
             logger.info(f"[VM] Setting up development environment in container")
             try:
@@ -168,40 +179,35 @@ class ContainerManager(IContainerManager):
         logger.info(f"[VM] Setting up {environment_type} environment in container {container.id[:12]}")
 
         setup_commands = {
+            "minimal": [
+                "apt-get update -qq",
+                "apt-get install -y bash coreutils git curl wget nano vim",
+                "apt-get clean",
+                "rm -rf /var/lib/apt/lists/*"
+            ],
             "python": [
                 "apt-get update -qq",
-                "apt-get install -y python3 python3-pip python3-venv git curl wget nano vim",
+                "apt-get install -y bash coreutils python3 python3-pip git curl wget nano vim",
                 "pip3 install --upgrade pip",
-                "pip3 install jupyter pandas numpy matplotlib requests flask fastapi uvicorn"
+                "apt-get clean",
+                "rm -rf /var/lib/apt/lists/*"
             ],
             "nodejs": [
                 "apt-get update -qq",
-                "apt-get install -y ca-certificates curl gnupg",
-                "mkdir -p /etc/apt/keyrings",
-                "curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /tmp/nodesource.key",
-                "gpg --dearmor < /tmp/nodesource.key > /etc/apt/keyrings/nodesource.gpg",
-                "echo \"deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main\" | tee /etc/apt/sources.list.d/nodesource.list",
-                "apt-get update -qq",
-                "apt-get install -y nodejs git wget nano vim",
-                "npm install -g typescript ts-node nodemon create-react-app @vue/cli"
+                "apt-get install -y bash coreutils nodejs npm git curl wget nano vim",
+                "apt-get clean",
+                "rm -rf /var/lib/apt/lists/*"
             ],
             "full": [
                 "apt-get update -qq",
-                "apt-get install -y python3 python3-pip git curl wget nano vim build-essential ca-certificates gnupg",
-                "mkdir -p /etc/apt/keyrings",
-                "curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /tmp/nodesource.key",
-                "gpg --dearmor < /tmp/nodesource.key > /etc/apt/keyrings/nodesource.gpg",
-                "echo \"deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main\" | tee /etc/apt/sources.list.d/nodesource.list",
-                "apt-get update -qq",
-                "apt-get install -y nodejs sqlite3 postgresql-client redis-tools",
+                "apt-get install -y bash coreutils python3 python3-pip nodejs npm git curl wget nano vim build-essential",
                 "pip3 install --upgrade pip",
-                "pip3 install jupyter pandas numpy matplotlib requests flask fastapi uvicorn django",
-                "npm install -g typescript ts-node nodemon create-react-app @vue/cli",
-                "apt-get clean && rm -rf /var/lib/apt/lists/*"
+                "apt-get clean",
+                "rm -rf /var/lib/apt/lists/*"
             ]
         }
 
-        commands = setup_commands.get(environment_type, setup_commands["full"])
+        commands = setup_commands.get(environment_type, setup_commands["minimal"])
 
         failed_commands = []
         
@@ -211,7 +217,7 @@ class ContainerManager(IContainerManager):
                 
                 # Run exec_run in thread pool to avoid blocking
                 def _exec_command():
-                    return container.exec_run(command, user="root")
+                    return container.exec_run(["sh", "-c", command], user="root")
                 
                 loop = asyncio.get_event_loop()
                 result = await loop.run_in_executor(self.executor, _exec_command)

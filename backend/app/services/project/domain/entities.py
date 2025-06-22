@@ -13,9 +13,8 @@ class Project:
     description: Optional[str]
     user_id: str
 
-    # E2B VM Integration
-    e2b_sandbox_id: Optional[str] = None
-    e2b_template_id: Optional[str] = None
+    # VM Integration
+    vm_container_id: Optional[str] = None
     vm_status: str = "inactive"  # inactive, starting, active, error, stopped
     vm_config: Optional[Dict[str, Any]] = None
     vm_url: Optional[str] = None
