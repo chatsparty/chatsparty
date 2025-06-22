@@ -148,7 +148,7 @@ class AIServiceFacade(AIServiceInterface):
             )
             # Use project-enhanced chat service for full VM access when in projects
             try:
-                from ...e2b.e2b_service import E2BService
+                from ...e2b import E2BService
                 from ...project.application.project_service import ProjectService
                 from ...project.infrastructure.project_repository import (
                     ProjectRepository,
@@ -210,7 +210,7 @@ class AIServiceFacade(AIServiceInterface):
 
             # Use project-enhanced chat service for streaming as well
             try:
-                from ...e2b.e2b_service import E2BService
+                from ...e2b import E2BService
                 from ...project.application.project_service import ProjectService
                 from ...project.infrastructure.project_repository import (
                     ProjectRepository,

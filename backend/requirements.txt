@@ -4,3 +4,4 @@ python-multipart>=0.0.6
 pydantic>=2.5.0
 python-dotenv>=1.0.0
 ollama>=0.1.0
+e2b-code-interpreter>=0.0.10

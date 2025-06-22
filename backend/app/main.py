@@ -22,10 +22,18 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app):
     # Startup
-    await db_manager.create_tables()
+    try:
+        await db_manager.create_tables()
+        print("✅ Database tables created successfully")
+    except Exception as e:
+        print(f"⚠️ Database table creation failed: {e}")
+        # Continue anyway - tables might already exist
     yield
     # Shutdown
-    await db_manager.close()
+    try:
+        await db_manager.close()
+    except Exception as e:
+        print(f"⚠️ Database cleanup failed: {e}")
 
 
 app = create_app(lifespan=lifespan)

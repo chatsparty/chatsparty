@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ...e2b.e2b_service import E2BService
+from ...vm_factory import get_vm_service
 from ...mcp.vm_tools import ProjectVMTools
 from ...storage.storage_factory import get_storage_provider
 from ..domain.entities import (
@@ -42,12 +42,12 @@ class ProjectService:
         project_repo: ProjectRepositoryInterface,
         file_repo: ProjectFileRepositoryInterface,
         vm_service_repo: ProjectVMServiceRepositoryInterface,
-        e2b_service: E2BService
+        vm_service=None  # Will use factory if not provided
     ):
         self.project_repo = project_repo
         self.file_repo = file_repo
         self.vm_service_repo = vm_service_repo
-        self.e2b_service = e2b_service
+        self.vm_service = vm_service or get_vm_service()
         self.storage_provider = get_storage_provider()
 
         # Active VM tools for each project
@@ -138,40 +138,71 @@ class ProjectService:
         - Execute complex workflows
         - Access all project files
         """
-        logger.info(f"Setting up VM workspace for project: {project_id}")
+        logger.info(f"[PROJECT_SERVICE] 🚀 Starting VM workspace setup for project: {project_id}")
+        logger.info(f"[PROJECT_SERVICE] VM provider: {type(self.vm_service).__name__}")
 
         try:
-            # Update project status
+            # Update project status to starting
+            logger.info(f"[PROJECT_SERVICE] 📝 Updating project {project_id} status to 'starting'")
             self.project_repo.update_vm_status(project_id, "starting")
+            logger.info(f"[PROJECT_SERVICE] ✅ Project status updated to 'starting'")
 
-            # Create E2B sandbox
-            vm_info = await self.e2b_service.create_project_sandbox(project_id)
+            # Create VM sandbox with timeout
+            logger.info(f"[PROJECT_SERVICE] 🔧 Creating VM sandbox for project {project_id}")
+            import asyncio
+            vm_info = await asyncio.wait_for(
+                self.vm_service.create_project_sandbox(project_id),
+                timeout=120  # 2 minute timeout
+            )
+            logger.info(f"[PROJECT_SERVICE] ✅ VM sandbox created successfully: {vm_info}")
 
             # Update project with VM information
-            self.project_repo.update_vm_info_detailed(
+            logger.info(f"[PROJECT_SERVICE] 📝 Updating project {project_id} status to 'active'")
+            update_success = self.project_repo.update_vm_info_detailed(
                 project_id=project_id,
                 sandbox_id=vm_info["sandbox_id"],
                 vm_status="active",
                 vm_config=vm_info
             )
+            
+            if update_success:
+                logger.info(f"[PROJECT_SERVICE] ✅ Project {project_id} status updated to 'active'")
+                logger.info(f"[PROJECT_SERVICE] 📋 Sandbox ID: {vm_info['sandbox_id']}")
+                
+                # Verify the update by reading back the project
+                updated_project = self.project_repo.get_by_id_only(project_id)
+                if updated_project:
+                    logger.info(f"[PROJECT_SERVICE] 🔍 Verified project status: {updated_project.vm_status}")
+                    logger.info(f"[PROJECT_SERVICE] 🔍 Verified sandbox ID: {updated_project.e2b_sandbox_id}")
+                else:
+                    logger.error(f"[PROJECT_SERVICE] ❌ Could not verify project update")
+            else:
+                logger.error(f"[PROJECT_SERVICE] ❌ Failed to update project status to 'active'")
 
             # Initialize VM tools for agents
-            logger.info(f"Creating VM tools for project {project_id}")
+            logger.info(f"[PROJECT_SERVICE] 🔧 Creating VM tools for project {project_id}")
             self.active_vm_tools[project_id] = ProjectVMTools(
-                self.e2b_service,
+                self.vm_service,
                 project_id
             )
-            logger.info(f"VM tools created successfully for project {project_id}")
+            logger.info(f"[PROJECT_SERVICE] ✅ VM tools created successfully for project {project_id}")
+            logger.info(f"[PROJECT_SERVICE] 📊 Active VM tools count: {len(self.active_vm_tools)}")
 
-            # Sync existing files to VM
-            await self.sync_files_to_vm(project_id)
+            # Skip file sync for now to speed up the process
+            # await self.sync_files_to_vm(project_id)
 
-            logger.info(f"VM workspace ready for project: {project_id}")
+            logger.info(f"[PROJECT_SERVICE] 🎉 ✅ VM workspace ready for project: {project_id}")
+            logger.info(f"[PROJECT_SERVICE] 🔗 VM URL: {vm_info.get('vm_url', 'N/A')}")
+            logger.info(f"[PROJECT_SERVICE] 📂 Workspace path: {vm_info.get('workspace_path', '/workspace')}")
             return vm_info
 
+        except asyncio.TimeoutError:
+            logger.error(f"[PROJECT_SERVICE] ⏰ ❌ Timeout creating VM workspace for {project_id} (120s limit)")
+            self.project_repo.update_vm_status(project_id, "error")
+            raise Exception("VM creation timed out")
         except Exception as e:
-            logger.error(
-                f"Failed to setup VM workspace for {project_id}: {str(e)}")
+            logger.error(f"[PROJECT_SERVICE] ❌ Failed to setup VM workspace for {project_id}: {str(e)}")
+            logger.error(f"[PROJECT_SERVICE] Error type: {type(e).__name__}")
             self.project_repo.update_vm_status(project_id, "error")
             raise
 
@@ -182,7 +213,7 @@ class ProjectService:
             services = []
 
             # Destroy E2B sandbox
-            await self.e2b_service.destroy_project_sandbox(project_id)
+            await self.vm_service.destroy_project_sandbox(project_id)
 
             # Update status
             self.project_repo.update_vm_status(project_id, "stopped")
@@ -196,7 +227,7 @@ class ProjectService:
 
     # ============= AGENT VM ACCESS =============
 
-    def get_vm_tools_for_project(self, project_id: str) -> Optional[ProjectVMTools]:
+    async def get_vm_tools_for_project(self, project_id: str) -> ProjectVMTools:
         """
         🔧 Get MCP tools that give agents FULL computer access
 
@@ -208,29 +239,86 @@ class ProjectService:
         - Access databases and APIs
         - Everything a developer can do!
         """
-        logger.info(f"Looking for VM tools for project {project_id}")
-        logger.info(f"Available VM tools: {list(self.active_vm_tools.keys())}")
+        logger.info(f"[PROJECT_SERVICE] 🔍 Looking for VM tools for project {project_id}")
+        logger.info(f"[PROJECT_SERVICE] 📋 Available VM tools: {list(self.active_vm_tools.keys())}")
+        logger.info(f"[PROJECT_SERVICE] 📊 Total active VM tools: {len(self.active_vm_tools)}")
         
         vm_tools = self.active_vm_tools.get(project_id)
         if not vm_tools:
-            logger.warning(f"No VM tools found for project {project_id}. Attempting to create them.")
+            logger.warning(f"[PROJECT_SERVICE] ⚠️ No VM tools found for project {project_id}. Attempting to create them.")
             # Try to create VM tools if they don't exist and the project has an active VM
             project = self.project_repo.get_by_id_only(project_id)
+            logger.info(f"[PROJECT_SERVICE] 📋 Project {project_id} details: vm_status={project.vm_status if project else 'None'}, sandbox_id={project.e2b_sandbox_id if project else 'None'}")
             if project and project.vm_status == "active":
-                logger.info(f"Project {project_id} has active VM status, creating VM tools")
-                try:
-                    self.active_vm_tools[project_id] = ProjectVMTools(
-                        self.e2b_service,
-                        project_id
-                    )
-                    vm_tools = self.active_vm_tools[project_id]
-                    logger.info(f"Successfully created VM tools for project {project_id}")
-                except Exception as e:
-                    logger.error(f"Failed to create VM tools for project {project_id}: {e}")
+                if project.e2b_sandbox_id:
+                    logger.info(f"[PROJECT_SERVICE] 🔄 Project {project_id} has active VM status, attempting to reconnect to sandbox {project.e2b_sandbox_id}")
+                    try:
+                        # First try to reconnect to the existing sandbox
+                        reconnected = await self.vm_service.reconnect_to_sandbox(project_id, project.e2b_sandbox_id)
+                        if reconnected:
+                            logger.info(f"[PROJECT_SERVICE] ✅ Successfully reconnected to sandbox {project.e2b_sandbox_id}")
+                            # Now create VM tools
+                            self.active_vm_tools[project_id] = ProjectVMTools(
+                                self.vm_service,
+                                project_id
+                            )
+                            vm_tools = self.active_vm_tools[project_id]
+                            logger.info(f"[PROJECT_SERVICE] ✅ Successfully created VM tools for project {project_id}")
+                        else:
+                            logger.error(f"[PROJECT_SERVICE] ❌ Failed to reconnect to sandbox {project.e2b_sandbox_id}")
+                            logger.info(f"[PROJECT_SERVICE] 🔄 Attempting to create new sandbox for project {project_id}")
+                            vm_tools = await self._create_new_sandbox_and_tools(project_id)
+                    except Exception as e:
+                        logger.error(f"[PROJECT_SERVICE] ❌ Failed to reconnect and create VM tools for project {project_id}: {e}")
+                        logger.info(f"[PROJECT_SERVICE] 🔄 Attempting to create new sandbox for project {project_id}")
+                        vm_tools = await self._create_new_sandbox_and_tools(project_id)
+                else:
+                    logger.warning(f"[PROJECT_SERVICE] ⚠️ Project {project_id} has active VM status but no sandbox_id - creating new sandbox")
+                    vm_tools = await self._create_new_sandbox_and_tools(project_id)
             else:
-                logger.warning(f"Project {project_id} VM not active (status: {project.vm_status if project else 'not found'})")
+                logger.warning(f"[PROJECT_SERVICE] ⚠️ Project {project_id} VM not active (status: {project.vm_status if project else 'not found'}, project exists: {project is not None})")
         
+        if not vm_tools:
+            logger.error(f"[PROJECT_SERVICE] ❌ No VM tools available for project: {project_id}")
+            raise ValueError(f"No VM tools available for project: {project_id}")
+        
+        logger.info(f"[PROJECT_SERVICE] ✅ VM tools retrieved successfully for project {project_id}")
         return vm_tools
+
+    async def _create_new_sandbox_and_tools(self, project_id: str) -> Optional[ProjectVMTools]:
+        """Create a new sandbox and VM tools for a project"""
+        try:
+            logger.info(f"Creating new E2B sandbox for project {project_id}")
+            
+            # Create new sandbox
+            vm_info = await self.vm_service.create_project_sandbox(
+                project_id=project_id,
+                environment_type="full"
+            )
+            
+            logger.info(f"New E2B sandbox created: {vm_info}")
+            
+            # Update project with new VM information
+            self.project_repo.update_vm_info_detailed(
+                project_id=project_id,
+                sandbox_id=vm_info["sandbox_id"],
+                vm_status="active",
+                vm_config=vm_info
+            )
+            
+            # Create VM tools
+            self.active_vm_tools[project_id] = ProjectVMTools(
+                self.vm_service,
+                project_id
+            )
+            
+            vm_tools = self.active_vm_tools[project_id]
+            logger.info(f"Successfully created new sandbox and VM tools for project {project_id}")
+            return vm_tools
+            
+        except Exception as e:
+            logger.error(f"Failed to create new sandbox for project {project_id}: {e}")
+            return None
 
     async def execute_agent_command(
         self,
@@ -239,12 +327,18 @@ class ProjectService:
         working_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """Execute command in project VM on behalf of an agent"""
-        vm_tools = self.get_vm_tools_for_project(project_id)
-        if not vm_tools:
-            raise ValueError(
-                f"No VM tools available for project: {project_id}")
-
-        return await vm_tools.execute_command(command, working_dir)
+        logger.info(f"[PROJECT_SERVICE] 🤖 Agent command execution for project {project_id}: {command}")
+        logger.info(f"[PROJECT_SERVICE] 📂 Working directory: {working_dir or 'default'}")
+        
+        vm_tools = await self.get_vm_tools_for_project(project_id)
+        result = await vm_tools.execute_command(command, working_dir)
+        
+        if result.get('success'):
+            logger.info(f"[PROJECT_SERVICE] ✅ Agent command executed successfully")
+        else:
+            logger.warning(f"[PROJECT_SERVICE] ⚠️ Agent command failed: {result.get('stderr', 'Unknown error')}")
+        
+        return result
 
     # ============= FILE MANAGEMENT =============
 
@@ -283,14 +377,13 @@ class ProjectService:
 
                     # Upload to VM
                     vm_path = f"/workspace/{file.file_name}"
-                    vm_tools = self.get_vm_tools_for_project(project_id)
-                    if vm_tools:
-                        await vm_tools.write_file(vm_path, file_content)
+                    vm_tools = await self.get_vm_tools_for_project(project_id)
+                    await vm_tools.write_file(vm_path, file_content)
 
-                        # Update sync status
-                        await self.file_repo.update_file_sync_status(
-                            file.id, True, vm_path
-                        )
+                    # Update sync status
+                    await self.file_repo.update_file_sync_status(
+                        file.id, True, vm_path
+                    )
 
             return True
 
@@ -317,11 +410,7 @@ class ProjectService:
         - Database: "docker run -p 5432:5432 postgres"
         - Jupyter: "jupyter notebook --ip=0.0.0.0 --allow-root"
         """
-        vm_tools = self.get_vm_tools_for_project(project_id)
-        if not vm_tools:
-            raise ValueError(
-                f"No VM tools available for project: {project_id}")
-
+        vm_tools = await self.get_vm_tools_for_project(project_id)
         # Start service in VM
         result = await vm_tools.start_service(service_name, command, port)
 
@@ -346,10 +435,7 @@ class ProjectService:
         if not service:
             return False
 
-        vm_tools = self.get_vm_tools_for_project(service.project_id)
-        if not vm_tools:
-            return False
-
+        vm_tools = await self.get_vm_tools_for_project(service.project_id)
         # Stop service in VM
         success = await vm_tools.stop_service(service_id)
 

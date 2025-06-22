@@ -5,7 +5,7 @@ MCP tools that provide agents with full computer access through project VMs
 import logging
 from typing import Any, Dict, List, Optional
 
-from ..e2b.e2b_service import E2BService
+from ..vm_factory import get_vm_service
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 class ProjectVMTools:
     """MCP tools that give agents complete VM access for project work"""
 
-    def __init__(self, e2b_service: E2BService, project_id: str):
-        self.e2b_service = e2b_service
+    def __init__(self, vm_service, project_id: str):
+        self.vm_service = vm_service
         self.project_id = project_id
 
     async def execute_command(self, command: str, working_dir: Optional[str] = None) -> Dict[str, Any]:
@@ -36,7 +36,7 @@ class ProjectVMTools:
             Dict with stdout, stderr, exit_code, execution_time
         """
         try:
-            result = await self.e2b_service.execute_command(
+            result = await self.vm_service.execute_command(
                 self.project_id, command, working_dir
             )
 
@@ -68,16 +68,20 @@ class ProjectVMTools:
         Returns:
             Dict with file content or error
         """
+        logger.info(f"[VM_TOOLS] 📖 Reading file for project {self.project_id}: {file_path}")
+        
         try:
-            content = await self.e2b_service.read_file(self.project_id, file_path)
-            return {
+            content = await self.vm_service.read_file(self.project_id, file_path)
+            result = {
                 "content": content,
                 "file_path": file_path,
                 "success": True
             }
+            logger.info(f"[VM_TOOLS] ✅ File read successfully, size: {len(content)} bytes")
+            return result
 
         except Exception as e:
-            logger.error(f"Failed to read file {file_path}: {e}")
+            logger.error(f"[VM_TOOLS] ❌ Failed to read file {file_path}: {e}")
             return {
                 "content": "",
                 "file_path": file_path,
@@ -98,7 +102,7 @@ class ProjectVMTools:
             Dict with success status
         """
         try:
-            success = await self.e2b_service.write_file(
+            success = await self.vm_service.write_file(
                 self.project_id, file_path, content, permissions
             )
 
@@ -127,7 +131,7 @@ class ProjectVMTools:
             Dict with file listing
         """
         try:
-            files = await self.e2b_service.list_directory(self.project_id, path)
+            files = await self.vm_service.list_directory(self.project_id, path)
             return {
                 "path": path,
                 "files": files,
@@ -162,12 +166,14 @@ class ProjectVMTools:
         Returns:
             Dict with installation result
         """
+        logger.info(f"[VM_TOOLS] 📦 Installing package for project {self.project_id}: {package} via {package_manager}")
+        
         try:
-            result = await self.e2b_service.install_package(
+            result = await self.vm_service.install_package(
                 self.project_id, package, package_manager
             )
 
-            return {
+            install_result = {
                 "package": package,
                 "package_manager": package_manager,
                 "stdout": result.stdout,
@@ -176,9 +182,16 @@ class ProjectVMTools:
                 "success": result.exit_code == 0,
                 "execution_time": result.execution_time
             }
+            
+            if result.exit_code == 0:
+                logger.info(f"[VM_TOOLS] ✅ Package '{package}' installed successfully in {result.execution_time:.2f}s")
+            else:
+                logger.error(f"[VM_TOOLS] ❌ Package '{package}' installation failed with exit code {result.exit_code}")
+                
+            return install_result
 
         except Exception as e:
-            logger.error(f"Failed to install package {package}: {e}")
+            logger.error(f"[VM_TOOLS] ❌ Failed to install package {package}: {e}")
             return {
                 "package": package,
                 "package_manager": package_manager,
@@ -202,7 +215,7 @@ class ProjectVMTools:
             Dict with service info and URLs
         """
         try:
-            result = await self.e2b_service.start_service(self.project_id, service_config)
+            result = await self.vm_service.start_service(self.project_id, service_config)
             return result
 
         except Exception as e:
@@ -223,7 +236,7 @@ class ProjectVMTools:
         """
         try:
             # Get basic sandbox info
-            info = await self.e2b_service.get_sandbox_info(self.project_id)
+            info = await self.vm_service.get_sandbox_info(self.project_id)
 
             if not info:
                 return {"error": "Sandbox not available", "success": False}

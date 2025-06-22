@@ -126,6 +126,16 @@ export const projectApi = {
     return response.data;
   },
 
+  async getVMFiles(
+    projectId: string,
+    path: string = "/workspace"
+  ): Promise<{ files: any }> {
+    const response = await api.get(`/api/projects/${projectId}/files`, {
+      params: { path },
+    });
+    return response.data;
+  },
+
   // ============= AGENT INTEGRATION =============
 
   async createProjectConversation(

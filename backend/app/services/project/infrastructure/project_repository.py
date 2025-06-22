@@ -135,20 +135,32 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
 
     def update_vm_status(self, project_id: str, status: str) -> bool:
         """Update VM status"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"[REPO] 📝 Updating VM status for project {project_id} to: {status}")
+        
         stmt = select(ProjectModel).where(ProjectModel.id == project_id)
         result = self.session.execute(stmt)
         db_project = result.scalar_one_or_none()
 
         if not db_project:
+            logger.error(f"[REPO] ❌ Project {project_id} not found in database")
             return False
 
+        old_status = db_project.vm_status
         db_project.vm_status = status
         db_project.last_vm_activity = datetime.now()
         db_project.updated_at = datetime.now()
 
-        self.session.commit()
-
-        return True
+        try:
+            self.session.commit()
+            logger.info(f"[REPO] ✅ VM status updated successfully: {old_status} -> {status}")
+            return True
+        except Exception as e:
+            logger.error(f"[REPO] ❌ Failed to commit VM status update: {e}")
+            self.session.rollback()
+            return False
 
     def update_vm_info_detailed(
         self,
@@ -158,6 +170,12 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         vm_config: dict
     ) -> bool:
         """Update VM information for a project (detailed version)"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"[REPO] 📝 Updating detailed VM info for project {project_id}")
+        logger.info(f"[REPO] Sandbox ID: {sandbox_id}, Status: {vm_status}")
+        
         stmt = select(ProjectModel).where(
             ProjectModel.id == project_id
         )
@@ -165,16 +183,28 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         db_project = result.scalar_one_or_none()
 
         if not db_project:
+            logger.error(f"[REPO] ❌ Project {project_id} not found for detailed VM update")
             return False
 
+        old_sandbox_id = db_project.e2b_sandbox_id
+        old_status = db_project.vm_status
+        
         db_project.e2b_sandbox_id = sandbox_id
         db_project.vm_status = vm_status
         db_project.vm_config = vm_config
         db_project.last_vm_activity = datetime.now()
         db_project.updated_at = datetime.now()
 
-        self.session.commit()
-        return True
+        try:
+            self.session.commit()
+            logger.info(f"[REPO] ✅ Detailed VM info updated successfully")
+            logger.info(f"[REPO] Sandbox: {old_sandbox_id} -> {sandbox_id}")
+            logger.info(f"[REPO] Status: {old_status} -> {vm_status}")
+            return True
+        except Exception as e:
+            logger.error(f"[REPO] ❌ Failed to commit detailed VM info update: {e}")
+            self.session.rollback()
+            return False
 
     def update_vm_status_secondary(self, project_id: str, status: str) -> bool:
         """Update VM status (secondary method)"""

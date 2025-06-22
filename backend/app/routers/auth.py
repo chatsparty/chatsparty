@@ -1,7 +1,10 @@
+import logging
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from ..core.database import get_db_session
 from ..core.config import settings
@@ -19,11 +22,18 @@ security = HTTPBearer()
 @router.get("/config", response_model=AuthConfigResponse)
 async def get_auth_config():
     """Get authentication configuration"""
-    return AuthConfigResponse(
-        social_auth_only=settings.social_auth_only,
-        google_enabled=bool(settings.google_client_id and settings.google_client_secret),
-        github_enabled=bool(settings.github_client_id and settings.github_client_secret)
-    )
+    try:
+        logger.info("Getting auth config...")
+        config = AuthConfigResponse(
+            social_auth_only=settings.social_auth_only,
+            google_enabled=bool(settings.google_client_id and settings.google_client_secret),
+            github_enabled=bool(settings.github_client_id and settings.github_client_secret)
+        )
+        logger.info("Auth config retrieved successfully")
+        return config
+    except Exception as e:
+        logger.error(f"Failed to get auth config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get authentication configuration")
 
 
 @router.post("/register", response_model=UserResponse)

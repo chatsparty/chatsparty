@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
     e2b_api_key: Optional[str] = None
+    vm_provider: str = "docker"
 
     # Authentication settings
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
