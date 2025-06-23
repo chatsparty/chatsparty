@@ -46,35 +46,20 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ projectId }) => {
   }, [sessions, createTerminalInstance, terminalInstances]);
 
   useEffect(() => {
-    let resizeTimeout: NodeJS.Timeout | null = null;
-
     const resizeHandler = () => {
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
+      if (activeSession) {
+        fitTerminal(activeSession.session_id);
       }
-
-      resizeTimeout = setTimeout(() => {
-        if (activeSession) {
-          console.log(
-            `[TERMINAL] Window resize triggered fit for ${activeSession.session_id}`
-          );
-          fitTerminal(activeSession.session_id);
-        }
-        resizeTimeout = null;
-      }, 500);
     };
 
     window.addEventListener("resize", resizeHandler);
     return () => {
       window.removeEventListener("resize", resizeHandler);
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
     };
   }, [activeSession, fitTerminal]);
 
   const handleCreateTerminal = async () => {
-    await createTerminalSession(24, 80);
+    await createTerminalSession();
   };
 
   const handleCloseTerminal = async (sessionId: string) => {
@@ -132,10 +117,10 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ projectId }) => {
               <button
                 key={session.session_id}
                 onClick={() => {
-                  console.log(
-                    `[TERMINAL] Switching to session ${session.session_id}`
-                  );
                   setActiveSession(session);
+                  setTimeout(() => {
+                    fitTerminal(session.session_id);
+                  }, 100);
                 }}
                 className={`px-3 py-1 text-sm rounded-t border-b-2 transition-colors ${
                   activeSession?.session_id === session.session_id

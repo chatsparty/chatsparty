@@ -36,7 +36,7 @@ export const useTerminal = ({
   const fitAddonsRef = useRef<Map<string, FitAddon>>(new Map());
 
   const createTerminalSession = useCallback(
-    async (rows: number = 24, cols: number = 80) => {
+    async () => {
       if (!isConnected) {
         setError("Socket.IO not connected");
         return null;
@@ -51,8 +51,6 @@ export const useTerminal = ({
           channel: "system",
           data: {
             project_id: projectId,
-            rows,
-            cols,
           },
           timestamp: new Date().toISOString(),
         };
@@ -113,23 +111,6 @@ export const useTerminal = ({
     [send]
   );
 
-  const resizeTerminal = useCallback(
-    async (sessionId: string, rows: number, cols: number) => {
-      const resizeMessage = {
-        type: MessageType.TERMINAL_RESIZE,
-        channel: "system",
-        data: {
-          terminal_id: sessionId,
-          rows,
-          cols,
-        },
-        timestamp: new Date().toISOString(),
-      };
-
-      send(resizeMessage);
-    },
-    [send]
-  );
 
   const createTerminalInstance = useCallback(
     (sessionId: string, container: HTMLElement) => {
@@ -151,8 +132,6 @@ export const useTerminal = ({
         fontFamily:
           '"JetBrains Mono", "Fira Code", "Source Code Pro", monospace',
         fontSize: 14,
-        rows: 24,
-        cols: 80,
         cursorBlink: true,
         cursorStyle: "block",
         convertEol: true,
@@ -167,95 +146,37 @@ export const useTerminal = ({
       terminal.loadAddon(new WebLinksAddon());
 
       terminal.open(container);
-
-      setTimeout(() => {
-        fitAddon.fit();
-        const dims = fitAddon.proposeDimensions();
-        if (dims) {
-          resizeTerminal(sessionId, dims.rows, dims.cols);
-        }
-      }, 100);
+      fitAddon.fit();
 
       terminal.onData((data) => {
-        if (data === "\t") {
-          console.log(`[TERMINAL] Tab key pressed in session ${sessionId}`);
-        }
-
         sendTerminalInput(sessionId, data);
-      });
-
-      terminal.onResize(({ rows, cols }) => {
-        console.log(
-          `[TERMINAL] Terminal resize event: ${sessionId} -> ${cols}x${rows}`
-        );
-        resizeTerminal(sessionId, rows, cols);
       });
 
       terminalsRef.current.set(sessionId, terminal);
       fitAddonsRef.current.set(sessionId, fitAddon);
 
-      let resizeTimeout: NodeJS.Timeout | null = null;
-      const resizeObserver = new ResizeObserver(() => {
-        if (resizeTimeout) {
-          clearTimeout(resizeTimeout);
-        }
-
-        resizeTimeout = setTimeout(() => {
-          fitAddon.fit();
-          const dims = fitAddon.proposeDimensions();
-          if (dims) {
-            console.log(
-              `[TERMINAL] Container resize triggered fit: ${sessionId} -> ${dims.cols}x${dims.rows}`
-            );
-            resizeTerminal(sessionId, dims.rows, dims.cols);
-          }
-          resizeTimeout = null;
-        }, 300);
-      });
-      resizeObserver.observe(container);
-
       return terminal;
     },
-    [sendTerminalInput, resizeTerminal]
+    [sendTerminalInput]
   );
 
   const fitTerminal = useCallback(
     (sessionId: string) => {
       const fitAddon = fitAddonsRef.current.get(sessionId);
-      const terminal = terminalsRef.current.get(sessionId);
-
-      if (fitAddon && terminal) {
-        setTimeout(() => {
-          try {
-            fitAddon.fit();
-            const dims = fitAddon.proposeDimensions();
-            if (dims && dims.rows > 0 && dims.cols > 0) {
-              resizeTerminal(sessionId, dims.rows, dims.cols);
-            }
-          } catch (error) {
-            console.warn(
-              `[TERMINAL] Error fitting terminal ${sessionId}:`,
-              error
-            );
-          }
-        }, 150);
+      if (fitAddon) {
+        try {
+          fitAddon.fit();
+        } catch (error) {
+          console.warn(
+            `[TERMINAL] Error fitting terminal ${sessionId}:`,
+            error
+          );
+        }
       }
     },
-    [resizeTerminal]
+    []
   );
 
-  useEffect(() => {
-    if (
-      activeSession?.session_id &&
-      terminalsRef.current.has(activeSession.session_id)
-    ) {
-      const timeoutId = setTimeout(() => {
-        fitTerminal(activeSession.session_id);
-      }, 200);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [activeSession?.session_id, fitTerminal]);
 
   useEffect(() => {
     if (!isConnected) return;
@@ -351,9 +272,6 @@ export const useTerminal = ({
           setActiveSession(newSession);
         }
 
-        setTimeout(() => {
-          fitTerminal(terminal_id);
-        }, 200);
 
         setIsCreatingSession(false);
       }
@@ -414,11 +332,6 @@ export const useTerminal = ({
     createTerminalSession,
   ]);
 
-  const forceRefitActiveTerminal = useCallback(() => {
-    if (activeSession?.session_id) {
-      fitTerminal(activeSession.session_id);
-    }
-  }, [activeSession?.session_id, fitTerminal]);
 
   return {
     sessions,
@@ -430,7 +343,6 @@ export const useTerminal = ({
     closeTerminalSession,
     createTerminalInstance,
     fitTerminal,
-    forceRefitActiveTerminal,
     isConnected,
   };
 };
