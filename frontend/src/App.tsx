@@ -14,6 +14,7 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { AuthPage } from "./components/auth/AuthPage";
 import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { WebSocketProvider } from "./services/websocket/useWebSocket";
 import { useTracking } from "./hooks/useTracking";
 import {
   AgentManagerPage,
@@ -256,7 +257,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <MainApp />
+        <WebSocketProvider>
+          <MainApp />
+        </WebSocketProvider>
       </AuthProvider>
     </Router>
   );

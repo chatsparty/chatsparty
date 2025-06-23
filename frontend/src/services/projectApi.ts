@@ -136,6 +136,34 @@ export const projectApi = {
     return response.data;
   },
 
+  async deleteFile(
+    projectId: string,
+    filePath: string,
+    isFolder: boolean = false,
+    recursive: boolean = false
+  ): Promise<{ success: boolean; message: string }> {
+    console.log(`[PROJECT_API] 🗑️ Sending delete request:`);
+    console.log(`- URL: /api/projects/${projectId}/files/delete`);
+    console.log(`- Payload:`, {
+      path: filePath,
+      is_folder: isFolder,
+      recursive: recursive,
+    });
+
+    const response = await api.delete(`/api/projects/${projectId}/files/delete`, {
+      data: {
+        path: filePath,
+        is_folder: isFolder,
+        recursive: recursive,
+      },
+    });
+
+    console.log(`[PROJECT_API] ✅ Delete response:`, response.data);
+    console.log(`[PROJECT_API] Status:`, response.status);
+    
+    return response.data;
+  },
+
   // ============= AGENT INTEGRATION =============
 
   async createProjectConversation(

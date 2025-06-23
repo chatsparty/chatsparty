@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Authentication Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; max-width: 800px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .log { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; margin: 10px 0; border-radius: 5px; max-height: 300px; overflow-y: auto; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 15px; margin: 5px; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ced4da; border-radius: 4px; width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 WebSocket Authentication Debug Tool</h1>
+    <p>This tool helps debug WebSocket authentication issues with the file system events.</p>
+    
+    <div id="status" class="status disconnected">❌ Not Connected</div>
+    
+    <div>
+        <h3>Token Management</h3>
+        <button onclick="getTokenFromLocalStorage()">Get Token from localStorage</button>
+        <button onclick="testAuthEndpoint()">Test Auth Endpoint</button>
+        <button onclick="clearTokens()">Clear All Tokens</button>
+        <br>
+        <input type="text" id="manualToken" placeholder="Or paste token manually...">
+        <button onclick="useManualToken()">Use Manual Token</button>
+    </div>
+    
+    <div>
+        <h3>WebSocket Connection</h3>
+        <button onclick="connectWebSocket()">Connect WebSocket</button>
+        <button onclick="subscribeToEvents()">Subscribe to File Events</button>
+        <button onclick="disconnectWebSocket()">Disconnect</button>
+    </div>
+    
+    <div>
+        <h3>📋 Debug Log</h3>
+        <div id="log" class="log">
+            <div style="color: #6c757d; font-style: italic;">Debug log will appear here...</div>
+        </div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentToken = null;
+        const projectId = 'fe013868-67a1-4207-bd7a-4911fd598aa1'; // Your project ID
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: '#007bff',
+                success: '#28a745',
+                error: '#dc3545',
+                warning: '#ffc107'
+            };
+            
+            const entry = document.createElement('div');
+            entry.style.cssText = `margin: 5px 0; padding: 5px; border-left: 4px solid ${colors[type]}; background-color: white;`;
+            entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        function updateStatus(connected, message) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.innerHTML = '✅ ' + message;
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.innerHTML = '❌ ' + message;
+            }
+        }
+
+        function getTokenFromLocalStorage() {
+            const accessToken = localStorage.getItem('access_token');
+            const refreshToken = localStorage.getItem('refresh_token');
+            
+            if (accessToken) {
+                currentToken = accessToken;
+                log(`✅ Found access token: ${accessToken.substring(0, 20)}...`, 'success');
+                
+                // Try to decode JWT to see expiration
+                try {
+                    const payload = JSON.parse(atob(accessToken.split('.')[1]));
+                    const exp = new Date(payload.exp * 1000);
+                    log(`🕒 Token expires: ${exp.toLocaleString()}`, 'info');
+                    
+                    if (exp < new Date()) {
+                        log(`⚠️ Token is EXPIRED!`, 'error');
+                    } else {
+                        log(`✅ Token is still valid`, 'success');
+                    }
+                } catch (e) {
+                    log(`⚠️ Could not decode token: ${e.message}`, 'warning');
+                }
+            } else {
+                log(`❌ No access token found in localStorage`, 'error');
+            }
+            
+            if (refreshToken) {
+                log(`📋 Found refresh token: ${refreshToken.substring(0, 20)}...`, 'info');
+            } else {
+                log(`❌ No refresh token found in localStorage`, 'error');
+            }
+        }
+
+        async function testAuthEndpoint() {
+            if (!currentToken) {
+                log(`❌ No token available. Get token first.`, 'error');
+                return;
+            }
+
+            try {
+                log(`🔍 Testing auth endpoint with current token...`, 'info');
+                
+                const response = await fetch('http://localhost:8000/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    log(`✅ Auth endpoint success: ${userData.email}`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Auth endpoint failed: ${response.status} - ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Auth endpoint error: ${error.message}`, 'error');
+            }
+        }
+
+        function useManualToken() {
+            const manualToken = document.getElementById('manualToken').value;
+            if (manualToken) {
+                currentToken = manualToken;
+                log(`📝 Using manual token: ${manualToken.substring(0, 20)}...`, 'info');
+            } else {
+                log(`❌ Please enter a token`, 'error');
+            }
+        }
+
+        function clearTokens() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            currentToken = null;
+            log(`🗑️ Cleared all tokens from localStorage`, 'info');
+        }
+
+        function connectWebSocket() {
+            if (!currentToken) {
+                log(`❌ No token available. Get token first.`, 'error');
+                return;
+            }
+
+            if (ws) {
+                ws.close();
+            }
+
+            const wsUrl = `ws://localhost:8000/ws?token=${encodeURIComponent(currentToken)}`;
+            log(`🔌 Connecting to WebSocket: ${wsUrl.substring(0, 50)}...`, 'info');
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = function() {
+                    updateStatus(true, 'WebSocket Connected');
+                    log(`✅ WebSocket connection successful!`, 'success');
+                };
+
+                ws.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        log(`📨 Received: ${JSON.stringify(message, null, 2)}`, 'info');
+                    } catch (e) {
+                        log(`📨 Received (raw): ${event.data}`, 'info');
+                    }
+                };
+
+                ws.onclose = function(event) {
+                    updateStatus(false, `Disconnected (code: ${event.code})`);
+                    log(`❌ WebSocket closed: Code ${event.code} - ${event.reason}`, 'error');
+                    
+                    if (event.code === 4001) {
+                        log(`🔒 Authentication failed! Check token validity.`, 'error');
+                    }
+                };
+
+                ws.onerror = function(error) {
+                    updateStatus(false, 'Connection Error');
+                    log(`❌ WebSocket error: ${error}`, 'error');
+                };
+
+            } catch (error) {
+                updateStatus(false, 'Failed to Connect');
+                log(`❌ WebSocket connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        function subscribeToEvents() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log(`❌ WebSocket not connected. Connect first.`, 'error');
+                return;
+            }
+
+            const subscribeMessage = {
+                type: "subscribe",
+                channel: "system",
+                data: { channel: `project:${projectId}:files` },
+                timestamp: new Date().toISOString()
+            };
+
+            ws.send(JSON.stringify(subscribeMessage));
+            log(`📡 Subscribed to file events for project: ${projectId}`, 'success');
+        }
+
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            updateStatus(false, 'Disconnected');
+            log(`🔌 WebSocket disconnected manually`, 'info');
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div style="color: #6c757d; font-style: italic;">Debug log cleared...</div>';
+        }
+
+        // Auto-load token on page load
+        window.onload = function() {
+            getTokenFromLocalStorage();
+        };
+    </script>
+</body>
+</html>
