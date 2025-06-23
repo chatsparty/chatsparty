@@ -67,7 +67,15 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // WebSocket integration for real-time file system events
+  const [inlineEditing, setInlineEditing] = useState<{
+    parentPath: string;
+    type: "file" | "folder";
+    name: string;
+  } | null>(null);
+  const [inlineInputRef, setInlineInputRef] = useState<HTMLInputElement | null>(
+    null
+  );
+
   const { recentEvents, clearEvents } = useFileSystemWebSocket(
     project?.id || ""
   );
@@ -83,7 +91,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       setError(null);
       const response = await projectApi.getVMFiles(project.id);
 
-      // Transform the API response to FileTreeItem format
       const transformFileData = (data: {
         name: string;
         type: string;
@@ -109,13 +116,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
   useEffect(() => {
     fetchFileStructure();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, project?.vm_status]);
 
-  // Refresh file structure when WebSocket events occur
   useEffect(() => {
     if (recentEvents.length > 0) {
-      // Debounce file structure refresh to avoid too many API calls
       const timeoutId = setTimeout(() => {
         fetchFileStructure();
       }, 1000);
@@ -130,7 +134,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
     }
   }, [project?.id]);
 
-  // Start file watching when component mounts
   useEffect(() => {
     const startWatching = async () => {
       if (project?.id && project?.vm_status === "active") {
@@ -147,7 +150,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
     startWatching();
 
     return () => {
-      // Stop watching when component unmounts
       if (project?.id) {
         axios
           .delete(`${API_BASE_URL}/api/projects/${project.id}/files/watch`)
@@ -165,7 +167,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
     try {
       const fullPath = `${currentPath}/${newItemName}`;
 
-      // Use the new WebSocket-enabled file creation API
       await axios.post(
         `${API_BASE_URL}/api/projects/${project.id}/files/create`,
         {
@@ -175,15 +176,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         }
       );
 
-      // Close dialog and reset
       setShowCreateDialog(false);
       setNewItemName("");
-
-      // Note: File structure will be automatically updated via WebSocket events
     } catch (err: any) {
       console.error(`Failed to create ${createType}:`, err);
 
-      // Extract error message from response
       let errorMessage = `Failed to create ${createType}`;
       if (err.response?.data?.detail) {
         errorMessage = err.response.data.detail;
@@ -200,13 +197,96 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   const openCreateDialog = (type: "file" | "folder") => {
     setCreateType(type);
     setNewItemName("");
-    setError(null); // Clear any previous errors
+    setError(null);
     setShowCreateDialog(true);
+  };
+
+  const startInlineCreation = (parentPath: string, type: "file" | "folder") => {
+    if (!expandedFolders.has(parentPath)) {
+      onToggleFolder(parentPath);
+    }
+
+    setInlineEditing({
+      parentPath,
+      type,
+      name: "",
+    });
+
+    setTimeout(() => {
+      if (inlineInputRef) {
+        inlineInputRef.focus();
+      }
+    }, 0);
+  };
+
+  const handleInlineInputKeyDown = async (
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key === "Enter") {
+      await confirmInlineCreation();
+    } else if (e.key === "Escape") {
+      cancelInlineCreation();
+    }
+  };
+
+  const confirmInlineCreation = async () => {
+    if (!inlineEditing || !inlineEditing.name.trim()) {
+      cancelInlineCreation();
+      return;
+    }
+
+    setCreating(true);
+
+    try {
+      const fullPath =
+        `${inlineEditing.parentPath}/${inlineEditing.name}`.replace(
+          /\/+/g,
+          "/"
+        );
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/projects/${project?.id}/files/create`,
+        {
+          path: fullPath,
+          is_folder: inlineEditing.type === "folder",
+          content: inlineEditing.type === "file" ? "" : undefined,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        await fetchFileStructure();
+        setInlineEditing(null);
+
+        if (inlineEditing.type === "file") {
+          onOpenFile(fullPath, inlineEditing.name);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to create item:", error);
+      setError("Failed to create " + inlineEditing.type);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const cancelInlineCreation = () => {
+    setInlineEditing(null);
+  };
+
+  const updateInlineEditingName = (name: string) => {
+    if (inlineEditing) {
+      setInlineEditing({ ...inlineEditing, name });
+    }
   };
 
   const openDeleteDialog = (name: string, path: string, isFolder: boolean) => {
     setItemToDelete({ name, path, isFolder });
-    setError(null); // Clear any previous errors
+    setError(null);
     setShowDeleteDialog(true);
   };
 
@@ -215,7 +295,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
     setDeleting(true);
     try {
-      // Convert relative path to full path
       const fullPath = itemToDelete.path.startsWith("/workspace")
         ? itemToDelete.path
         : `${currentPath}/${itemToDelete.name}`;
@@ -231,26 +310,24 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         project.id,
         fullPath,
         itemToDelete.isFolder,
-        true // recursive deletion for folders
+        true
       );
 
       console.log(`[DELETE] ✅ API call successful:`, result);
 
-      // Close dialog and reset
       setShowDeleteDialog(false);
       setItemToDelete(null);
-
-      // Note: File structure will be automatically updated via WebSocket events
     } catch (err: any) {
       console.error(
-        `[DELETE] ❌ Failed to delete ${itemToDelete.isFolder ? "folder" : "file"}:`,
+        `[DELETE] ❌ Failed to delete ${
+          itemToDelete.isFolder ? "folder" : "file"
+        }:`,
         err
       );
       console.error(`[DELETE] Full error object:`, err);
       console.error(`[DELETE] Response data:`, err.response?.data);
       console.error(`[DELETE] Response status:`, err.response?.status);
 
-      // Extract error message from response
       let errorMessage = `Failed to delete ${
         itemToDelete.isFolder ? "folder" : "file"
       }`;
@@ -298,24 +375,72 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               <span className="text-foreground">{item.name}</span>
             </div>
             {project?.vm_status === "active" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openDeleteDialog(item.name, fullPath, true);
-                }}
-                title="Delete folder"
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-blue-500 hover:text-blue-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startInlineCreation(fullPath, "file");
+                  }}
+                  title="New file in this folder"
+                >
+                  <FilePlus className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-blue-500 hover:text-blue-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startInlineCreation(fullPath, "folder");
+                  }}
+                  title="New folder in this folder"
+                >
+                  <FolderPlus className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDeleteDialog(item.name, fullPath, true);
+                  }}
+                  title="Delete folder"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
             )}
           </div>
           {isExpanded && item.children && (
             <div>
               {item.children.map((child) =>
                 renderFileTree(child, fullPath, depth + 1)
+              )}
+              {inlineEditing && inlineEditing.parentPath === fullPath && (
+                <div
+                  className="flex items-center gap-1 px-2 py-1 text-sm"
+                  style={{ paddingLeft: `${(depth + 1) * 12 + 20}px` }}
+                >
+                  {inlineEditing.type === "folder" ? (
+                    <Folder className="w-4 h-4 text-blue-500" />
+                  ) : (
+                    <File className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <Input
+                    ref={setInlineInputRef}
+                    value={inlineEditing.name}
+                    onChange={(e) => updateInlineEditingName(e.target.value)}
+                    onKeyDown={handleInlineInputKeyDown}
+                    onBlur={confirmInlineCreation}
+                    className="h-6 text-sm border-none p-0 focus:ring-0 bg-transparent"
+                    placeholder={`New ${inlineEditing.type} name`}
+                    autoFocus
+                  />
+                </div>
               )}
             </div>
           )}
@@ -417,6 +542,27 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               {fileStructure.children.map((child) =>
                 renderFileTree(child, fileStructure.path || "/workspace", 0)
               )}
+              {inlineEditing &&
+                inlineEditing.parentPath ===
+                  (fileStructure.path || "/workspace") && (
+                  <div className="flex items-center gap-1 px-2 py-1 text-sm">
+                    {inlineEditing.type === "folder" ? (
+                      <Folder className="w-4 h-4 text-blue-500" />
+                    ) : (
+                      <File className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Input
+                      ref={setInlineInputRef}
+                      value={inlineEditing.name}
+                      onChange={(e) => updateInlineEditingName(e.target.value)}
+                      onKeyDown={handleInlineInputKeyDown}
+                      onBlur={confirmInlineCreation}
+                      className="h-6 text-sm border-none p-0 focus:ring-0 bg-transparent"
+                      placeholder={`New ${inlineEditing.type} name`}
+                      autoFocus
+                    />
+                  </div>
+                )}
             </div>
           ) : (
             <div className="p-4 text-center">
@@ -424,13 +570,33 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 No files in workspace yet
               </p>
               <p className="text-xs text-muted-foreground">
-                Upload files or create them using the console
+                Create new files using the buttons below
               </p>
+              {inlineEditing &&
+                inlineEditing.parentPath ===
+                  (fileStructure?.path || "/workspace") && (
+                  <div className="flex items-center gap-1 px-2 py-1 text-sm mt-2">
+                    {inlineEditing.type === "folder" ? (
+                      <Folder className="w-4 h-4 text-blue-500" />
+                    ) : (
+                      <File className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Input
+                      ref={setInlineInputRef}
+                      value={inlineEditing.name}
+                      onChange={(e) => updateInlineEditingName(e.target.value)}
+                      onKeyDown={handleInlineInputKeyDown}
+                      onBlur={confirmInlineCreation}
+                      className="h-6 text-sm border-none p-0 focus:ring-0 bg-transparent"
+                      placeholder={`New ${inlineEditing.type} name`}
+                      autoFocus
+                    />
+                  </div>
+                )}
             </div>
           )}
         </div>
 
-        {/* Recent Events Panel */}
         {recentEvents.length > 0 && (
           <div className="border-t border-border bg-muted/50">
             <div className="p-2">
@@ -464,11 +630,12 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           </div>
         )}
 
-        {/* Create file/folder buttons */}
         {project?.vm_status === "active" ? (
           <div className="p-2 border-t border-border flex gap-2">
             <Button
-              onClick={() => openCreateDialog("file")}
+              onClick={() =>
+                startInlineCreation(fileStructure?.path || "/workspace", "file")
+              }
               variant="ghost"
               size="sm"
               className="flex-1 justify-start"
@@ -477,7 +644,12 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               New File
             </Button>
             <Button
-              onClick={() => openCreateDialog("folder")}
+              onClick={() =>
+                startInlineCreation(
+                  fileStructure?.path || "/workspace",
+                  "folder"
+                )
+              }
               variant="ghost"
               size="sm"
               className="flex-1 justify-start"
@@ -496,7 +668,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         )}
       </div>
 
-      {/* Create file/folder dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
           <DialogHeader>
@@ -557,7 +728,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>

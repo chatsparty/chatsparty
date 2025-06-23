@@ -164,6 +164,28 @@ export const projectApi = {
     return response.data;
   },
 
+  async readFile(
+    projectId: string,
+    filePath: string
+  ): Promise<{ success: boolean; content: string; file_path: string }> {
+    const response = await api.get(`/api/projects/${projectId}/files/read`, {
+      params: { file_path: filePath },
+    });
+    return response.data;
+  },
+
+  async writeFile(
+    projectId: string,
+    filePath: string,
+    content: string
+  ): Promise<{ success: boolean; message: string; file_path: string }> {
+    const response = await api.post(`/api/projects/${projectId}/files/write`, {
+      path: filePath,
+      content: content,
+    });
+    return response.data;
+  },
+
   // ============= AGENT INTEGRATION =============
 
   async createProjectConversation(
