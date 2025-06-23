@@ -3,7 +3,7 @@ import json
 import logging
 import asyncio
 import aiohttp
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime
 
 from ...project.domain.entities import ProjectFile, VMCommandResult
@@ -114,10 +114,8 @@ class FlyProvider(VMProviderInterface):
             
             machine_id = response["id"]
             
-            # Wait for machine to start
             await self._wait_for_machine_state(machine_id, "started")
             
-            # Get updated machine info
             machine_info = await self._get_machine_info(machine_id)
             
             return {
@@ -157,10 +155,8 @@ class FlyProvider(VMProviderInterface):
         logger.info(f"[FLY_PROVIDER] Reconnecting to sandbox {sandbox_id} for project {project_id}")
         
         try:
-            # Start the machine
             await self._make_request("POST", f"/apps/{self.app_name}/machines/{sandbox_id}/start")
             
-            # Wait for it to be started
             await self._wait_for_machine_state(sandbox_id, "started")
             
             return True
@@ -195,7 +191,6 @@ class FlyProvider(VMProviderInterface):
         logger.info(f"[FLY_PROVIDER] Destroying sandbox for project {project_id}")
         
         try:
-            # Find machine by name
             machines = await self._make_request("GET", f"/apps/{self.app_name}/machines")
             machine_id = None
             
@@ -208,7 +203,6 @@ class FlyProvider(VMProviderInterface):
                 logger.warning(f"[FLY_PROVIDER] No machine found for project {project_id}")
                 return True
             
-            # Stop and destroy machine
             await self._make_request("POST", f"/apps/{self.app_name}/machines/{machine_id}/stop")
             await self._make_request("DELETE", f"/apps/{self.app_name}/machines/{machine_id}")
             
@@ -220,8 +214,6 @@ class FlyProvider(VMProviderInterface):
 
     def is_sandbox_active(self, project_id: str) -> bool:
         """Check if Fly machine is active for project"""
-        # This would need to be implemented as async, but interface expects sync
-        # For now, return False and let the caller use get_or_reconnect_sandbox
         return False
 
     async def get_sandbox_info(self, project_id: str) -> Optional[Dict[str, Any]]:
@@ -255,21 +247,17 @@ class FlyProvider(VMProviderInterface):
         """Destroy the Fly machine for a project"""
         return await self.destroy_sandbox(project_id)
 
-    # File Management Methods
     async def sync_files_to_vm(
         self, 
         project_id: str, 
         files: List[ProjectFile]
     ) -> bool:
         """Sync project files to the Fly machine workspace"""
-        # This would require implementing file transfer over SSH or similar
-        # For now, return True as placeholder
         logger.warning("[FLY_PROVIDER] sync_files_to_vm not fully implemented")
         return True
 
     async def read_file(self, project_id: str, file_path: str) -> str:
         """Read file content from Fly machine filesystem"""
-        # This would require SSH or exec into machine
         logger.warning("[FLY_PROVIDER] read_file not fully implemented")
         return ""
 
@@ -281,7 +269,6 @@ class FlyProvider(VMProviderInterface):
         permissions: Optional[str] = None
     ) -> bool:
         """Write content to file in Fly machine filesystem"""
-        # This would require SSH or exec into machine
         logger.warning("[FLY_PROVIDER] write_file not fully implemented")
         return True
 
@@ -291,7 +278,6 @@ class FlyProvider(VMProviderInterface):
         path: str = "/workspace"
     ) -> List[Dict[str, Any]]:
         """List directory contents in Fly machine"""
-        # This would require SSH or exec into machine
         logger.warning("[FLY_PROVIDER] list_directory not fully implemented")
         return []
 
@@ -301,11 +287,9 @@ class FlyProvider(VMProviderInterface):
         path: str = "/workspace"
     ) -> Dict[str, Any]:
         """List files recursively in a tree structure"""
-        # This would require SSH or exec into machine
         logger.warning("[FLY_PROVIDER] list_files_recursive not fully implemented")
         return {"name": "workspace", "path": "/workspace", "type": "directory"}
 
-    # Command Execution Methods
     async def execute_command(
         self, 
         project_id: str, 
@@ -315,7 +299,6 @@ class FlyProvider(VMProviderInterface):
     ) -> VMCommandResult:
         """Execute command in Fly machine"""
         try:
-            # Find machine ID
             machines = await self._make_request("GET", f"/apps/{self.app_name}/machines")
             machine_id = None
             
@@ -331,7 +314,6 @@ class FlyProvider(VMProviderInterface):
                     stderr="Machine not found"
                 )
             
-            # Execute command via Fly API
             exec_payload = {
                 "cmd": command.split(),
                 "timeout": timeout or 30
@@ -373,7 +355,6 @@ class FlyProvider(VMProviderInterface):
             
         return await self.execute_command(project_id, command)
 
-    # Service Management Methods
     async def start_service(
         self, 
         project_id: str, 
@@ -385,7 +366,6 @@ class FlyProvider(VMProviderInterface):
         port = service_config.get("port")
 
         try:
-            # Start service in background
             start_command = f"nohup {command} > /tmp/{service_name}.log 2>&1 & echo $!"
             result = await self.execute_command(project_id, start_command)
 
@@ -421,4 +401,66 @@ class FlyProvider(VMProviderInterface):
             return result.exit_code == 0
         except Exception as e:
             logger.error(f"[FLY_PROVIDER] Failed to stop service with PID {process_id}: {e}")
+            return False
+
+    async def setup_file_watcher(self, project_id: str, callback: Callable[[str, str, str], None]) -> None:
+        """Setup file system watcher for project (not supported in Fly.io)"""
+        logger.warning(f"[FLY_PROVIDER] File watching not supported for remote Fly.io instances")
+        pass
+
+    async def stop_file_watcher(self, project_id: str) -> None:
+        """Stop file system watcher for project (not supported in Fly.io)"""
+        logger.warning(f"[FLY_PROVIDER] File watching not supported for remote Fly.io instances")
+        pass
+
+    async def create_file(self, project_id: str, file_path: str, content: str = "") -> bool:
+        """Create a new file with specified content"""
+        try:
+            return await self.write_file(project_id, file_path, content)
+        except Exception as e:
+            logger.error(f"[FLY_PROVIDER] Error creating file {file_path}: {e}")
+            return False
+
+    async def create_directory(self, project_id: str, dir_path: str) -> bool:
+        """Create a new directory"""
+        try:
+            result = await self.execute_command(
+                project_id, 
+                f"mkdir -p {dir_path}",
+                working_dir="/workspace"
+            )
+            return result.exit_code == 0
+        except Exception as e:
+            logger.error(f"[FLY_PROVIDER] Error creating directory {dir_path}: {e}")
+            return False
+
+    async def delete_file(self, project_id: str, file_path: str) -> bool:
+        """Delete a file"""
+        try:
+            result = await self.execute_command(
+                project_id, 
+                f"rm -f {file_path}",
+                working_dir="/workspace"
+            )
+            return result.exit_code == 0
+        except Exception as e:
+            logger.error(f"[FLY_PROVIDER] Error deleting file {file_path}: {e}")
+            return False
+
+    async def delete_directory(self, project_id: str, dir_path: str, recursive: bool = False) -> bool:
+        """Delete a directory (optionally recursive)"""
+        try:
+            if recursive:
+                command = f"rm -rf {dir_path}"
+            else:
+                command = f"rmdir {dir_path}"
+            
+            result = await self.execute_command(
+                project_id, 
+                command,
+                working_dir="/workspace"
+            )
+            return result.exit_code == 0
+        except Exception as e:
+            logger.error(f"[FLY_PROVIDER] Error deleting directory {dir_path}: {e}")
             return False

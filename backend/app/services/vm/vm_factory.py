@@ -78,14 +78,23 @@ class VMProviderFactory:
         logger.info(f"[VM_FACTORY] Registered new provider: {name}")
 
 
+# Global singleton instance
+_vm_service_instance = None
+
 def get_vm_service(provider_type: str = None) -> VMProviderInterface:
     """
-    Convenience function to get a VM service instance
+    Convenience function to get a VM service instance (singleton)
     
     Args:
         provider_type: VM provider type ("docker", "fly")
         
     Returns:
-        VMProviderInterface instance
+        VMProviderInterface instance (singleton)
     """
-    return VMProviderFactory.create_provider(provider_type)
+    global _vm_service_instance
+    
+    if _vm_service_instance is None:
+        _vm_service_instance = VMProviderFactory.create_provider(provider_type)
+        logger.info(f"[VM_FACTORY] Created singleton VM service instance")
+    
+    return _vm_service_instance

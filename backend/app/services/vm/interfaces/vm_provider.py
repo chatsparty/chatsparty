@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -84,7 +84,6 @@ class VMProviderInterface(ABC):
         """Destroy the VM/container for a project"""
         pass
 
-    # File Management Methods
     @abstractmethod
     async def sync_files_to_vm(
         self, 
@@ -128,7 +127,6 @@ class VMProviderInterface(ABC):
         """List files recursively in a tree structure"""
         pass
 
-    # Command Execution Methods
     @abstractmethod
     async def execute_command(
         self, 
@@ -150,7 +148,6 @@ class VMProviderInterface(ABC):
         """Install software packages in the VM/container"""
         pass
 
-    # Service Management Methods
     @abstractmethod
     async def start_service(
         self, 
@@ -163,4 +160,38 @@ class VMProviderInterface(ABC):
     @abstractmethod
     async def stop_service(self, project_id: str, process_id: int) -> bool:
         """Stop a service by process ID"""
+        pass
+
+    @abstractmethod
+    async def setup_file_watcher(self, project_id: str, callback: Callable[[str, str, str], None]) -> None:
+        """
+        Setup file system watcher for project
+        callback(event_type, file_path, project_id)
+        event_type: 'created', 'modified', 'deleted', 'folder_created'
+        """
+        pass
+
+    @abstractmethod
+    async def stop_file_watcher(self, project_id: str) -> None:
+        """Stop file system watcher for project"""
+        pass
+
+    @abstractmethod
+    async def create_file(self, project_id: str, file_path: str, content: str = "") -> bool:
+        """Create a new file with specified content"""
+        pass
+
+    @abstractmethod
+    async def create_directory(self, project_id: str, dir_path: str) -> bool:
+        """Create a new directory"""
+        pass
+
+    @abstractmethod
+    async def delete_file(self, project_id: str, file_path: str) -> bool:
+        """Delete a file"""
+        pass
+
+    @abstractmethod
+    async def delete_directory(self, project_id: str, dir_path: str, recursive: bool = False) -> bool:
+        """Delete a directory (optionally recursive)"""
         pass

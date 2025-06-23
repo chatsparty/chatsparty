@@ -20,7 +20,6 @@ class ContainerManager(IContainerManager):
     def __init__(self):
         try:
             self.client = docker.from_env()
-            # Test Docker connection
             self.client.ping()
             logger.info("Docker client connected successfully")
         except Exception as e:
@@ -29,7 +28,6 @@ class ContainerManager(IContainerManager):
 
         self.active_containers: Dict[str, Container] = {}
         self.base_image = "ubuntu:22.04"
-        # Thread pool for blocking Docker operations
         self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="docker-")
 
     async def create_project_container(
@@ -43,11 +41,9 @@ class ContainerManager(IContainerManager):
             logger.info(f"[VM] Starting container creation process for project {project_id}")
             logger.info(f"[VM] Environment type: {environment_type}, Template: {template_id}")
 
-            # Container configuration
             container_name = f"chatsparty-project-{project_id}"
             logger.info(f"[VM] Container name: {container_name}")
 
-            # Check if container already exists and remove it
             try:
                 existing_container = self.client.containers.get(container_name)
                 logger.info(f"[VM] Found existing container {container_name}, removing it first")
@@ -58,7 +54,6 @@ class ContainerManager(IContainerManager):
             except Exception as e:
                 logger.warning(f"[VM] Failed to remove existing container: {e}")
 
-            # Create workspace directory on host
             workspace_path = f"/tmp/chatsparty/projects/{project_id}"
             logger.info(f"[VM] Creating workspace directory: {workspace_path}")
             os.makedirs(workspace_path, exist_ok=True)
@@ -66,13 +61,12 @@ class ContainerManager(IContainerManager):
 
             logger.info(f"[VM] Base image: {self.base_image}")
             
-            # Create and start container (in thread pool to avoid blocking)
             logger.info(f"[VM] Starting container with Docker API...")
             
             def _create_container():
                 return self.client.containers.run(
                     image=self.base_image,
-                    command="tail -f /dev/null",  # Keep container alive
+                    command="tail -f /dev/null",
                     detach=True,
                     name=container_name,
                     volumes={
@@ -83,31 +77,27 @@ class ContainerManager(IContainerManager):
                     },
                     working_dir="/workspace",
                     ports={
-                        '3000/tcp': None,  # React dev server
-                        '8000/tcp': None,  # Django/FastAPI
-                        '5000/tcp': None,  # Flask
-                        '8080/tcp': None,  # Generic web server
+                        '3000/tcp': None,
+                        '8000/tcp': None,
+                        '5000/tcp': None,
+                        '8080/tcp': None,
                     },
                     environment={
                         'PROJECT_ID': project_id,
                         'DEBIAN_FRONTEND': 'noninteractive',
                         'HOME': '/workspace'
                     },
-                    user="root",  # Allow full system access
-                    # Security settings
+                    user="root",
                     mem_limit="2g",
-                    cpu_quota=100000,  # 1 CPU core
-                    security_opt=["seccomp:unconfined"],  # Allow system calls
+                    cpu_quota=100000,
+                    security_opt=["seccomp:unconfined"],
                 )
             
-            # Run container creation in thread pool
             loop = asyncio.get_event_loop()
             container = await loop.run_in_executor(self.executor, _create_container)
 
-            # Create project workspace directory inside container
             logger.info(f"[VM] Creating project workspace directory in container")
             try:
-                # Create the project-specific directory inside /workspace
                 container.exec_run(["sh", "-c", f"mkdir -p /workspace/{project_id}"])
                 container.exec_run(["sh", "-c", f"chown -R root:root /workspace"])
                 container.exec_run(["sh", "-c", f"chmod -R 755 /workspace"])
@@ -115,19 +105,15 @@ class ContainerManager(IContainerManager):
             except Exception as dir_error:
                 logger.error(f"[VM] Failed to create project directory: {dir_error}")
                 
-            # Setup development environment
             logger.info(f"[VM] Setting up development environment in container")
             try:
                 await self._setup_container_environment(container, environment_type)
                 logger.info(f"[VM] Development environment setup completed")
             except Exception as env_error:
                 logger.error(f"[VM] ⚠️ Environment setup failed but container is still usable: {env_error}")
-                # Don't raise the exception - container is still created and usable
 
-            # Store container reference
             self.active_containers[project_id] = container
 
-            # Get assigned ports
             container.reload()
             assigned_ports = {}
             for port, bindings in (container.ports or {}).items():
@@ -143,7 +129,6 @@ class ContainerManager(IContainerManager):
             logger.info(f"[VM] Container name: {container_name}")
             logger.info(f"[VM] Container status: {container.status}")
 
-            # Verify container is actually running
             container.reload()
             actual_status = container.status
             logger.info(f"[VM] Container actual status after creation: {actual_status}")
@@ -162,7 +147,6 @@ class ContainerManager(IContainerManager):
                 f"[VM] ❌ Failed to create Docker container for project {project_id}: {e}"
             )
             logger.error(f"[VM] Container creation error details: {str(e)}")
-            # Clean up if container was partially created
             try:
                 container = self.client.containers.get(container_name)
                 container.remove(force=True)
@@ -215,7 +199,6 @@ class ContainerManager(IContainerManager):
             try:
                 logger.info(f"[VM] Running setup command {i}/{len(commands)}: {command[:50]}...")
                 
-                # Run exec_run in thread pool to avoid blocking
                 def _exec_command():
                     return container.exec_run(["sh", "-c", command], user="root")
                 
@@ -235,7 +218,6 @@ class ContainerManager(IContainerManager):
                 logger.error(f"[VM] Failed to run setup command '{command[:50]}...': {e}")
                 failed_commands.append(command)
         
-        # Try fallback for Node.js if the complex setup failed
         if any("nodesource" in cmd for cmd in failed_commands):
             logger.info(f"[VM] 🔄 Attempting fallback Node.js installation...")
             try:
@@ -268,7 +250,6 @@ class ContainerManager(IContainerManager):
                 logger.info(f"[VM] ✅ Started existing container for project {project_id}")
                 return True
             else:
-                # Try to find existing container by name
                 container_name = f"chatsparty-project-{project_id}"
                 def _find_and_start():
                     try:
@@ -311,14 +292,12 @@ class ContainerManager(IContainerManager):
             def _destroy_containers():
                 container_found = False
                 
-                # First check active containers
                 if project_id in self.active_containers:
                     container = self.active_containers[project_id]
                     container.remove(force=True)
                     del self.active_containers[project_id]
                     container_found = True
                 
-                # Also try to find and remove by name (in case it's not in active_containers)
                 container_name = f"chatsparty-project-{project_id}"
                 try:
                     container = self.client.containers.get(container_name)
@@ -337,7 +316,7 @@ class ContainerManager(IContainerManager):
             else:
                 logger.info(f"[VM] ℹ️ No container found for project {project_id} (already cleaned up)")
                 
-            return True  # Return True even if no container found (cleanup is successful)
+            return True
             
         except Exception as e:
             logger.error(f"[VM] ❌ Failed to destroy container for project {project_id}: {e}")
@@ -346,8 +325,8 @@ class ContainerManager(IContainerManager):
     def is_container_active(self, project_id: str) -> bool:
         """Check if container is active for project"""
         try:
-            if project_id in self.active_containers:
-                container = self.active_containers[project_id]
+            container = self.get_container(project_id)
+            if container:
                 container.reload()
                 return container.status == 'running'
             return False
@@ -366,7 +345,6 @@ class ContainerManager(IContainerManager):
         container = self.active_containers[project_id]
 
         try:
-            # Get system information
             cpu_result = container.exec_run("nproc")
             memory_result = container.exec_run("free -h")
             disk_result = container.exec_run("df -h /")
@@ -408,4 +386,25 @@ class ContainerManager(IContainerManager):
 
     def get_container(self, project_id: str) -> Optional[Container]:
         """Get the container instance for a project"""
-        return self.active_containers.get(project_id)
+        if project_id in self.active_containers:
+            return self.active_containers[project_id]
+        
+        try:
+            container_name = f"chatsparty-project-{project_id}"
+            container = self.client.containers.get(container_name)
+            
+            container.reload()
+            if container.status == 'running':
+                self.active_containers[project_id] = container
+                logger.info(f"[VM] ✅ Found and reconnected to existing container for project {project_id}")
+                return container
+            else:
+                logger.warning(f"[VM] ⚠️ Found container for project {project_id} but it's not running (status: {container.status})")
+                return None
+                
+        except docker.errors.NotFound:
+            logger.debug(f"[VM] No container found for project {project_id}")
+            return None
+        except Exception as e:
+            logger.error(f"[VM] ❌ Error looking up container for project {project_id}: {e}")
+            return None

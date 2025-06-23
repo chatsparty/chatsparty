@@ -125,7 +125,6 @@ class AIServiceFacade(AIServiceInterface):
                 agent_repo,
                 conv_repo
             )
-            # Use enhanced chat service for MCP tool support
             enhanced_chat_service = EnhancedChatService(base_chat_service)
             return await enhanced_chat_service.agent_chat(agent_id, message, conversation_id, user_id)
 
@@ -146,23 +145,19 @@ class AIServiceFacade(AIServiceInterface):
                 agent_repo,
                 conv_repo
             )
-            # Use project-enhanced chat service for full VM access when in projects
             try:
-                from ...project.application.project_service import ProjectService
-                from ...project.infrastructure.project_repository import (
+                from services.project.application.services import ProjectService
+                from services.project.infrastructure.project_repository import (
                     ProjectRepository,
                 )
 
-                # Create project service (simplified dependency injection)
-                # In production, you'd use proper DI container
                 project_repo = ProjectRepository(conv_repo.db_session)
                 project_service = ProjectService(
                     project_repo=project_repo,
-                    file_repo=None,  # TODO: Implement when needed
-                    vm_service_repo=None,  # TODO: Implement when needed
+                    file_repo=None,
+                    vm_service_repo=None,
                 )
 
-                # Use project-enhanced chat service
                 enhanced_chat_service = ProjectEnhancedChatService(
                     base_chat_service, project_service
                 )
@@ -171,7 +166,6 @@ class AIServiceFacade(AIServiceInterface):
                     user_id, file_attachments, project_id
                 )
             except ImportError:
-                # Fallback to regular enhanced chat if project service not available
                 enhanced_chat_service = EnhancedChatService(base_chat_service)
                 conversation_messages = await enhanced_chat_service.multi_agent_conversation(
                     conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
@@ -205,10 +199,9 @@ class AIServiceFacade(AIServiceInterface):
                 conv_repo
             )
 
-            # Use project-enhanced chat service for streaming as well
             try:
-                from ...project.application.project_service import ProjectService
-                from ...project.infrastructure.project_repository import (
+                from services.project.application.services import ProjectService
+                from services.project.infrastructure.project_repository import (
                     ProjectRepository,
                 )
 
@@ -228,7 +221,6 @@ class AIServiceFacade(AIServiceInterface):
                 ):
                     yield message
             except ImportError:
-                # Fallback to regular chat service
                 async for message in base_chat_service.multi_agent_conversation_stream(
                     conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
                 ):

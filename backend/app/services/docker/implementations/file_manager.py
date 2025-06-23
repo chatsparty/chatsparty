@@ -2,6 +2,7 @@ import logging
 import os
 import tarfile
 import tempfile
+import io
 from pathlib import Path
 from typing import List, Optional
 
@@ -33,26 +34,21 @@ class DockerFileManager:
 
         try:
             for file in files:
-                # Download file from storage
                 file_content = await self._download_file_from_storage(
                     file.file_path
                 )
 
-                # Determine container path
                 container_path = file.vm_path or f"/workspace/{file.filename}"
 
-                # Write file to container using tar stream
                 await self._write_file_to_container(
                     container, container_path, file_content
                 )
 
-                # Set file permissions if specified
                 if file.file_permissions:
                     container.exec_run(
                         f"chmod {file.file_permissions} {container_path}"
                     )
 
-                # Make executable if needed
                 if file.is_executable:
                     container.exec_run(f"chmod +x {container_path}")
 
@@ -75,7 +71,6 @@ class DockerFileManager:
             raise ValueError(f"No active container for project {project_id}")
 
         try:
-            # Read file using cat command
             result = container.exec_run(f"cat {file_path}")
             if result.exit_code == 0:
                 return result.output.decode()
@@ -98,10 +93,8 @@ class DockerFileManager:
             raise ValueError(f"No active container for project {project_id}")
 
         try:
-            # Write file to container
             await self._write_file_to_container(container, file_path, content)
 
-            # Set permissions if specified
             if permissions:
                 container.exec_run(["sh", "-c", f"chmod {permissions} {file_path}"])
 
@@ -130,9 +123,8 @@ class DockerFileManager:
             output = result.output.decode()
             files = []
 
-            # Parse ls -la output
             lines = output.strip().split('\n')
-            for line in lines[1:]:  # Skip first line (total)
+            for line in lines[1:]:
                 if line.strip():
                     parts = line.split()
                     if len(parts) >= 9:
@@ -176,7 +168,6 @@ class DockerFileManager:
 
         def build_tree(current_path: str) -> FileTreeNode:
             try:
-                # List directory contents
                 result = container.exec_run(f"ls -1 {current_path}")
                 if result.exit_code != 0:
                     return FileTreeNode(
@@ -188,7 +179,6 @@ class DockerFileManager:
                 output = result.output.decode().strip()
                 paths = [line.strip() for line in output.split('\n') if line.strip()]
 
-                # Get the current directory name
                 dir_name = (
                     os.path.basename(current_path)
                     if current_path != "/workspace"
@@ -201,23 +191,19 @@ class DockerFileManager:
                     type="directory"
                 )
 
-                # Process each item
                 for item_name in paths:
                     if not item_name or item_name in ['.', '..']:
                         continue
 
                     item_path = f"{current_path}/{item_name}"
 
-                    # Check if it's a directory
                     check_result = container.exec_run(f"test -d {item_path}")
                     is_dir = check_result.exit_code == 0
 
                     if is_dir:
-                        # Recursively build subdirectory
                         subdir = build_tree(item_path)
                         node.children.append(subdir)
                     else:
-                        # Add file
                         node.children.append(FileTreeNode(
                             name=item_name,
                             path=item_path,
@@ -246,26 +232,20 @@ class DockerFileManager:
     ) -> None:
         """Write file to container using tar stream"""
         try:
-            # Create directory if needed
             dir_path = str(Path(file_path).parent)
             container.exec_run(f"mkdir -p {dir_path}")
 
-            # Create a tar archive with the file content
             with tempfile.NamedTemporaryFile() as temp_tar:
                 with tarfile.open(temp_tar.name, 'w') as tar:
-                    # Create tar info
                     tarinfo = tarfile.TarInfo(name=os.path.basename(file_path))
                     tarinfo.size = len(content.encode())
                     tarinfo.mode = 0o644
 
-                    # Add file to tar
-                    tar.addfile(tarinfo, fileobj=tempfile.BytesIO(content.encode()))
+                    tar.addfile(tarinfo, fileobj=io.BytesIO(content.encode()))
 
-                # Read tar content
                 temp_tar.seek(0)
                 tar_data = temp_tar.read()
 
-            # Extract tar to container
             container.put_archive(path=dir_path, data=tar_data)
 
         except Exception as e:
@@ -274,7 +254,5 @@ class DockerFileManager:
 
     async def _download_file_from_storage(self, file_path: str) -> str:
         """Download file content from storage provider"""
-        # TODO: Implement actual file download from storage
-        # For now, return empty string
-        _ = file_path  # Suppress unused parameter warning
+        _ = file_path
         return ""
