@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useWebSocket } from "../services/websocket/useWebSocket";
-import { MessageType } from "../services/websocket/WebSocketService";
+import { useSocketIO } from "../services/socketio/useSocketIO";
+import { MessageType } from "../services/socketio/SocketIOService";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -23,8 +23,8 @@ export const useTerminal = ({
   projectId,
   autoCreate = false,
 }: UseTerminalOptions) => {
-  const { subscribe, unsubscribe, onMessage, offMessage, isConnected } =
-    useWebSocket();
+  const { subscribe, unsubscribe, onMessage, offMessage, isConnected, send } =
+    useSocketIO();
   const [sessions, setSessions] = useState<TerminalSession[]>([]);
   const [activeSession, setActiveSession] = useState<TerminalSession | null>(
     null
@@ -34,12 +34,11 @@ export const useTerminal = ({
 
   const terminalsRef = useRef<Map<string, Terminal>>(new Map());
   const fitAddonsRef = useRef<Map<string, FitAddon>>(new Map());
-  const currentLineRef = useRef<Map<string, string>>(new Map());
 
   const createTerminalSession = useCallback(
     async (rows: number = 24, cols: number = 80) => {
       if (!isConnected) {
-        setError("WebSocket not connected");
+        setError("Socket.IO not connected");
         return null;
       }
 
@@ -58,10 +57,7 @@ export const useTerminal = ({
           timestamp: new Date().toISOString(),
         };
 
-        const { webSocketService } = await import(
-          "../services/websocket/WebSocketService"
-        );
-        webSocketService.send(createMessage);
+        send(createMessage);
 
         return true;
       } catch (err) {
@@ -71,7 +67,7 @@ export const useTerminal = ({
         setIsCreatingSession(false);
       }
     },
-    [isConnected, projectId]
+    [isConnected, projectId, send]
   );
 
   const closeTerminalSession = useCallback(
@@ -79,21 +75,17 @@ export const useTerminal = ({
       const closeMessage = {
         type: MessageType.TERMINAL_CLOSE,
         channel: "system",
-        data: { session_id: sessionId },
+        data: { terminal_id: sessionId },
         timestamp: new Date().toISOString(),
       };
 
-      const { webSocketService } = await import(
-        "../services/websocket/WebSocketService"
-      );
-      webSocketService.send(closeMessage);
+      send(closeMessage);
 
       const terminal = terminalsRef.current.get(sessionId);
       if (terminal) {
         terminal.dispose();
         terminalsRef.current.delete(sessionId);
         fitAddonsRef.current.delete(sessionId);
-        currentLineRef.current.delete(sessionId);
       }
 
       setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
@@ -101,7 +93,7 @@ export const useTerminal = ({
         setActiveSession(null);
       }
     },
-    [activeSession]
+    [activeSession, send]
   );
 
   const sendTerminalInput = useCallback(
@@ -110,18 +102,15 @@ export const useTerminal = ({
         type: MessageType.TERMINAL_INPUT,
         channel: "system",
         data: {
-          session_id: sessionId,
+          terminal_id: sessionId,
           input,
         },
         timestamp: new Date().toISOString(),
       };
 
-      const { webSocketService } = await import(
-        "../services/websocket/WebSocketService"
-      );
-      webSocketService.send(inputMessage);
+      send(inputMessage);
     },
-    []
+    [send]
   );
 
   const resizeTerminal = useCallback(
@@ -130,19 +119,16 @@ export const useTerminal = ({
         type: MessageType.TERMINAL_RESIZE,
         channel: "system",
         data: {
-          session_id: sessionId,
+          terminal_id: sessionId,
           rows,
           cols,
         },
         timestamp: new Date().toISOString(),
       };
 
-      const { webSocketService } = await import(
-        "../services/websocket/WebSocketService"
-      );
-      webSocketService.send(resizeMessage);
+      send(resizeMessage);
     },
-    []
+    [send]
   );
 
   const createTerminalInstance = useCallback(
@@ -172,6 +158,8 @@ export const useTerminal = ({
         convertEol: true,
         scrollback: 1000,
         fastScrollModifier: "alt",
+        disableStdin: false,
+        allowTransparency: false,
       });
 
       const fitAddon = new FitAddon();
@@ -179,38 +167,50 @@ export const useTerminal = ({
       terminal.loadAddon(new WebLinksAddon());
 
       terminal.open(container);
-      fitAddon.fit();
+
+      setTimeout(() => {
+        fitAddon.fit();
+        const dims = fitAddon.proposeDimensions();
+        if (dims) {
+          resizeTerminal(sessionId, dims.rows, dims.cols);
+        }
+      }, 100);
 
       terminal.onData((data) => {
-        let currentLine = currentLineRef.current.get(sessionId) || "";
-
-        if (data === "\r") {
-          terminal.write("\r\n");
-          currentLineRef.current.set(sessionId, "");
-        } else if (data === "\u007f" || data === "\b") {
-          if (currentLine.length > 0) {
-            terminal.write("\b \b");
-            currentLine = currentLine.slice(0, -1);
-            currentLineRef.current.set(sessionId, currentLine);
-          }
-        } else if (data >= " " || data === "\t") {
-          terminal.write(data);
-          currentLine += data;
-          currentLineRef.current.set(sessionId, currentLine);
+        if (data === "\t") {
+          console.log(`[TERMINAL] Tab key pressed in session ${sessionId}`);
         }
 
         sendTerminalInput(sessionId, data);
       });
 
       terminal.onResize(({ rows, cols }) => {
+        console.log(
+          `[TERMINAL] Terminal resize event: ${sessionId} -> ${cols}x${rows}`
+        );
         resizeTerminal(sessionId, rows, cols);
       });
 
       terminalsRef.current.set(sessionId, terminal);
       fitAddonsRef.current.set(sessionId, fitAddon);
 
+      let resizeTimeout: NodeJS.Timeout | null = null;
       const resizeObserver = new ResizeObserver(() => {
-        fitAddon.fit();
+        if (resizeTimeout) {
+          clearTimeout(resizeTimeout);
+        }
+
+        resizeTimeout = setTimeout(() => {
+          fitAddon.fit();
+          const dims = fitAddon.proposeDimensions();
+          if (dims) {
+            console.log(
+              `[TERMINAL] Container resize triggered fit: ${sessionId} -> ${dims.cols}x${dims.rows}`
+            );
+            resizeTerminal(sessionId, dims.rows, dims.cols);
+          }
+          resizeTimeout = null;
+        }, 300);
       });
       resizeObserver.observe(container);
 
@@ -219,12 +219,43 @@ export const useTerminal = ({
     [sendTerminalInput, resizeTerminal]
   );
 
-  const fitTerminal = useCallback((sessionId: string) => {
-    const fitAddon = fitAddonsRef.current.get(sessionId);
-    if (fitAddon) {
-      fitAddon.fit();
+  const fitTerminal = useCallback(
+    (sessionId: string) => {
+      const fitAddon = fitAddonsRef.current.get(sessionId);
+      const terminal = terminalsRef.current.get(sessionId);
+
+      if (fitAddon && terminal) {
+        setTimeout(() => {
+          try {
+            fitAddon.fit();
+            const dims = fitAddon.proposeDimensions();
+            if (dims && dims.rows > 0 && dims.cols > 0) {
+              resizeTerminal(sessionId, dims.rows, dims.cols);
+            }
+          } catch (error) {
+            console.warn(
+              `[TERMINAL] Error fitting terminal ${sessionId}:`,
+              error
+            );
+          }
+        }, 150);
+      }
+    },
+    [resizeTerminal]
+  );
+
+  useEffect(() => {
+    if (
+      activeSession?.session_id &&
+      terminalsRef.current.has(activeSession.session_id)
+    ) {
+      const timeoutId = setTimeout(() => {
+        fitTerminal(activeSession.session_id);
+      }, 200);
+
+      return () => clearTimeout(timeoutId);
     }
-  }, []);
+  }, [activeSession?.session_id, fitTerminal]);
 
   useEffect(() => {
     if (!isConnected) return;
@@ -264,24 +295,85 @@ export const useTerminal = ({
       const { session_id, output } = message.data;
       const terminal = terminalsRef.current.get(session_id);
 
+      console.log(
+        `[TERMINAL] Output received for session ${session_id}:`,
+        output
+      );
+
       if (terminal && output) {
         terminal.write(output);
       }
     };
 
     const handleTerminalList = (message: any) => {
-      const { sessions: sessionList } = message.data;
-      setSessions(sessionList);
+      const { terminals: sessionList } = message.data;
+      if (sessionList) {
+        setSessions(sessionList);
 
-      sessionList.forEach((session: TerminalSession) => {
-        const channel = `project:${projectId}:terminal:${session.session_id}`;
+        sessionList.forEach((session: TerminalSession) => {
+          const channel = `project:${projectId}:terminal:${session.session_id}`;
+          subscribe(channel);
+        });
+      }
+    };
+
+    const handleSuccess = (message: any) => {
+      const { terminal_id, project_id } = message.data;
+
+      if (
+        terminal_id &&
+        project_id &&
+        message.data.message === "Terminal created"
+      ) {
+        console.log(`[TERMINAL] Terminal created successfully: ${terminal_id}`);
+
+        const newSession: TerminalSession = {
+          session_id: terminal_id,
+          project_id: project_id,
+          status: "active",
+          created_at: new Date().toISOString(),
+          rows: 24,
+          cols: 80,
+        };
+
+        setSessions((prev) => {
+          const existing = prev.find((s) => s.session_id === terminal_id);
+          if (!existing) {
+            return [...prev, newSession];
+          }
+          return prev;
+        });
+
+        const channel = `project:${projectId}:terminal:${terminal_id}`;
         subscribe(channel);
-      });
+
+        if (!activeSession) {
+          setActiveSession(newSession);
+        }
+
+        setTimeout(() => {
+          fitTerminal(terminal_id);
+        }, 200);
+
+        setIsCreatingSession(false);
+      }
+
+      if (message.data.message) {
+        console.log(`[TERMINAL] Success: ${message.data.message}`);
+      }
+    };
+
+    const handleError = (message: any) => {
+      console.error(`[TERMINAL] Error: ${message.data.message}`);
+      setError(message.data.message);
+      setIsCreatingSession(false);
     };
 
     onMessage(MessageType.TERMINAL_STATUS, handleTerminalStatus);
     onMessage(MessageType.TERMINAL_OUTPUT, handleTerminalOutput);
     onMessage(MessageType.TERMINAL_LIST, handleTerminalList);
+    onMessage(MessageType.SUCCESS, handleSuccess);
+    onMessage(MessageType.ERROR, handleError);
 
     const listMessage = {
       type: MessageType.TERMINAL_LIST,
@@ -290,11 +382,7 @@ export const useTerminal = ({
       timestamp: new Date().toISOString(),
     };
 
-    import("../services/websocket/WebSocketService").then(
-      ({ webSocketService }) => {
-        webSocketService.send(listMessage);
-      }
-    );
+    send(listMessage);
 
     if (autoCreate && sessions.length === 0) {
       createTerminalSession();
@@ -304,6 +392,8 @@ export const useTerminal = ({
       offMessage(MessageType.TERMINAL_STATUS, handleTerminalStatus);
       offMessage(MessageType.TERMINAL_OUTPUT, handleTerminalOutput);
       offMessage(MessageType.TERMINAL_LIST, handleTerminalList);
+      offMessage(MessageType.SUCCESS, handleSuccess);
+      offMessage(MessageType.ERROR, handleError);
 
       sessions.forEach((session) => {
         const channel = `project:${projectId}:terminal:${session.session_id}`;
@@ -320,8 +410,15 @@ export const useTerminal = ({
     unsubscribe,
     onMessage,
     offMessage,
+    send,
     createTerminalSession,
   ]);
+
+  const forceRefitActiveTerminal = useCallback(() => {
+    if (activeSession?.session_id) {
+      fitTerminal(activeSession.session_id);
+    }
+  }, [activeSession?.session_id, fitTerminal]);
 
   return {
     sessions,
@@ -333,6 +430,7 @@ export const useTerminal = ({
     closeTerminalSession,
     createTerminalInstance,
     fitTerminal,
+    forceRefitActiveTerminal,
     isConnected,
   };
 };

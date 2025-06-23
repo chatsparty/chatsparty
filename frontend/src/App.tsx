@@ -14,7 +14,7 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { AuthPage } from "./components/auth/AuthPage";
 import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { WebSocketProvider } from "./services/websocket/useWebSocket";
+import { SocketIOProvider } from "./services/socketio/useSocketIO";
 import { useTracking } from "./hooks/useTracking";
 import {
   AgentManagerPage,
@@ -39,7 +39,6 @@ const Layout = () => {
     const currentPath = location.pathname;
     const previousPath = previousLocationRef.current;
 
-    // Track page view
     const getPageName = (path: string) => {
       if (path === "/projects") return "projects";
       if (path.startsWith("/projects/")) return "project_details";
@@ -55,7 +54,6 @@ const Layout = () => {
 
     trackPageView(getPageName(currentPath));
 
-    // Track navigation if not the first load
     if (previousPath && previousPath !== currentPath) {
       trackNavigation(getPageName(previousPath), getPageName(currentPath));
     }
@@ -84,7 +82,6 @@ const Layout = () => {
     logout();
   };
 
-  // If user is not authenticated, render AuthPage without layout
   if (!user) {
     return <AuthPage />;
   }
@@ -216,8 +213,10 @@ const MainApp = () => {
     );
   }
 
-  // Handle ProjectDetailsPage outside of main layout
-  if (location.pathname.startsWith("/projects/") && location.pathname !== "/projects") {
+  if (
+    location.pathname.startsWith("/projects/") &&
+    location.pathname !== "/projects"
+  ) {
     return (
       <div className="h-screen w-screen bg-background">
         <Routes>
@@ -257,9 +256,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <WebSocketProvider>
+        <SocketIOProvider>
           <MainApp />
-        </WebSocketProvider>
+        </SocketIOProvider>
       </AuthProvider>
     </Router>
   );

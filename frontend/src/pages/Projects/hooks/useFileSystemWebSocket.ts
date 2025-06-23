@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useWebSocket } from '../../../services/websocket/useWebSocket';
-import { MessageType } from '../../../services/websocket/WebSocketService';
+import { useSocketIO } from '../../../services/socketio/useSocketIO';
+import { MessageType } from '../../../services/socketio/SocketIOService';
 
 interface FileSystemEvent {
   file_path: string;
@@ -11,7 +11,7 @@ interface FileSystemEvent {
 }
 
 export const useFileSystemWebSocket = (projectId: string) => {
-  const { subscribe, unsubscribe, onMessage, offMessage, isConnected } = useWebSocket();
+  const { subscribe, unsubscribe, onMessage, offMessage, isConnected } = useSocketIO();
   const [recentEvents, setRecentEvents] = useState<FileSystemEvent[]>([]);
   
   useEffect(() => {
