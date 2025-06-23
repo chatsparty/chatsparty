@@ -50,14 +50,15 @@ vi.mock('../hooks/useFileSystemWebSocket', () => ({
   }),
 }));
 
-// Mock the useWebSocket hook directly
-vi.mock('../../../services/websocket/useWebSocket', () => ({
-  useWebSocket: () => ({
+// Mock the useSocketIO hook directly
+vi.mock('../../../services/socketio/useSocketIO', () => ({
+  useSocketIO: () => ({
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
     onMessage: vi.fn(),
     offMessage: vi.fn(),
     isConnected: true,
+    send: vi.fn(),
   }),
 }));
 

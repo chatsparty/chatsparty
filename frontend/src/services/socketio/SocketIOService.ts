@@ -69,7 +69,14 @@ export class SocketIOService {
         });
 
         this.socket.on("connect", () => {
-          console.log("[SOCKETIO] ✅ Connected successfully");
+          console.log("[SOCKETIO] ✅ Connected successfully - authenticating...");
+          
+          // Authenticate after connection
+          this.socket?.emit("authenticate", { token });
+        });
+
+        this.socket.on("auth_success", (data) => {
+          console.log("[SOCKETIO] ✅ Authentication successful:", data);
           this.isConnecting = false;
 
           this.channelSubscriptions.forEach((channel) => {
@@ -78,6 +85,12 @@ export class SocketIOService {
           });
 
           resolve();
+        });
+
+        this.socket.on("auth_error", (error) => {
+          console.error("[SOCKETIO] ❌ Authentication failed:", error);
+          this.isConnecting = false;
+          reject(new Error(`Authentication failed: ${error.message}`));
         });
 
         this.socket.on("connect_error", (error) => {
