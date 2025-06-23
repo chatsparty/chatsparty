@@ -28,7 +28,6 @@ import { projectApi } from "../../../services/projectApi";
 import { useFileSystemWebSocket } from "../hooks/useFileSystemWebSocket";
 import { API_BASE_URL } from "../../../config/api";
 import type { Project } from "../../../types/project";
-import { WebSocketDebug } from "../../../components/debug/WebSocketDebug";
 
 interface FileTreeItem {
   name: string;
@@ -357,7 +356,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
   return (
     <>
-      <WebSocketDebug />
       <div className="w-64 bg-muted border-r border-border flex flex-col">
         <div className="p-2 border-b border-border">
           <div className="flex items-center justify-between">
