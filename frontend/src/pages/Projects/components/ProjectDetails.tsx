@@ -24,6 +24,7 @@ import { useChatMessages } from "../hooks/useChatMessages";
 import { useResizeablePanes } from "../hooks/useResizeablePanes";
 import { useDragAndDrop } from "../hooks/useDragAndDrop";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { useFileExplorerResize } from "../hooks/useFileExplorerResize";
 
 interface ProjectDetailsProps {
   project: Project;
@@ -60,6 +61,7 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
   const chatMessages = useChatMessages();
   const resizeablePanes = useResizeablePanes(50);
   const dragAndDrop = useDragAndDrop();
+  const fileExplorerResize = useFileExplorerResize();
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -225,6 +227,8 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
             onToggleFolder={fileManager.toggleFolder}
             onOpenFile={openFile}
             onClose={() => setFileViewerOpen(false)}
+            width={fileExplorerResize.width}
+            onWidthChange={fileExplorerResize.setWidth}
           />
         )}
 

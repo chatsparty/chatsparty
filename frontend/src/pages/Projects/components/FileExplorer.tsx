@@ -9,6 +9,10 @@ interface FileExplorerProps {
   onToggleFolder: (folderPath: string) => void;
   onOpenFile: (filePath: string, fileName: string) => void;
   onClose: () => void;
+  width?: number;
+  onWidthChange?: (width: number) => void;
+  onResizeStart?: () => void;
+  onResizeEnd?: () => void;
 }
 
 export const FileExplorer: React.FC<FileExplorerProps> = ({
@@ -17,6 +21,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   onToggleFolder,
   onOpenFile,
   onClose,
+  width,
+  onWidthChange,
+  onResizeStart,
+  onResizeEnd,
 }) => {
   const callbacks: FileExplorerCallbacks = {
     onToggleFolder,
@@ -29,6 +37,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       project={project}
       expandedFolders={expandedFolders}
       callbacks={callbacks}
+      width={width}
+      onWidthChange={onWidthChange}
+      onResizeStart={onResizeStart}
+      onResizeEnd={onResizeEnd}
     />
   );
 };

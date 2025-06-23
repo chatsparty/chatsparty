@@ -17,14 +17,25 @@ interface FileExplorerProps {
   project: Project;
   expandedFolders: Set<string>;
   callbacks: FileExplorerCallbacks;
+  width?: number;
+  onWidthChange?: (width: number) => void;
+  onResizeStart?: () => void;
+  onResizeEnd?: () => void;
 }
 
 export const FileExplorer: React.FC<FileExplorerProps> = ({
   project,
   expandedFolders,
   callbacks,
+  width = 256,
+  onWidthChange,
+  onResizeStart,
+  onResizeEnd,
 }) => {
   const [inlineInputRef, setInlineInputRef] = useState<HTMLInputElement | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(0);
 
   const {
     state,
@@ -163,6 +174,49 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       setState(prev => ({ ...prev, error: "Failed to move files" }));
     }
   };
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    setDragStartX(e.clientX);
+    setStartWidth(width);
+    onResizeStart?.();
+  };
+
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !onWidthChange) return;
+
+      // Calculate the difference from the starting drag position
+      const deltaX = e.clientX - dragStartX;
+      
+      // Calculate new width based on the starting width plus the delta
+      const newWidth = startWidth + deltaX;
+      const clampedWidth = Math.max(250, Math.min(600, newWidth));
+      onWidthChange(clampedWidth);
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+        onResizeEnd?.();
+      }
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleGlobalMouseMove);
+      document.addEventListener("mouseup", handleGlobalMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      
+      return () => {
+        document.removeEventListener("mousemove", handleGlobalMouseMove);
+        document.removeEventListener("mouseup", handleGlobalMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+    }
+  }, [isResizing, onWidthChange, onResizeEnd, dragStartX, startWidth]);
 
   const getDisplayableChildren = () => {
     if (!state.fileStructure?.children) return [];
@@ -315,7 +369,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
   return (
     <>
-      <div className="w-64 bg-muted border-r border-border flex flex-col">
+      <div 
+        className="bg-muted border-r border-border flex flex-col relative"
+        style={{ width: `${width}px` }}
+      >
         <ExplorerHeader
           selectedFilesCount={state.selectedFiles.size}
           isVMActive={project?.vm_status === "active"}
@@ -342,6 +399,12 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           isVMActive={project?.vm_status === "active"}
           onCreateFile={() => startInlineCreation(state.fileStructure?.path || "/workspace", "file")}
           onCreateFolder={() => startInlineCreation(state.fileStructure?.path || "/workspace", "folder")}
+        />
+        
+        {/* Resize Handle */}
+        <div
+          className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-primary cursor-col-resize flex-shrink-0"
+          onMouseDown={handleResizeMouseDown}
         />
       </div>
 
