@@ -2,7 +2,6 @@ import {
   ChevronsRight,
   FileUp,
   MessageSquare,
-  Monitor,
   Play,
   Settings,
   Terminal,
@@ -11,7 +10,7 @@ import React from "react";
 import { Button } from "../../../components/ui/button";
 
 type LeftTab = "chat" | string;
-type RightTab = "files" | "settings" | "services" | "console" | "terminal" | "preview";
+type RightTab = "files" | "settings" | "services" | "terminal" | "preview";
 
 interface IconSidebarProps {
   fileViewerOpen: boolean;
@@ -40,7 +39,6 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
       type: "right" as const,
     },
     { id: "services", icon: Play, label: "Services", type: "right" as const },
-    { id: "console", icon: Monitor, label: "Console", type: "right" as const },
     { id: "terminal", icon: Terminal, label: "Terminal", type: "right" as const },
   ];
 

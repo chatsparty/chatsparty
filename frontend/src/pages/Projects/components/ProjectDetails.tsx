@@ -6,7 +6,6 @@ import type {
   ProjectVMService,
 } from "../../../types/project";
 import { ChatPanel } from "./ChatPanel";
-import { ConsolePanel } from "./ConsolePanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { FileEditor } from "./FileEditor";
 import { FileExplorer } from "./FileExplorer";
@@ -19,7 +18,6 @@ import { ServicesPanel } from "./ServicesPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { useFileManager } from "../hooks/useFileManager";
 import { useTabManager, type LeftTab, type RightTab } from "../hooks/useTabManager";
-import { useCommandExecution } from "../hooks/useCommandExecution";
 import { useChatMessages } from "../hooks/useChatMessages";
 import { useResizeablePanes } from "../hooks/useResizeablePanes";
 import { useDragAndDrop } from "../hooks/useDragAndDrop";
@@ -31,7 +29,6 @@ interface ProjectDetailsProps {
   projectStatus: ProjectStatus | null;
   vmServices: ProjectVMService[];
   onSetupVM: () => void;
-  onExecuteCommand: (command: string, workingDir?: string) => Promise<string>;
   onRefreshStatus: () => void;
   onStopService: (serviceId: string) => void;
   onRefreshServices: () => void;
@@ -45,7 +42,6 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
   projectStatus,
   vmServices,
   onSetupVM,
-  onExecuteCommand,
   onRefreshStatus,
   onStopService,
   onRefreshServices,
@@ -57,7 +53,6 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
   // Custom hooks
   const fileManager = useFileManager({ project });
   const tabManager = useTabManager();
-  const commandExecution = useCommandExecution({ onExecuteCommand });
   const chatMessages = useChatMessages();
   const resizeablePanes = useResizeablePanes(50);
   const dragAndDrop = useDragAndDrop();
@@ -119,7 +114,6 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
     }
   };
 
-  const canExecuteCommands = project?.vm_status === "active";
 
   const renderLeftTabContent = () => {
     if (tabManager.leftTab === "chat") {
@@ -176,18 +170,6 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
             vmServices={vmServices}
             onRefreshServices={onRefreshServices}
             onStopService={onStopService}
-          />
-        );
-
-      case "console":
-        return (
-          <ConsolePanel
-            canExecuteCommands={canExecuteCommands}
-            commandInput={commandExecution.commandInput}
-            commandOutput={commandExecution.commandOutput}
-            commandLoading={commandExecution.commandLoading}
-            onCommandInputChange={commandExecution.setCommandInput}
-            onExecuteCommand={commandExecution.handleExecuteCommand}
           />
         );
 
@@ -318,8 +300,6 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
                           return { icon: MessageSquare, label: "Settings" };
                         case "services":
                           return { icon: MessageSquare, label: "Services" };
-                        case "console":
-                          return { icon: MessageSquare, label: "Console" };
                         case "terminal":
                           return { icon: MessageSquare, label: "Terminal" };
                         case "preview":

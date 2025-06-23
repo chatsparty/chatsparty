@@ -5,7 +5,6 @@ export type RightTab =
   | "files"
   | "settings"
   | "services"
-  | "console"
   | "terminal"
   | "preview";
 
