@@ -182,7 +182,7 @@ class DockerFileManager:
                 dir_name = (
                     os.path.basename(current_path)
                     if current_path != "/workspace"
-                    else project_id
+                    else "workspace"
                 )
 
                 node = FileTreeNode(
@@ -217,7 +217,7 @@ class DockerFileManager:
                     f"Failed to build file tree for {current_path}: {e}"
                 )
                 return FileTreeNode(
-                    name=os.path.basename(current_path) or project_id,
+                    name=os.path.basename(current_path) or "workspace",
                     path=current_path,
                     type="directory"
                 )

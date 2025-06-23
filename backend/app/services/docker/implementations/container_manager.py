@@ -54,7 +54,7 @@ class ContainerManager(IContainerManager):
             except Exception as e:
                 logger.warning(f"[VM] Failed to remove existing container: {e}")
 
-            workspace_path = f"/tmp/chatsparty/projects/{project_id}"
+            workspace_path = "/tmp/chatsparty/workspace"
             logger.info(f"[VM] Creating workspace directory: {workspace_path}")
             os.makedirs(workspace_path, exist_ok=True)
             logger.info(f"[VM] Workspace directory created successfully")
@@ -96,14 +96,13 @@ class ContainerManager(IContainerManager):
             loop = asyncio.get_event_loop()
             container = await loop.run_in_executor(self.executor, _create_container)
 
-            logger.info(f"[VM] Creating project workspace directory in container")
+            logger.info(f"[VM] Setting up container workspace directory")
             try:
-                container.exec_run(["sh", "-c", f"mkdir -p /workspace/{project_id}"])
                 container.exec_run(["sh", "-c", f"chown -R root:root /workspace"])
                 container.exec_run(["sh", "-c", f"chmod -R 755 /workspace"])
-                logger.info(f"[VM] Project workspace directory created: /workspace/{project_id}")
+                logger.info(f"[VM] Container workspace directory setup completed")
             except Exception as dir_error:
-                logger.error(f"[VM] Failed to create project directory: {dir_error}")
+                logger.error(f"[VM] Failed to setup workspace directory: {dir_error}")
                 
             logger.info(f"[VM] Setting up development environment in container")
             try:

@@ -49,8 +49,9 @@ async def get_vm_files(
         
         vm_service = project_service.underlying_vm_service
         
+        # Use default workspace path without project ID
         if path == "/workspace":
-            path = f"/workspace/{project_id}"
+            path = "/workspace"
         
         file_tree = await vm_service.list_files_recursive(project_id, path)
         
@@ -90,8 +91,9 @@ async def create_project_file(
         if not file_path:
             raise HTTPException(status_code=400, detail="File path is required")
         
-        if file_path.startswith("/workspace"):
-            file_path = file_path.replace("/workspace", f"/workspace/{project_id}", 1)
+        # Keep file_path as is - no project ID needed
+        # if file_path.startswith("/workspace"):
+        #     file_path = file_path.replace("/workspace", f"/workspace/{project_id}", 1)
         
         success = False
         if is_folder:
@@ -246,11 +248,9 @@ async def read_project_file(
         
         vm_service = get_vm_service()
         
-        # Ensure file path is within the project workspace
+        # Ensure file path is within workspace - no project ID needed
         if not file_path.startswith("/workspace"):
-            file_path = f"/workspace/{project_id}/{file_path.lstrip('/')}"
-        elif file_path.startswith("/workspace") and not file_path.startswith(f"/workspace/{project_id}"):
-            file_path = file_path.replace("/workspace", f"/workspace/{project_id}", 1)
+            file_path = f"/workspace/{file_path.lstrip('/')}"
         
         try:
             content = await vm_service.read_file(project_id, file_path)
@@ -299,11 +299,9 @@ async def write_project_file(
         if not file_path:
             raise HTTPException(status_code=400, detail="File path is required")
         
-        # Ensure file path is within the project workspace
+        # Ensure file path is within workspace - no project ID needed
         if not file_path.startswith("/workspace"):
-            file_path = f"/workspace/{project_id}/{file_path.lstrip('/')}"
-        elif file_path.startswith("/workspace") and not file_path.startswith(f"/workspace/{project_id}"):
-            file_path = file_path.replace("/workspace", f"/workspace/{project_id}", 1)
+            file_path = f"/workspace/{file_path.lstrip('/')}"
         
         success = await vm_service.write_file(project_id, file_path, content)
         

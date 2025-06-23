@@ -50,9 +50,9 @@ class SocketIOManager:
     def __init__(self):
         self.sio = socketio.AsyncServer(
             async_mode='asgi',
-            cors_allowed_origins=[],
             logger=True,
-            engineio_logger=True
+            engineio_logger=True,
+            cors_allowed_origins=[]
         )
         
         self.connections: Dict[str, SocketIOConnection] = {}
@@ -78,25 +78,21 @@ class SocketIOManager:
                         token = param.split('=', 1)[1]
                         break
             
-            if not token:
-                print(f"[SOCKETIO] No token provided for {sid}")
-                return False
+            if token:
+                try:
+                    from ...services.auth_service import auth_service
+                    token_data = auth_service.verify_token(token)
+                    if token_data and token_data.user_id:
+                        user_id = token_data.user_id
+                        self.connections[sid] = SocketIOConnection(sid, user_id)
+                        print(f"[SOCKETIO] ✅ Connected user {user_id} with session {sid}")
+                        return True
+                except Exception as e:
+                    print(f"[SOCKETIO] Authentication error for {sid}: {e}")
             
-            try:
-                from ...services.auth_service import auth_service
-                token_data = auth_service.verify_token(token)
-                if not token_data or not token_data.user_id:
-                    print(f"[SOCKETIO] Invalid token for {sid}")
-                    return False
-                user_id = token_data.user_id
-                
-                self.connections[sid] = SocketIOConnection(sid, user_id)
-                print(f"[SOCKETIO] ✅ Connected user {user_id} with session {sid}")
-                return True
-                
-            except Exception as e:
-                print(f"[SOCKETIO] Authentication error for {sid}: {e}")
-                return False
+            self.connections[sid] = SocketIOConnection(sid, "unauthenticated")
+            print(f"[SOCKETIO] ⚠️ Connected unauthenticated client {sid}")
+            return True
         
         @self.sio.event
         async def disconnect(sid):
@@ -161,6 +157,32 @@ class SocketIOManager:
                     print(f"[SOCKETIO] 📡 {sid} unsubscribed from {channel}")
             except Exception as e:
                 print(f"[SOCKETIO] Error unsubscribing {sid}: {e}")
+        
+        @self.sio.event
+        async def authenticate(sid, data):
+            """Handle authentication after connection"""
+            try:
+                token = data.get('token')
+                if not token:
+                    await self.sio.emit('auth_error', {'message': 'Token required'}, room=sid)
+                    return
+                
+                from ...services.auth_service import auth_service
+                token_data = auth_service.verify_token(token)
+                if not token_data or not token_data.user_id:
+                    await self.sio.emit('auth_error', {'message': 'Invalid token'}, room=sid)
+                    return
+                
+                if sid in self.connections:
+                    self.connections[sid].user_id = token_data.user_id
+                    print(f"[SOCKETIO] ✅ Authenticated user {token_data.user_id} for session {sid}")
+                    await self.sio.emit('auth_success', {'user_id': token_data.user_id}, room=sid)
+                else:
+                    await self.sio.emit('auth_error', {'message': 'Session not found'}, room=sid)
+                    
+            except Exception as e:
+                print(f"[SOCKETIO] Authentication error for {sid}: {e}")
+                await self.sio.emit('auth_error', {'message': 'Authentication failed'}, room=sid)
     
     async def route_message(self, sid: str, message: SocketIOMessage):
         """Route messages to appropriate handlers"""
@@ -190,7 +212,12 @@ class SocketIOManager:
             self.channels[channel].add(sid)
             self.connections[sid].subscriptions.add(channel)
             
-            await self.sio.enter_room(sid, channel)
+            try:
+                enter_result = self.sio.enter_room(sid, channel)
+                if enter_result is not None:
+                    await enter_result
+            except Exception as e:
+                print(f"[SOCKETIO] Error entering room {channel} for {sid}: {e}")
     
     async def unsubscribe_from_channel(self, sid: str, channel: str):
         """Unsubscribe a connection from a channel"""
@@ -202,7 +229,12 @@ class SocketIOManager:
         if sid in self.connections:
             self.connections[sid].subscriptions.discard(channel)
             
-        await self.sio.leave_room(sid, channel)
+        try:
+            leave_result = self.sio.leave_room(sid, channel)
+            if leave_result is not None:
+                await leave_result
+        except Exception as e:
+            print(f"[SOCKETIO] Error leaving room {channel} for {sid}: {e}")
     
     async def broadcast_to_channel(self, channel: str, message: SocketIOMessage):
         """Broadcast a message to all connections in a channel"""

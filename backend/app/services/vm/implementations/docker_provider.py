@@ -218,7 +218,7 @@ class DockerProvider(VMProviderInterface):
         async with _global_watch_lock:
             print(f"[DOCKER_DEBUG] Acquired global watch lock")
             try:
-                workspace_path = f"/tmp/chatsparty/projects/{project_id}"
+                workspace_path = "/tmp/chatsparty/workspace"
                 print(f"[DOCKER_DEBUG] Workspace path: {workspace_path}")
                 
                 import os
@@ -286,7 +286,7 @@ class DockerProvider(VMProviderInterface):
         if project_id in self.file_observers:
             try:
                 observer = self.file_observers[project_id]
-                workspace_path = f"/tmp/chatsparty/projects/{project_id}"
+                workspace_path = "/tmp/chatsparty/workspace"
                 
                 other_projects_using_observer = [
                     pid for pid, obs in self.file_observers.items() 
@@ -432,7 +432,7 @@ class DockerProvider(VMProviderInterface):
             if project_id in self.file_callbacks:
                 callback = self.file_callbacks[project_id]
                 
-                workspace_path = f"/tmp/chatsparty/projects/{project_id}"
+                workspace_path = "/tmp/chatsparty/workspace"
                 if file_path.startswith("/workspace/"):
                     host_file_path = file_path.replace("/workspace/", f"{workspace_path}/")
                 else:

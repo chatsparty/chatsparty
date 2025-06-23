@@ -59,8 +59,8 @@ class FileSystemWebSocketService:
         logger.info(f"[FILE_SYSTEM_WS] 🎯 Callback triggered: {event_type} - {file_path} - {project_id}")
         
         workspace_prefixes = [
-            f"/private/tmp/chatsparty/projects/{project_id}/",
-            f"/tmp/chatsparty/projects/{project_id}/"
+            "/private/tmp/chatsparty/workspace/",
+            "/tmp/chatsparty/workspace/"
         ]
         
         relative_path = file_path
