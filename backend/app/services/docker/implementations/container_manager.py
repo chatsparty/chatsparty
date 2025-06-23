@@ -27,7 +27,7 @@ class ContainerManager(IContainerManager):
             raise
 
         self.active_containers: Dict[str, Container] = {}
-        self.base_image = "ubuntu:22.04"
+        self.base_image = "node:20-bookworm"
         self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="docker-")
 
     async def create_project_container(
@@ -164,26 +164,23 @@ class ContainerManager(IContainerManager):
         setup_commands = {
             "minimal": [
                 "apt-get update -qq",
-                "apt-get install -y bash coreutils git curl wget nano vim",
+                "apt-get install -y python3 python3-pip vim nano",
                 "apt-get clean",
                 "rm -rf /var/lib/apt/lists/*"
             ],
             "python": [
                 "apt-get update -qq",
-                "apt-get install -y bash coreutils python3 python3-pip git curl wget nano vim",
+                "apt-get install -y python3 python3-pip python3-venv",
                 "pip3 install --upgrade pip",
                 "apt-get clean",
                 "rm -rf /var/lib/apt/lists/*"
             ],
             "nodejs": [
-                "apt-get update -qq",
-                "apt-get install -y bash coreutils nodejs npm git curl wget nano vim",
-                "apt-get clean",
-                "rm -rf /var/lib/apt/lists/*"
+                "echo 'Node.js and npm already available in base image'"
             ],
             "full": [
                 "apt-get update -qq",
-                "apt-get install -y bash coreutils python3 python3-pip nodejs npm git curl wget nano vim build-essential",
+                "apt-get install -y python3 python3-pip python3-venv build-essential",
                 "pip3 install --upgrade pip",
                 "apt-get clean",
                 "rm -rf /var/lib/apt/lists/*"
@@ -217,21 +214,10 @@ class ContainerManager(IContainerManager):
                 logger.error(f"[VM] Failed to run setup command '{command[:50]}...': {e}")
                 failed_commands.append(command)
         
-        if any("nodesource" in cmd for cmd in failed_commands):
-            logger.info(f"[VM] 🔄 Attempting fallback Node.js installation...")
-            try:
-                def _fallback_exec():
-                    return container.exec_run("apt-get install -y nodejs npm", user="root")
-                
-                loop = asyncio.get_event_loop()
-                fallback_result = await loop.run_in_executor(self.executor, _fallback_exec)
-                
-                if fallback_result.exit_code == 0:
-                    logger.info(f"[VM] ✅ Fallback Node.js installation succeeded")
-                else:
-                    logger.warning(f"[VM] ⚠️ Fallback Node.js installation also failed")
-            except Exception as e:
-                logger.error(f"[VM] Failed fallback Node.js installation: {e}")
+        # Node.js fallback no longer needed with node:20-bookworm base image
+        if failed_commands:
+            logger.info(f"[VM] Some setup commands failed but container should still be functional")
+            logger.info(f"[VM] Failed commands: {failed_commands}")
 
         logger.info(f"[VM] ✅ Container environment setup completed for {environment_type}")
 
