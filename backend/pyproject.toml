@@ -40,6 +40,9 @@ dependencies = [
     "watchdog>=6.0.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
+    "pexpect>=4.9.0",
+    "python-socketio==5.8.0",
+    "python-engineio==4.7.1",
 ]
 
 [tool.uv]

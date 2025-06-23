@@ -1,5 +1,5 @@
 from ..vm_factory import get_vm_service
-from .websocket_manager import websocket_manager, WebSocketMessage, MessageType
+from ..socketio.socketio_manager import socketio_manager, SocketIOMessage, MessageType
 from datetime import datetime
 from typing import Dict
 import os
@@ -74,8 +74,8 @@ class FileSystemWebSocketService:
             logger.warning(f"[FILE_SYSTEM_WS] ⚠️ Path conversion failed: {file_path}")
             logger.warning(f"[FILE_SYSTEM_WS] Expected prefixes: {workspace_prefixes}")
         
-        message = WebSocketMessage(
-            type=f"fs:{event_type}",
+        message = SocketIOMessage(
+            type=getattr(MessageType, f"FILE_{event_type.upper()}", MessageType.FILE_MODIFIED),
             channel=f"project:{project_id}:files",
             data={
                 "file_path": relative_path,
@@ -87,15 +87,15 @@ class FileSystemWebSocketService:
             timestamp=datetime.now()
         )
         
-        logger.info(f"[FILE_SYSTEM_WS] 📤 Sending WebSocket message: {message}")
-        logger.info(f"[FILE_SYSTEM_WS] Channel: project:{project_id}:files")
+        logger.info(f"[FILE_SYSTEM_SOCKETIO] 📤 Sending Socket.IO message: {message}")
+        logger.info(f"[FILE_SYSTEM_SOCKETIO] Channel: project:{project_id}:files")
         
         try:
-            await websocket_manager.broadcast_to_channel(f"project:{project_id}:files", message)
-            logger.info(f"[FILE_SYSTEM_WS] ✅ WebSocket message sent successfully")
+            await socketio_manager.broadcast_to_channel(f"project:{project_id}:files", message)
+            logger.info(f"[FILE_SYSTEM_SOCKETIO] ✅ Socket.IO message sent successfully")
         except Exception as e:
-            logger.error(f"[FILE_SYSTEM_WS] ❌ Failed to send WebSocket message: {e}")
+            logger.error(f"[FILE_SYSTEM_SOCKETIO] ❌ Failed to send Socket.IO message: {e}")
             import traceback
-            logger.error(f"[FILE_SYSTEM_WS] Traceback: {traceback.format_exc()}")
+            logger.error(f"[FILE_SYSTEM_SOCKETIO] Traceback: {traceback.format_exc()}")
 
 file_system_service = FileSystemWebSocketService()

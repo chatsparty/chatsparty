@@ -2,13 +2,15 @@ import asyncio
 import os
 import subprocess
 import signal
+import pexpect
+import threading
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 from uuid import uuid4
 
 from .models import TerminalSession, TerminalStatus
 from ..vm_factory import get_vm_service
-from ..websocket.websocket_manager import websocket_manager, WebSocketMessage, MessageType
+from ..socketio.socketio_manager import socketio_manager, SocketIOMessage, MessageType
 
 class TerminalManager:
     def __init__(self):
@@ -82,13 +84,16 @@ class TerminalManager:
                 pass
             del self.session_processes[session_id]
             
-        if session.process and session.process.returncode is None:
+        if session.pexpect_process and session.pexpect_process.isalive():
             try:
-                session.process.terminate()
-                await asyncio.wait_for(session.process.wait(), timeout=5.0)
-            except asyncio.TimeoutError:
-                session.process.kill()
-                await session.process.wait()
+                session.pexpect_process.terminate()
+                session.pexpect_process.wait()
+            except Exception as e:
+                print(f"[TERMINAL] Error terminating pexpect process: {e}")
+                try:
+                    session.pexpect_process.kill(signal.SIGKILL)
+                except Exception:
+                    pass
                 
         session.status = TerminalStatus.CLOSED
         await self._notify_session_status(session)
@@ -107,28 +112,29 @@ class TerminalManager:
         session.last_activity = datetime.now()
         
         try:
-            print(f"[TERMINAL] Resizing terminal to {cols}x{rows}")
+            if session.pexpect_process and session.pexpect_process.isalive():
+                session.pexpect_process.setwinsize(rows, cols)
+                print(f"[TERMINAL] Resized pexpect terminal to {cols}x{rows}")
             return True
         except Exception as e:
             print(f"[TERMINAL] Error resizing terminal: {e}")
             return False
         
     async def send_input(self, session_id: str, data: str) -> bool:
-        """Send input to terminal session"""
+        """Send input to terminal session using pexpect"""
         if session_id not in self.sessions:
             return False
             
         session = self.sessions[session_id]
         session.last_activity = datetime.now()
         
-        if session.process and session.process.stdin:
+        if session.pexpect_process and session.pexpect_process.isalive():
             try:
                 print(f"[TERMINAL] Sending input: {repr(data)}")
-                session.process.stdin.write(data.encode('utf-8'))
-                await session.process.stdin.drain()
                 
-                if data == '\r':
-                    asyncio.create_task(self._add_prompt_after_command(session))
+                await asyncio.get_event_loop().run_in_executor(
+                    None, session.pexpect_process.send, data
+                )
                 
                 return True
             except Exception as e:
@@ -136,19 +142,6 @@ class TerminalManager:
                 return False
                 
         return False
-        
-    async def _add_prompt_after_command(self, session: TerminalSession):
-        """Add a prompt after command execution"""
-        try:
-            await asyncio.sleep(0.2)
-            
-            if session.process and session.process.stdin:
-                prompt_cmd = "echo -n 'root@container:'$(pwd)'$ '\n"
-                session.process.stdin.write(prompt_cmd.encode('utf-8'))
-                await session.process.stdin.drain()
-                print(f"[TERMINAL] Added prompt after command")
-        except Exception as e:
-            print(f"[TERMINAL] Error adding prompt: {e}")
         
     def get_session(self, session_id: str) -> Optional[TerminalSession]:
         """Get terminal session by ID"""
@@ -163,139 +156,104 @@ class TerminalManager:
         return [s for s in self.sessions.values() if s.project_id == project_id]
         
     async def _start_terminal_process(self, session: TerminalSession):
-        """Start the docker exec terminal process"""
+        """Start the docker exec terminal process using pexpect"""
         try:
-            terminal_cmd = [
-                "docker", "exec", "-i",
-                f"--env", f"TERM=xterm-256color",
-                f"--env", f"COLUMNS={session.cols}",
-                f"--env", f"LINES={session.rows}", 
-                f"--workdir", "/workspace",
-                f"chatsparty-project-{session.project_id}",
-                "/bin/bash", "-c", """
-                    export PS1='root@container:\\w\\$ '
-                    exec /bin/bash --login -i 2>/dev/null
-                """
-            ]
+            terminal_cmd = f"docker exec -it --env TERM=xterm-256color --env COLUMNS={session.cols} --env LINES={session.rows} --workdir /workspace chatsparty-project-{session.project_id} /bin/bash"
             
-            print(f"[TERMINAL] Starting process: {' '.join(terminal_cmd)}")
+            print(f"[TERMINAL] Starting pexpect process: {terminal_cmd}")
             
-            session.process = await asyncio.create_subprocess_exec(
-                *terminal_cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                preexec_fn=os.setsid
+            session.pexpect_process = await asyncio.get_event_loop().run_in_executor(
+                None, pexpect.spawn, terminal_cmd
             )
             
-            print(f"[TERMINAL] Process started with PID: {session.process.pid}")
+            session.pexpect_process.setwinsize(session.rows, session.cols)
             
-            if session.process.stdin:
-                init_commands = """clear
-echo -n 'root@container:/workspace$ '
-"""
-                session.process.stdin.write(init_commands.encode('utf-8'))
-                await session.process.stdin.drain()
-                print(f"[TERMINAL] Sent initial commands")
+            print(f"[TERMINAL] Pexpect process started with PID: {session.pexpect_process.pid}")
             
-            task = asyncio.create_task(self._stream_output(session))
+            task = asyncio.create_task(self._stream_pexpect_output(session))
             self.session_processes[session.session_id] = task
             
         except Exception as e:
-            print(f"[TERMINAL] Failed to start process: {e}")
+            print(f"[TERMINAL] Failed to start pexpect process: {e}")
             raise
         
-    async def _stream_output(self, session: TerminalSession):
-        """Stream terminal output via WebSocket"""
+    async def _stream_pexpect_output(self, session: TerminalSession):
+        """Stream terminal output from pexpect process via WebSocket"""
         try:
-            print(f"[TERMINAL] Starting output streaming for session {session.session_id}")
+            print(f"[TERMINAL] Starting pexpect output streaming for session {session.session_id}")
             
-            buffer = b""
-            
-            while session.process and session.process.returncode is None:
+            while session.pexpect_process and session.pexpect_process.isalive():
                 try:
-                    data = await asyncio.wait_for(
-                        session.process.stdout.read(256), 
-                        timeout=0.1
+                    output = await asyncio.get_event_loop().run_in_executor(
+                        None, self._read_pexpect_output, session.pexpect_process
                     )
                     
-                    if data:
-                        buffer += data
+                    if output:
+                        print(f"[TERMINAL] Sending output: {repr(output)}")
                         
-                        text = buffer.decode('utf-8', errors='ignore')
+                        channel = f"project:{session.project_id}:terminal:{session.session_id}"
+                        print(f"[TERMINAL] Broadcasting to channel: {channel}")
                         
-                        if text:
-                            print(f"[TERMINAL] Sending output: {repr(text)}")
-                            
-                            message = WebSocketMessage(
-                                type=MessageType.TERMINAL_OUTPUT,
-                                channel=session.websocket_channel,
-                                data={
-                                    "session_id": session.session_id,
-                                    "output": text,
-                                    "type": "stdout"
-                                },
-                                timestamp=datetime.now()
-                            )
-                            await websocket_manager.broadcast_to_channel(
-                                session.websocket_channel, 
-                                message
-                            )
-                            
-                            session.last_activity = datetime.now()
-                            buffer = b""
+                        message = SocketIOMessage(
+                            type=MessageType.TERMINAL_OUTPUT,
+                            channel=channel,
+                            data={
+                                "session_id": session.session_id,
+                                "output": output,
+                                "type": "stdout"
+                            },
+                            timestamp=datetime.now()
+                        )
                         
-                except asyncio.TimeoutError:
-                    if buffer:
-                        text = buffer.decode('utf-8', errors='ignore')
-                        if text.strip():
-                            print(f"[TERMINAL] Flushing buffer: {repr(text)}")
-                            
-                            message = WebSocketMessage(
-                                type=MessageType.TERMINAL_OUTPUT,
-                                channel=session.websocket_channel,
-                                data={
-                                    "session_id": session.session_id,
-                                    "output": text,
-                                    "type": "stdout"
-                                },
-                                timestamp=datetime.now()
-                            )
-                            await websocket_manager.broadcast_to_channel(
-                                session.websocket_channel, 
-                                message
-                            )
-                        buffer = b""
+                        try:
+                            print(f"[TERMINAL] Message type: {message.type}, Data: {message.data}")
+                            await socketio_manager.broadcast_to_channel(channel, message)
+                            print(f"[TERMINAL] Successfully broadcast message to {channel}")
+                        except Exception as sio_error:
+                            print(f"[TERMINAL] Error broadcasting message: {sio_error}")
+                        
+                    await asyncio.sleep(0.01)
                     
-                    if session.process.returncode is not None:
-                        print(f"[TERMINAL] Process ended with return code: {session.process.returncode}")
-                        break
                 except Exception as e:
-                    print(f"[TERMINAL] Error reading output: {e}")
-                    break
+                    print(f"[TERMINAL] Error reading pexpect output: {e}")
+                    await asyncio.sleep(0.1)
                     
         except Exception as e:
-            print(f"[TERMINAL] Terminal streaming error: {e}")
+            print(f"[TERMINAL] Error in pexpect output streaming: {e}")
         finally:
-            print(f"[TERMINAL] Output streaming ended for session {session.session_id}")
-            session.status = TerminalStatus.INACTIVE
-            await self._notify_session_status(session)
+            print(f"[TERMINAL] Pexpect output streaming ended for session {session.session_id}")
+    
+    def _read_pexpect_output(self, process):
+        """Read output from pexpect process (blocking call)"""
+        try:
+            data = process.read_nonblocking(size=1024, timeout=0.1)
+            if data:
+                if isinstance(data, bytes):
+                    return data.decode('utf-8', errors='replace')
+                return str(data)
+            return None
+        except pexpect.TIMEOUT:
+            return None
+        except pexpect.EOF:
+            return None
+        except Exception as e:
+            print(f"[TERMINAL] Error reading from pexpect: {e}")
+            return None
+
             
     async def _notify_session_status(self, session: TerminalSession, error: Optional[str] = None):
-        """Notify WebSocket clients of session status change"""
-        message = WebSocketMessage(
+        """Notify Socket.IO clients of session status change"""
+        channel = f"project:{session.project_id}:terminal:{session.session_id}"
+        message = SocketIOMessage(
             type=MessageType.TERMINAL_STATUS,
-            channel=session.websocket_channel,
+            channel=channel,
             data={
                 "session": session.to_dict(),
                 "error": error
             },
             timestamp=datetime.now()
         )
-        await websocket_manager.broadcast_to_channel(
-            session.websocket_channel,
-            message
-        )
+        await socketio_manager.broadcast_to_channel(channel, message)
         
     async def _cleanup_inactive_sessions(self):
         """Cleanup inactive terminal sessions"""

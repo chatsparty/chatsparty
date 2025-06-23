@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ...models.database import User
 from ...services.project.application.services import ProjectService
 from ...services.vm_factory import get_vm_service
-from ...services.websocket.file_system_service import file_system_service
+from ...services.socketio.file_system_service import file_system_service
 from ..auth import get_current_user_dependency
 from .base import get_project_service
 

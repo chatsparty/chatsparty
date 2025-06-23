@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 from enum import Enum
 import asyncio
+import pexpect
 
 class TerminalStatus(str, Enum):
     CREATING = "creating"
@@ -21,7 +22,7 @@ class TerminalSession:
     last_activity: datetime
     container_id: Optional[str] = None
     exec_id: Optional[str] = None
-    process: Optional[asyncio.subprocess.Process] = None
+    pexpect_process: Optional[pexpect.spawn] = None
     websocket_channel: Optional[str] = None
     rows: int = 24
     cols: int = 80

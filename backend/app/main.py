@@ -8,7 +8,6 @@ from .routers import (
     podcast,
     terminal,
     voice_connections,
-    websocket,
 )
 from .routers.projects import router as projects_router
 from .core.database import db_manager
@@ -37,7 +36,6 @@ async def lifespan(app):
     except Exception as e:
         print(f"⚠️ Database table creation failed: {e}")
     
-    # Start terminal manager
     try:
         from .services.terminal.terminal_manager import terminal_manager
         await terminal_manager.start()
@@ -47,10 +45,8 @@ async def lifespan(app):
     
     yield
     
-    # Stop terminal manager
     try:
         from .services.terminal.terminal_manager import terminal_manager
-        # Give terminal manager limited time to clean up
         await asyncio.wait_for(terminal_manager.stop(), timeout=5.0)
         print("✅ Terminal manager stopped successfully")
     except asyncio.TimeoutError:
@@ -76,14 +72,15 @@ app.include_router(podcast.router)
 app.include_router(files.router)
 app.include_router(mcp.router)
 app.include_router(terminal.router, prefix="/api", tags=["terminal"])
-app.include_router(websocket.router, tags=["websocket"])
+
+from .services.socketio.socketio_manager import socketio_manager
+app.mount("/socket.io", socketio_manager.get_app())
 
 def signal_handler(signum, frame):
     print(f"\n🔌 Received signal {signum}, shutting down gracefully...")
     sys.exit(0)
 
 if __name__ == "__main__":
-    # Set up signal handlers for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     

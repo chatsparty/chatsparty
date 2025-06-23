@@ -21,15 +21,12 @@ class Settings(BaseSettings):
     gemini_api_key: Optional[str] = None
     vm_provider: str = "docker"
 
-    # Authentication settings
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
-    # Encryption settings
     encryption_master_key: Optional[str] = None
 
-    # OAuth settings
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
     github_client_id: Optional[str] = None
@@ -37,7 +34,6 @@ class Settings(BaseSettings):
     frontend_url: Optional[str] = None
     backend_url: str = "http://localhost:8000"
 
-    # OAuth redirect URIs (constructed from frontend_url)
     @property
     def google_redirect_uri(self) -> str:
         return f"{self.frontend_url}/auth/callback/google"
@@ -46,16 +42,11 @@ class Settings(BaseSettings):
     def github_redirect_uri(self) -> str:
         return f"{self.frontend_url}/auth/callback/github"
 
-    # Authentication mode settings
-    # Set to true to disable traditional email/password auth (cloud mode)
     social_auth_only: bool = False
 
-    # Error handling settings
-    # Set to true to hide detailed database errors in production
     hide_db_errors: bool = True
     debug_mode: bool = False
 
-    # Storage settings
     storage_provider: str = "local"
     local_storage_path: str = "./storage/uploads"
     local_storage_url_base: str = "http://localhost:8000/files/download"
@@ -74,7 +65,6 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 
-# Support dynamic environment file loading
 def get_settings(env_file_path: str = ".env") -> Settings:
     """Get settings with custom environment file"""
     class DynamicSettings(Settings):
@@ -84,14 +74,13 @@ def get_settings(env_file_path: str = ".env") -> Settings:
     return DynamicSettings()
 
 
-# Default settings instance
 settings = Settings()
 
 
 def create_app(lifespan=None) -> FastAPI:
     app = FastAPI(title="ChatsParty API", version="1.0.0", lifespan=lifespan)
     allowed_origins = [
-        settings.frontend_url] if settings.frontend_url else ["*"]
+        settings.frontend_url] if settings.frontend_url else ["http://localhost:5173", "http://localhost:3000"]
 
     app.add_middleware(
         CORSMiddleware,
