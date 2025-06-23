@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Delete Events Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .event-log { 
+            background-color: #f8f9fa; 
+            border: 1px solid #dee2e6; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .event { 
+            margin: 5px 0; 
+            padding: 5px; 
+            border-left: 4px solid #007bff; 
+            background-color: white;
+        }
+        .event.delete { border-left-color: #dc3545; }
+        .event.create { border-left-color: #28a745; }
+        .event.modify { border-left-color: #ffc107; }
+        button { 
+            background-color: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 15px; 
+            margin: 5px; 
+            border-radius: 5px; 
+            cursor: pointer;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .delete-btn { background-color: #dc3545; }
+        .delete-btn:hover { background-color: #c82333; }
+        input, select { 
+            padding: 8px; 
+            margin: 5px; 
+            border: 1px solid #ced4da; 
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 WebSocket Delete Events Test</h1>
+        <p>This test checks if WebSocket file deletion events are working properly.</p>
+        
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+        
+        <div>
+            <h3>Configuration</h3>
+            <input type="text" id="projectId" placeholder="Project ID" value="fe013868-67a1-4207-bd7a-4911fd598aa1">
+            <input type="text" id="token" placeholder="JWT Token" value="your-jwt-token-here">
+            <button onclick="connect()">Connect WebSocket</button>
+            <button onclick="disconnect()">Disconnect</button>
+        </div>
+        
+        <div>
+            <h3>Test Actions</h3>
+            <p><strong>Instructions:</strong></p>
+            <ol>
+                <li>Click "Connect WebSocket" to establish connection</li>
+                <li>Go to the file explorer in your browser</li>
+                <li>Create a file called "test-delete.txt"</li>
+                <li>Delete the file</li>
+                <li>Check if delete events appear below</li>
+            </ol>
+            
+            <button onclick="subscribe()">Subscribe to File Events</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div>
+            <h3>🎧 Event Log</h3>
+            <div id="eventLog" class="event-log">
+                <div style="color: #6c757d; font-style: italic;">
+                    Waiting for events... Try deleting a file in the file explorer.
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <h3>📊 Statistics</h3>
+            <div id="stats">
+                <div>Total Events: <span id="totalEvents">0</span></div>
+                <div>Delete Events: <span id="deleteEvents">0</span></div>
+                <div>Create Events: <span id="createEvents">0</span></div>
+                <div>Modify Events: <span id="modifyEvents">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let projectId = '';
+        let eventCount = 0;
+        let deleteCount = 0;
+        let createCount = 0;
+        let modifyCount = 0;
+
+        function updateStatus(connected, message) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.innerHTML = '✅ ' + message;
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.innerHTML = '❌ ' + message;
+            }
+        }
+
+        function logEvent(event) {
+            const eventLog = document.getElementById('eventLog');
+            const eventDiv = document.createElement('div');
+            
+            let eventClass = 'event';
+            if (event.type.includes('deleted')) {
+                eventClass += ' delete';
+                deleteCount++;
+            } else if (event.type.includes('created')) {
+                eventClass += ' create';
+                createCount++;
+            } else if (event.type.includes('modified')) {
+                eventClass += ' modify';
+                modifyCount++;
+            }
+            
+            eventDiv.className = eventClass;
+            eventDiv.innerHTML = `
+                <strong>${event.type}</strong> - ${event.data?.file_path || 'unknown'} 
+                <small style="color: #6c757d;">[${new Date().toLocaleTimeString()}]</small>
+            `;
+            
+            eventLog.insertBefore(eventDiv, eventLog.firstChild);
+            eventCount++;
+            
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('totalEvents').textContent = eventCount;
+            document.getElementById('deleteEvents').textContent = deleteCount;
+            document.getElementById('createEvents').textContent = createCount;
+            document.getElementById('modifyEvents').textContent = modifyCount;
+        }
+
+        function connect() {
+            projectId = document.getElementById('projectId').value;
+            const token = document.getElementById('token').value;
+            
+            if (!projectId || !token) {
+                alert('Please enter both Project ID and JWT Token');
+                return;
+            }
+
+            const wsUrl = `ws://localhost:8000/ws?token=${encodeURIComponent(token)}`;
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function() {
+                    updateStatus(true, 'Connected to WebSocket');
+                    console.log('WebSocket connected');
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        console.log('WebSocket message:', message);
+                        
+                        if (message.type && message.type.startsWith('fs:')) {
+                            logEvent(message);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing WebSocket message:', e);
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    updateStatus(false, `Disconnected (code: ${event.code})`);
+                    console.log('WebSocket disconnected', event);
+                };
+                
+                ws.onerror = function(error) {
+                    updateStatus(false, 'Connection error');
+                    console.error('WebSocket error:', error);
+                };
+                
+            } catch (error) {
+                updateStatus(false, 'Failed to connect');
+                console.error('Connection failed:', error);
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            updateStatus(false, 'Disconnected');
+        }
+
+        function subscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Please connect to WebSocket first');
+                return;
+            }
+
+            const subscribeMessage = {
+                type: "subscribe",
+                channel: "system",
+                data: { channel: `project:${projectId}:files` },
+                timestamp: new Date().toISOString()
+            };
+
+            ws.send(JSON.stringify(subscribeMessage));
+            console.log('Subscribed to file events for project:', projectId);
+            
+            // Log subscription
+            const eventLog = document.getElementById('eventLog');
+            const eventDiv = document.createElement('div');
+            eventDiv.style.cssText = 'color: #007bff; font-style: italic; margin: 10px 0;';
+            eventDiv.innerHTML = `📡 Subscribed to project:${projectId}:files`;
+            eventLog.insertBefore(eventDiv, eventLog.firstChild);
+        }
+
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = `
+                <div style="color: #6c757d; font-style: italic;">
+                    Log cleared. Waiting for events...
+                </div>
+            `;
+            eventCount = 0;
+            deleteCount = 0;
+            createCount = 0;
+            modifyCount = 0;
+            updateStats();
+        }
+
+        // Auto-fill project ID from URL or localStorage
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectFromUrl = urlParams.get('project');
+            if (projectFromUrl) {
+                document.getElementById('projectId').value = projectFromUrl;
+            }
+        };
+    </script>
+</body>
+</html>
