@@ -222,3 +222,102 @@ async def stop_file_watching(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{project_id}/files/read")
+async def read_project_file(
+    project_id: str,
+    file_path: str,
+    current_user: User = Depends(get_current_user_dependency),
+    project_service: ProjectService = Depends(get_project_service)
+) -> Dict:
+    """Read file content from the project's VM"""
+    try:
+        logger.info(f"Reading file {file_path} for project {project_id}, user {current_user.id}")
+        
+        project = project_service.get_project(project_id, current_user.id)
+        if not project:
+            logger.warning(f"Project {project_id} not found for user {current_user.id}")
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        if project.vm_status != "active":
+            logger.warning(f"VM not active for project {project_id}")
+            raise HTTPException(status_code=400, detail="VM must be active to read files")
+        
+        vm_service = get_vm_service()
+        
+        # Ensure file path is within the project workspace
+        if not file_path.startswith("/workspace"):
+            file_path = f"/workspace/{project_id}/{file_path.lstrip('/')}"
+        elif file_path.startswith("/workspace") and not file_path.startswith(f"/workspace/{project_id}"):
+            file_path = file_path.replace("/workspace", f"/workspace/{project_id}", 1)
+        
+        try:
+            content = await vm_service.read_file(project_id, file_path)
+            return {
+                "success": True,
+                "content": content,
+                "file_path": file_path
+            }
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="File not found")
+        except PermissionError:
+            raise HTTPException(status_code=403, detail="Permission denied")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to read file {file_path} for project {project_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{project_id}/files/write")
+async def write_project_file(
+    project_id: str,
+    file_data: dict,
+    current_user: User = Depends(get_current_user_dependency),
+    project_service: ProjectService = Depends(get_project_service)
+) -> Dict:
+    """Write content to a file in the project's VM"""
+    try:
+        logger.info(f"Writing file for project {project_id}, user {current_user.id}")
+        
+        project = project_service.get_project(project_id, current_user.id)
+        if not project:
+            logger.warning(f"Project {project_id} not found for user {current_user.id}")
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        if project.vm_status != "active":
+            logger.warning(f"VM not active for project {project_id}")
+            raise HTTPException(status_code=400, detail="VM must be active to write files")
+        
+        vm_service = get_vm_service()
+        
+        file_path = file_data.get("path")
+        content = file_data.get("content", "")
+        
+        if not file_path:
+            raise HTTPException(status_code=400, detail="File path is required")
+        
+        # Ensure file path is within the project workspace
+        if not file_path.startswith("/workspace"):
+            file_path = f"/workspace/{project_id}/{file_path.lstrip('/')}"
+        elif file_path.startswith("/workspace") and not file_path.startswith(f"/workspace/{project_id}"):
+            file_path = file_path.replace("/workspace", f"/workspace/{project_id}", 1)
+        
+        success = await vm_service.write_file(project_id, file_path, content)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to write file")
+        
+        return {
+            "success": True,
+            "message": "File written successfully",
+            "file_path": file_path
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to write file for project {project_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
