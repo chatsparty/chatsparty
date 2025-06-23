@@ -186,6 +186,18 @@ export const projectApi = {
     return response.data;
   },
 
+  async moveFile(
+    projectId: string,
+    sourcePath: string,
+    targetPath: string
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await api.post(`/api/projects/${projectId}/files/move`, {
+      source_path: sourcePath,
+      target_path: targetPath,
+    });
+    return response.data;
+  },
+
   // ============= AGENT INTEGRATION =============
 
   async createProjectConversation(
