@@ -6,6 +6,7 @@ export type RightTab =
   | "settings"
   | "services"
   | "console"
+  | "terminal"
   | "preview";
 
 export const useTabManager = () => {

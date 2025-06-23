@@ -7,6 +7,7 @@ import type {
 } from "../../../types/project";
 import { ChatPanel } from "./ChatPanel";
 import { ConsolePanel } from "./ConsolePanel";
+import { TerminalPanel } from "./TerminalPanel";
 import { FileEditor } from "./FileEditor";
 import { FileExplorer } from "./FileExplorer";
 import { FilesPanel } from "./FilesPanel";
@@ -188,6 +189,9 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
           />
         );
 
+      case "terminal":
+        return <TerminalPanel projectId={project.id} />;
+
       case "preview":
         return <PreviewPanel />;
 
@@ -312,6 +316,8 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
                           return { icon: MessageSquare, label: "Services" };
                         case "console":
                           return { icon: MessageSquare, label: "Console" };
+                        case "terminal":
+                          return { icon: MessageSquare, label: "Terminal" };
                         case "preview":
                           return { icon: MessageSquare, label: "Preview" };
                         default:
