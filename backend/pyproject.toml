@@ -36,7 +36,14 @@ dependencies = [
     "mcp>=1.9.4",
     "aiohttp>=3.12.13",
     "docker>=7.0.0",
+    "websockets>=15.0.1",
+    "watchdog>=6.0.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
 ]
+
+[tool.uv]
+dev-dependencies = []
 
 [tool.flake8]
 ignore = ["E501"]
