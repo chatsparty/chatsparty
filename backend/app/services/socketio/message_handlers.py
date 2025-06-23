@@ -91,8 +91,10 @@ class SocketIOTerminalHandler(SocketIOMessageHandler):
                 
             elif message.type == "terminal:close":
                 terminal_id = message.data.get("terminal_id")
+                print(f"[SOCKETIO] Received terminal close request for: {terminal_id}")
                 
                 if not terminal_id:
+                    print(f"[SOCKETIO] Terminal close request missing terminal_id")
                     error_response = SocketIOMessage(
                         type=MessageType.ERROR,
                         channel=message.channel,
@@ -102,7 +104,9 @@ class SocketIOTerminalHandler(SocketIOMessageHandler):
                     await sio_manager.send_to_connection(connection.sid, error_response)
                     return
                 
-                await terminal_manager.close_session(terminal_id)
+                print(f"[SOCKETIO] Calling terminal_manager.close_session({terminal_id})")
+                result = await terminal_manager.close_session(terminal_id)
+                print(f"[SOCKETIO] Terminal close result: {result}")
                 
                 response = SocketIOMessage(
                     type=MessageType.SUCCESS,
@@ -114,6 +118,9 @@ class SocketIOTerminalHandler(SocketIOMessageHandler):
                 
             elif message.type == "terminal:list":
                 project_id = message.data.get("project_id")
+                print(f"[SOCKETIO] Terminal list requested for project: {project_id}")
+                print(f"[SOCKETIO] All terminal sessions: {list(terminal_manager.sessions.keys())}")
+                
                 terminals = [
                     {
                         "terminal_id": session.session_id,
@@ -125,6 +132,10 @@ class SocketIOTerminalHandler(SocketIOMessageHandler):
                     if session.user_id == connection.user_id and 
                        (not project_id or session.project_id == project_id)
                 ]
+                
+                print(f"[SOCKETIO] Returning {len(terminals)} terminals for user {connection.user_id}")
+                for terminal in terminals:
+                    print(f"[SOCKETIO] - Terminal: {terminal['terminal_id']}, Status: {terminal['status']}")
                 
                 response = SocketIOMessage(
                     type=MessageType.SUCCESS,

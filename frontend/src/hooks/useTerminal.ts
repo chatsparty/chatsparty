@@ -31,45 +31,52 @@ export const useTerminal = ({
   );
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasAutoCreated = useRef(false);
+  const recentlyClosedSessions = useRef<Set<string>>(new Set());
 
   const terminalsRef = useRef<Map<string, Terminal>>(new Map());
   const fitAddonsRef = useRef<Map<string, FitAddon>>(new Map());
 
-  const createTerminalSession = useCallback(
-    async () => {
-      if (!isConnected) {
-        setError("Socket.IO not connected");
-        return null;
-      }
+  const createTerminalSession = useCallback(async () => {
+    if (!isConnected) {
+      setError("Socket.IO not connected");
+      return null;
+    }
 
-      setIsCreatingSession(true);
-      setError(null);
+    setIsCreatingSession(true);
+    setError(null);
 
-      try {
-        const createMessage = {
-          type: MessageType.TERMINAL_CREATE,
-          channel: "system",
-          data: {
-            project_id: projectId,
-          },
-          timestamp: new Date().toISOString(),
-        };
+    try {
+      const createMessage = {
+        type: MessageType.TERMINAL_CREATE,
+        channel: "system",
+        data: {
+          project_id: projectId,
+        },
+        timestamp: new Date().toISOString(),
+      };
 
-        send(createMessage);
+      send(createMessage);
 
-        return true;
-      } catch (err) {
-        setError(`Failed to create terminal: ${err}`);
-        return null;
-      } finally {
-        setIsCreatingSession(false);
-      }
-    },
-    [isConnected, projectId, send]
-  );
+      return true;
+    } catch (err) {
+      setError(`Failed to create terminal: ${err}`);
+      return null;
+    } finally {
+      setIsCreatingSession(false);
+    }
+  }, [isConnected, projectId, send]);
 
   const closeTerminalSession = useCallback(
     async (sessionId: string) => {
+      console.log(`[TERMINAL] Closing session: ${sessionId}`);
+
+      recentlyClosedSessions.current.add(sessionId);
+
+      setTimeout(() => {
+        recentlyClosedSessions.current.delete(sessionId);
+      }, 5000);
+
       const closeMessage = {
         type: MessageType.TERMINAL_CLOSE,
         channel: "system",
@@ -79,19 +86,46 @@ export const useTerminal = ({
 
       send(closeMessage);
 
+      const channel = `project:${projectId}:terminal:${sessionId}`;
+      console.log(`[TERMINAL] Unsubscribing from channel: ${channel}`);
+      unsubscribe(channel);
+
       const terminal = terminalsRef.current.get(sessionId);
       if (terminal) {
+        console.log(`[TERMINAL] Disposing terminal instance: ${sessionId}`);
         terminal.dispose();
         terminalsRef.current.delete(sessionId);
         fitAddonsRef.current.delete(sessionId);
       }
 
-      setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
-      if (activeSession?.session_id === sessionId) {
-        setActiveSession(null);
-      }
+      setSessions((prev) => {
+        const remaining = prev.filter((s) => s.session_id !== sessionId);
+        console.log(
+          `[TERMINAL] Sessions remaining after close: ${remaining.length}`
+        );
+        console.log(
+          `[TERMINAL] Remaining session IDs: ${remaining
+            .map((s) => s.session_id)
+            .join(", ")}`
+        );
+
+        if (activeSession?.session_id === sessionId && remaining.length > 0) {
+          const nextSession = remaining[0];
+          console.log(
+            `[TERMINAL] Switching active session to: ${nextSession.session_id}`
+          );
+          setActiveSession(nextSession);
+        } else if (remaining.length === 0) {
+          console.log(
+            `[TERMINAL] No sessions remaining, setting active to null`
+          );
+          setActiveSession(null);
+        }
+
+        return remaining;
+      });
     },
-    [activeSession, send]
+    [activeSession, send, projectId, unsubscribe]
   );
 
   const sendTerminalInput = useCallback(
@@ -110,7 +144,6 @@ export const useTerminal = ({
     },
     [send]
   );
-
 
   const createTerminalInstance = useCallback(
     (sessionId: string, container: HTMLElement) => {
@@ -160,23 +193,16 @@ export const useTerminal = ({
     [sendTerminalInput]
   );
 
-  const fitTerminal = useCallback(
-    (sessionId: string) => {
-      const fitAddon = fitAddonsRef.current.get(sessionId);
-      if (fitAddon) {
-        try {
-          fitAddon.fit();
-        } catch (error) {
-          console.warn(
-            `[TERMINAL] Error fitting terminal ${sessionId}:`,
-            error
-          );
-        }
+  const fitTerminal = useCallback((sessionId: string) => {
+    const fitAddon = fitAddonsRef.current.get(sessionId);
+    if (fitAddon) {
+      try {
+        fitAddon.fit();
+      } catch (error) {
+        console.warn(`[TERMINAL] Error fitting terminal ${sessionId}:`, error);
       }
-    },
-    []
-  );
-
+    }
+  }, []);
 
   useEffect(() => {
     if (!isConnected) return;
@@ -190,6 +216,40 @@ export const useTerminal = ({
       }
 
       if (session) {
+        console.log(
+          `[TERMINAL] Status update for ${session.session_id}: ${session.status}`
+        );
+
+        if (session.status === "closed") {
+          console.log(
+            `[TERMINAL] Removing closed session: ${session.session_id}`
+          );
+
+          setSessions((prev) => {
+            const remaining = prev.filter(
+              (s) => s.session_id !== session.session_id
+            );
+
+            if (activeSession?.session_id === session.session_id) {
+              if (remaining.length > 0) {
+                const nextSession = remaining[0];
+                console.log(
+                  `[TERMINAL] Switching active session to: ${nextSession.session_id}`
+                );
+                setActiveSession(nextSession);
+              } else {
+                console.log(
+                  `[TERMINAL] No sessions remaining, setting active to null`
+                );
+                setActiveSession(null);
+              }
+            }
+
+            return remaining;
+          });
+          return;
+        }
+
         setSessions((prev) => {
           const existing = prev.find(
             (s) => s.session_id === session.session_id
@@ -218,20 +278,56 @@ export const useTerminal = ({
 
       console.log(
         `[TERMINAL] Output received for session ${session_id}:`,
-        output
+        output?.substring(0, 50) + (output?.length > 50 ? "..." : "")
       );
 
       if (terminal && output) {
         terminal.write(output);
+      } else if (!terminal) {
+        console.warn(
+          `[TERMINAL] No terminal instance found for session: ${session_id}`
+        );
       }
     };
 
     const handleTerminalList = (message: any) => {
       const { terminals: sessionList } = message.data;
       if (sessionList) {
-        setSessions(sessionList);
+        console.log(`[TERMINAL] Raw session list from server:`, sessionList);
 
-        sessionList.forEach((session: TerminalSession) => {
+        const normalizedSessions = sessionList.map((session: any) => ({
+          session_id: session.terminal_id || session.session_id,
+          project_id: session.project_id,
+          status: session.status,
+          created_at: session.created_at,
+          rows: 24,
+          cols: 80,
+        }));
+
+        const filteredSessions = normalizedSessions.filter((session: any) => {
+          const sessionId = session.session_id;
+          const isRecentlyClosed =
+            recentlyClosedSessions.current.has(sessionId);
+          if (isRecentlyClosed) {
+            console.log(
+              `[TERMINAL] Filtering out recently closed session: ${sessionId}`
+            );
+          }
+          return !isRecentlyClosed;
+        });
+
+        console.log(
+          `[TERMINAL] Received ${sessionList.length} sessions, normalized and filtered to ${filteredSessions.length}`
+        );
+        console.log(
+          `[TERMINAL] Setting sessions to:`,
+          filteredSessions
+            .map((s: TerminalSession) => `${s.session_id}(${s.status})`)
+            .join(", ")
+        );
+        setSessions(filteredSessions);
+
+        filteredSessions.forEach((session: TerminalSession) => {
           const channel = `project:${projectId}:terminal:${session.session_id}`;
           subscribe(channel);
         });
@@ -260,8 +356,10 @@ export const useTerminal = ({
         setSessions((prev) => {
           const existing = prev.find((s) => s.session_id === terminal_id);
           if (!existing) {
+            console.log(`[TERMINAL] Adding new session: ${terminal_id}`);
             return [...prev, newSession];
           }
+          console.log(`[TERMINAL] Session already exists: ${terminal_id}`);
           return prev;
         });
 
@@ -271,7 +369,6 @@ export const useTerminal = ({
         if (!activeSession) {
           setActiveSession(newSession);
         }
-
 
         setIsCreatingSession(false);
       }
@@ -296,13 +393,14 @@ export const useTerminal = ({
     const listMessage = {
       type: MessageType.TERMINAL_LIST,
       channel: "system",
-      data: {},
+      data: { project_id: projectId },
       timestamp: new Date().toISOString(),
     };
 
     send(listMessage);
 
-    if (autoCreate && sessions.length === 0) {
+    if (autoCreate && sessions.length === 0 && !hasAutoCreated.current) {
+      hasAutoCreated.current = true;
       createTerminalSession();
     }
 
@@ -322,16 +420,12 @@ export const useTerminal = ({
     isConnected,
     projectId,
     autoCreate,
-    sessions.length,
-    activeSession,
     subscribe,
     unsubscribe,
     onMessage,
     offMessage,
     send,
-    createTerminalSession,
   ]);
-
 
   return {
     sessions,

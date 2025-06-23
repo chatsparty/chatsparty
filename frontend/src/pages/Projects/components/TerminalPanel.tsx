@@ -26,6 +26,19 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ projectId }) => {
   );
 
   useEffect(() => {
+    setTerminalInstances((prev) => {
+      const newInstances = new Map(prev);
+      const sessionIds = new Set(sessions.map((s) => s.session_id));
+
+      for (const [sessionId] of prev) {
+        if (!sessionIds.has(sessionId)) {
+          newInstances.delete(sessionId);
+        }
+      }
+
+      return newInstances;
+    });
+
     sessions.forEach((session) => {
       if (
         session.status === "active" &&
@@ -43,7 +56,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ projectId }) => {
         }
       }
     });
-  }, [sessions, createTerminalInstance, terminalInstances]);
+  }, [sessions, createTerminalInstance]);
 
   useEffect(() => {
     const resizeHandler = () => {
@@ -64,6 +77,11 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ projectId }) => {
 
   const handleCloseTerminal = async (sessionId: string) => {
     await closeTerminalSession(sessionId);
+    setTimeout(() => {
+      if (activeSession) {
+        fitTerminal(activeSession.session_id);
+      }
+    }, 100);
   };
 
   const setTerminalRef = (sessionId: string, ref: HTMLDivElement | null) => {

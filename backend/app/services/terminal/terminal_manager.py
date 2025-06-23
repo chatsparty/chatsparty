@@ -68,10 +68,15 @@ class TerminalManager:
         
     async def close_session(self, session_id: str) -> bool:
         """Close a terminal session"""
+        print(f"[TERMINAL_MANAGER] Close session called for: {session_id}")
+        print(f"[TERMINAL_MANAGER] Current sessions: {list(self.sessions.keys())}")
+        
         if session_id not in self.sessions:
+            print(f"[TERMINAL_MANAGER] Session {session_id} not found in sessions")
             return False
             
         session = self.sessions[session_id]
+        print(f"[TERMINAL_MANAGER] Found session {session_id}, status: {session.status}")
         
         if session_id in self.session_processes:
             task = self.session_processes[session_id]
@@ -94,9 +99,12 @@ class TerminalManager:
                     pass
                 
         session.status = TerminalStatus.CLOSED
+        print(f"[TERMINAL_MANAGER] Session {session_id} marked as CLOSED")
         await self._notify_session_status(session)
         
         del self.sessions[session_id]
+        print(f"[TERMINAL_MANAGER] Session {session_id} deleted from sessions")
+        print(f"[TERMINAL_MANAGER] Remaining sessions: {list(self.sessions.keys())}")
         return True
         
         
@@ -149,6 +157,14 @@ class TerminalManager:
             session.pexpect_process.setwinsize(24, 80)
             
             print(f"[TERMINAL] Pexpect process started with PID: {session.pexpect_process.pid}")
+            
+            await asyncio.sleep(0.5)
+            
+            await asyncio.get_event_loop().run_in_executor(
+                None, session.pexpect_process.send, "cd /workspace && pwd && clear\n"
+            )
+            
+            print(f"[TERMINAL] Sent initial workspace navigation command")
             
             task = asyncio.create_task(self._stream_pexpect_output(session))
             self.session_processes[session.session_id] = task
