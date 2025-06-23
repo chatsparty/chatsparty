@@ -42,6 +42,10 @@ class SubscriptionHandler(MessageHandler):
                 )
                 await websocket_manager.send_to_connection(connection.connection_id, response)
 
+from .terminal_handler import TerminalHandler
+
+terminal_handler = TerminalHandler()
+
 message_handlers: Dict[str, MessageHandler] = {
     "subscribe": SubscriptionHandler(),
     "unsubscribe": SubscriptionHandler(),
@@ -49,4 +53,10 @@ message_handlers: Dict[str, MessageHandler] = {
     "fs:modified": FileSystemHandler(),
     "fs:deleted": FileSystemHandler(),
     "fs:folder_created": FileSystemHandler(),
+    
+    "terminal:create": terminal_handler,
+    "terminal:input": terminal_handler,
+    "terminal:resize": terminal_handler,
+    "terminal:close": terminal_handler,
+    "terminal:list": terminal_handler,
 }

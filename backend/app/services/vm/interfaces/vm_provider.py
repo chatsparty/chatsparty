@@ -200,3 +200,13 @@ class VMProviderInterface(ABC):
     async def move_file(self, project_id: str, source_path: str, destination_path: str) -> bool:
         """Move/rename a file or directory"""
         pass
+
+    @abstractmethod
+    async def resize_terminal(self, project_id: str, exec_id: str, rows: int, cols: int) -> None:
+        """Resize terminal session"""
+        pass
+        
+    @abstractmethod
+    async def get_container_info(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Get container information for terminal access"""
+        pass

@@ -453,3 +453,36 @@ class DockerProvider(VMProviderInterface):
             logger.error(f"[DOCKER_PROVIDER] Failed to trigger file event: {e}")
             import traceback
             logger.error(f"[DOCKER_PROVIDER] Traceback: {traceback.format_exc()}")
+
+    async def resize_terminal(self, project_id: str, exec_id: str, rows: int, cols: int) -> None:
+        """Resize terminal session"""
+        try:
+            container_name = f"chatsparty-project-{project_id}"
+            
+            # Use docker client to resize
+            import docker
+            client = docker.from_env()
+            
+            # This is a limitation - docker API doesn't support resize after exec
+            # For full terminal support, we might need to use docker API directly
+            # or implement a different approach
+            pass
+        except Exception as e:
+            raise Exception(f"Failed to resize terminal: {str(e)}")
+            
+    async def get_container_info(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Get container information"""
+        try:
+            container_name = f"chatsparty-project-{project_id}"
+            container = await self._get_container(container_name)
+            
+            if container:
+                return {
+                    "id": container.id,
+                    "name": container.name,
+                    "status": container.status,
+                    "image": container.image.tags[0] if container.image.tags else "unknown"
+                }
+        except Exception:
+            pass
+        return None
