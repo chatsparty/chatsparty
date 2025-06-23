@@ -33,9 +33,7 @@ class TerminalManager:
     async def create_session(
         self, 
         project_id: str, 
-        user_id: str, 
-        rows: int = 24, 
-        cols: int = 80
+        user_id: str
     ) -> TerminalSession:
         """Create a new terminal session"""
         session_id = f"term_{uuid4().hex[:8]}"
@@ -49,8 +47,8 @@ class TerminalManager:
             created_at=datetime.now(),
             last_activity=datetime.now(),
             websocket_channel=websocket_channel,
-            rows=rows,
-            cols=cols
+            rows=24,
+            cols=80
         )
         
         self.sessions[session_id] = session
@@ -101,24 +99,6 @@ class TerminalManager:
         del self.sessions[session_id]
         return True
         
-    async def resize_session(self, session_id: str, rows: int, cols: int) -> bool:
-        """Resize terminal session"""
-        if session_id not in self.sessions:
-            return False
-            
-        session = self.sessions[session_id]
-        session.rows = rows
-        session.cols = cols
-        session.last_activity = datetime.now()
-        
-        try:
-            if session.pexpect_process and session.pexpect_process.isalive():
-                session.pexpect_process.setwinsize(rows, cols)
-                print(f"[TERMINAL] Resized pexpect terminal to {cols}x{rows}")
-            return True
-        except Exception as e:
-            print(f"[TERMINAL] Error resizing terminal: {e}")
-            return False
         
     async def send_input(self, session_id: str, data: str) -> bool:
         """Send input to terminal session using pexpect"""
@@ -158,7 +138,7 @@ class TerminalManager:
     async def _start_terminal_process(self, session: TerminalSession):
         """Start the docker exec terminal process using pexpect"""
         try:
-            terminal_cmd = f"docker exec -it --env TERM=xterm-256color --env COLUMNS={session.cols} --env LINES={session.rows} --workdir /workspace chatsparty-project-{session.project_id} /bin/bash"
+            terminal_cmd = f"docker exec -it --env TERM=xterm-256color --env COLUMNS=80 --env LINES=24 --workdir /workspace chatsparty-project-{session.project_id} /bin/bash"
             
             print(f"[TERMINAL] Starting pexpect process: {terminal_cmd}")
             
@@ -166,7 +146,7 @@ class TerminalManager:
                 None, pexpect.spawn, terminal_cmd
             )
             
-            session.pexpect_process.setwinsize(session.rows, session.cols)
+            session.pexpect_process.setwinsize(24, 80)
             
             print(f"[TERMINAL] Pexpect process started with PID: {session.pexpect_process.pid}")
             
