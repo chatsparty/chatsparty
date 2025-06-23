@@ -464,3 +464,28 @@ class FlyProvider(VMProviderInterface):
         except Exception as e:
             logger.error(f"[FLY_PROVIDER] Error deleting directory {dir_path}: {e}")
             return False
+
+    async def move_file(self, project_id: str, source_path: str, destination_path: str) -> bool:
+        """Move/rename a file or directory"""
+        try:
+            logger.info(f"[FLY_PROVIDER] 📁 Moving file from {source_path} to {destination_path} in project {project_id}")
+            
+            # Use mv command to move/rename the file
+            result = await self.execute_command(
+                project_id, 
+                f"mv '{source_path}' '{destination_path}'",
+                working_dir="/workspace"
+            )
+            
+            logger.info(f"[FLY_PROVIDER] Move command result: exit_code={result.exit_code}")
+            logger.info(f"[FLY_PROVIDER] Command stdout: {result.stdout}")
+            logger.info(f"[FLY_PROVIDER] Command stderr: {result.stderr}")
+            
+            success = result.exit_code == 0
+            logger.info(f"[FLY_PROVIDER] Move file result: {success}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"[FLY_PROVIDER] ❌ Error moving file from {source_path} to {destination_path}: {e}")
+            return False

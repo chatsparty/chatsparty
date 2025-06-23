@@ -195,3 +195,8 @@ class VMProviderInterface(ABC):
     async def delete_directory(self, project_id: str, dir_path: str, recursive: bool = False) -> bool:
         """Delete a directory (optionally recursive)"""
         pass
+
+    @abstractmethod
+    async def move_file(self, project_id: str, source_path: str, destination_path: str) -> bool:
+        """Move/rename a file or directory"""
+        pass

@@ -321,3 +321,60 @@ async def write_project_file(
     except Exception as e:
         logger.error(f"Failed to write file for project {project_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{project_id}/files/move")
+async def move_project_file(
+    project_id: str,
+    file_data: dict,
+    current_user: User = Depends(get_current_user_dependency),
+    project_service: ProjectService = Depends(get_project_service)
+) -> Dict:
+    """Move/rename a file or folder in the project's VM"""
+    try:
+        logger.info(f"[MOVE_FILE] Starting move operation for project {project_id}")
+        logger.info(f"[MOVE_FILE] User: {current_user.email}")
+        logger.info(f"[MOVE_FILE] Raw file_data: {file_data}")
+        
+        project = project_service.get_project(project_id, current_user.id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        if project.vm_status != "active":
+            raise HTTPException(status_code=400, detail="VM must be active to move files. Please start the project VM first.")
+            
+        vm_service = get_vm_service()
+        
+        source_path = file_data.get("source_path")
+        target_path = file_data.get("target_path")
+        
+        logger.info(f"[MOVE_FILE] Parsed parameters:")
+        logger.info(f"  - source_path: {source_path}")
+        logger.info(f"  - target_path: {target_path}")
+        
+        if not source_path or not target_path:
+            raise HTTPException(status_code=400, detail="Both source_path and target_path are required")
+        
+        # Validate paths are within workspace
+        if not source_path.startswith("/workspace") or not target_path.startswith("/workspace"):
+            raise HTTPException(status_code=400, detail="Paths must be within workspace")
+        
+        logger.info(f"[MOVE_FILE] Calling VM service move with paths: {source_path} -> {target_path}")
+        
+        success = await vm_service.move_file(project_id, source_path, target_path)
+        logger.info(f"[MOVE_FILE] Move result: {success}")
+            
+        if not success:
+            logger.error(f"[MOVE_FILE] VM service returned false for move: {source_path} -> {target_path}")
+            raise HTTPException(status_code=500, detail="Failed to move file/folder")
+            
+        logger.info(f"[MOVE_FILE] ✅ Successfully moved: {source_path} -> {target_path}")
+        return {"success": True, "message": "File/folder moved successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[MOVE_FILE] ❌ Error moving file/folder for project {project_id}: {str(e)}")
+        import traceback
+        logger.error(f"[MOVE_FILE] Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -394,6 +394,38 @@ class DockerProvider(VMProviderInterface):
             logger.error(f"[DOCKER_PROVIDER] Error deleting directory {dir_path}: {e}")
             return False
 
+    async def move_file(self, project_id: str, source_path: str, destination_path: str) -> bool:
+        """Move/rename a file or directory"""
+        try:
+            logger.info(f"[DOCKER_PROVIDER] 📁 Moving file from {source_path} to {destination_path} in project {project_id}")
+            
+            # Use mv command to move/rename the file
+            result = await self.docker_facade.execute_command(
+                project_id, 
+                f"mv '{source_path}' '{destination_path}'",
+                working_dir="/workspace"
+            )
+            
+            logger.info(f"[DOCKER_PROVIDER] Move command result: exit_code={result.exit_code}")
+            logger.info(f"[DOCKER_PROVIDER] Command stdout: {result.stdout}")
+            logger.info(f"[DOCKER_PROVIDER] Command stderr: {result.stderr}")
+            
+            success = result.exit_code == 0
+            logger.info(f"[DOCKER_PROVIDER] Move file result: {success}")
+            
+            if success:
+                # Trigger file events for the move operation
+                await self._trigger_file_event(project_id, "deleted", source_path)
+                await self._trigger_file_event(project_id, "created", destination_path)
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"[DOCKER_PROVIDER] ❌ Error moving file from {source_path} to {destination_path}: {e}")
+            import traceback
+            logger.error(f"[DOCKER_PROVIDER] Traceback: {traceback.format_exc()}")
+            return False
+
     async def _trigger_file_event(self, project_id: str, event_type: str, file_path: str):
         """Manually trigger a file system event for WebSocket notifications"""
         try:
