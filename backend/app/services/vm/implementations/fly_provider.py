@@ -212,9 +212,20 @@ class FlyProvider(VMProviderInterface):
             logger.error(f"[FLY_PROVIDER] Failed to destroy sandbox: {e}")
             return False
 
-    def is_sandbox_active(self, project_id: str) -> bool:
+    async def is_sandbox_active(self, project_id: str) -> bool:
         """Check if Fly machine is active for project"""
-        return False
+        try:
+            machines = await self._make_request("GET", f"/apps/{self.app_name}/machines")
+            
+            for machine in machines:
+                if machine.get("name") == self._get_machine_name(project_id):
+                    return machine.get("state") == "started"
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"[FLY_PROVIDER] Failed to check sandbox status: {e}")
+            return False
 
     async def get_sandbox_info(self, project_id: str) -> Optional[Dict[str, Any]]:
         """Get information about the project's Fly machine"""
@@ -289,6 +300,15 @@ class FlyProvider(VMProviderInterface):
         """List files recursively in a tree structure"""
         logger.warning("[FLY_PROVIDER] list_files_recursive not fully implemented")
         return {"name": "workspace", "path": "/workspace", "type": "directory"}
+    
+    async def list_directory_children(
+        self, 
+        project_id: str, 
+        path: str = "/workspace"
+    ) -> List[Dict[str, Any]]:
+        """List only immediate children of a directory"""
+        logger.warning("[FLY_PROVIDER] list_directory_children not fully implemented")
+        return []
 
     async def execute_command(
         self, 
@@ -402,6 +422,22 @@ class FlyProvider(VMProviderInterface):
         except Exception as e:
             logger.error(f"[FLY_PROVIDER] Failed to stop service with PID {process_id}: {e}")
             return False
+    
+    async def get_active_ports(self, project_id: str) -> Dict[int, Dict[str, Any]]:
+        """Get all active listening ports in the Fly.io machine"""
+        # For Fly.io, ports are predefined in the configuration
+        # Return the configured ports with Fly.io URLs
+        active_ports = {}
+        
+        # Check common ports
+        for port in [3000, 8000, 8080, 5000]:
+            active_ports[port] = {
+                "port": port,
+                "process": "fly-app",
+                "url": f"https://{self.app_name}.fly.dev:{port}"
+            }
+        
+        return active_ports
 
     async def setup_file_watcher(self, project_id: str, callback: Callable[[str, str, str], None]) -> None:
         """Setup file system watcher for project (not supported in Fly.io)"""

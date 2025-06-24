@@ -43,6 +43,7 @@ dependencies = [
     "pexpect>=4.9.0",
     "python-socketio==5.8.0",
     "python-engineio==4.7.1",
+    "aiodocker>=0.24.0",
 ]
 
 [tool.uv]

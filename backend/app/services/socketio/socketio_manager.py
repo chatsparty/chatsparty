@@ -54,6 +54,7 @@ class SocketIOManager:
             engineio_logger=True,
             cors_allowed_origins=[]
         )
+        self.app = socketio.ASGIApp(self.sio)
         
         self.connections: Dict[str, SocketIOConnection] = {}
         self.channels: Dict[str, Set[str]] = {}
@@ -62,11 +63,15 @@ class SocketIOManager:
     
     def setup_events(self):
         """Setup Socket.IO event handlers"""
+        print("[SOCKETIO] Setting up event handlers...")
         
         @self.sio.event
         async def connect(sid, environ, auth):
             """Handle client connection"""
+            print(f"[SOCKETIO] ===== CONNECT EVENT =====")
             print(f"[SOCKETIO] Client {sid} attempting to connect")
+            print(f"[SOCKETIO] Auth data: {auth}")
+            print(f"[SOCKETIO] ========================")
             
             token = None
             if auth and 'token' in auth:
@@ -114,6 +119,8 @@ class SocketIOManager:
             try:
                 if sid not in self.connections:
                     print(f"[SOCKETIO] Message from unknown session {sid}")
+                    print(f"[SOCKETIO] Current connections: {list(self.connections.keys())}")
+                    print(f"[SOCKETIO] Message data: {data}")
                     return
                 
                 connection = self.connections[sid]
@@ -274,6 +281,6 @@ class SocketIOManager:
     
     def get_app(self):
         """Get the Socket.IO ASGI app"""
-        return socketio.ASGIApp(self.sio)
+        return self.app
 
 socketio_manager = SocketIOManager()

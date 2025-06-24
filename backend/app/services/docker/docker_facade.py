@@ -6,6 +6,7 @@ from .domain.models import ContainerInfo, ContainerSystemInfo, FileTreeNode
 from .implementations.command_executor import DockerCommandExecutor
 from .implementations.container_manager import ContainerManager
 from .implementations.file_manager import DockerFileManager
+from .implementations.file_manager_optimized import OptimizedDockerFileManager
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +18,14 @@ class DockerFacade:
     """
 
     def __init__(self):
-        # Initialize core managers
         self.container_manager = ContainerManager()
         self.file_manager = DockerFileManager(self.container_manager)
+        self.optimized_file_manager = OptimizedDockerFileManager(self.container_manager)
         self.command_executor = DockerCommandExecutor(self.container_manager)
+        
+    async def close(self):
+        """Close Docker client connections"""
+        await self.container_manager.close()
 
     async def create_project_sandbox(
         self,
@@ -39,7 +44,7 @@ class DockerFacade:
             "status": container_info.status,
             "workspace_path": container_info.workspace_path,
             "environment_type": container_info.environment_type,
-            "vm_url": f"http://localhost:{container_info.ports.get('8000/tcp', 8000)}",
+            "vm_url": f"http://localhost:{container_info.ports.get('3000/tcp', container_info.ports.get('8080/tcp', container_info.ports.get('8000/tcp', 8000)))}",
             "created_at": container_info.created_at,
             "ports": container_info.ports
         }
@@ -52,7 +57,6 @@ class DockerFacade:
         """Reconnect to an existing Docker container"""
         logger.info(f"[VM] Attempting to reconnect to sandbox {sandbox_id} for project {project_id}")
         try:
-            # Try to start the container if it exists
             result = await self.container_manager.start_container(project_id)
             if result:
                 logger.info(f"[VM] Successfully reconnected to sandbox {sandbox_id} for project {project_id}")
@@ -69,11 +73,9 @@ class DockerFacade:
         sandbox_id: Optional[str] = None
     ) -> bool:
         """Get existing container or attempt to reconnect"""
-        # If container is already active, return success
-        if self.container_manager.is_container_active(project_id):
+        if await self.container_manager.is_container_active(project_id):
             return True
 
-        # If we have a sandbox_id, try to reconnect
         if sandbox_id:
             return await self.reconnect_to_sandbox(project_id, sandbox_id)
 
@@ -89,9 +91,9 @@ class DockerFacade:
             logger.warning(f"[VM] Failed to destroy sandbox for project {project_id}")
         return result
 
-    def is_sandbox_active(self, project_id: str) -> bool:
+    async def is_sandbox_active(self, project_id: str) -> bool:
         """Check if container is active for project"""
-        return self.container_manager.is_container_active(project_id)
+        return await self.container_manager.is_container_active(project_id)
 
     async def get_sandbox_info(
         self,
@@ -120,7 +122,6 @@ class DockerFacade:
         """Destroy the container for a project"""
         return await self.destroy_sandbox(project_id)
 
-    # File Management Methods
     async def sync_files_to_vm(
         self,
         project_id: str,
@@ -187,7 +188,6 @@ class DockerFacade:
             ]
         return result
 
-    # Command Execution Methods
     async def execute_command(
         self,
         project_id: str,
@@ -216,7 +216,6 @@ class DockerFacade:
             project_id, package, package_manager
         )
 
-    # Service Management Methods (simplified for Docker)
     async def start_service(
         self,
         project_id: str,
@@ -228,15 +227,13 @@ class DockerFacade:
         port = service_config.get("port")
 
         try:
-            # Start service using nohup to run in background
             start_command = f"nohup {command} > /tmp/{service_name}.log 2>&1 & echo $!"
             result = await self.execute_command(project_id, start_command)
 
             if result.exit_code == 0:
                 process_id = int(result.stdout.strip()) if result.stdout.strip().isdigit() else None
                 
-                # Get container info for service URL
-                container = self.container_manager.get_container(project_id)
+                container = await self.container_manager.get_container(project_id)
                 service_url = None
                 if port and container:
                     container.reload()
@@ -279,3 +276,68 @@ class DockerFacade:
         except Exception as e:
             logger.error(f"Failed to stop service with PID {process_id}: {e}")
             return False
+    
+    async def get_active_ports(self, project_id: str) -> Dict[int, Dict[str, Any]]:
+        """Get all active listening ports in the container"""
+        try:
+            result = await self.execute_command(
+                project_id, 
+                "ss -tlnp 2>/dev/null | grep LISTEN || netstat -tlnp 2>/dev/null | grep LISTEN"
+            )
+            
+            if result.exit_code != 0:
+                logger.warning(f"Failed to get active ports: {result.stderr}")
+                return {}
+            
+            active_ports = {}
+            lines = result.stdout.strip().split('\n')
+            
+            for line in lines:
+                parts = line.split()
+                if len(parts) >= 4:
+                    addr_part = None
+                    for part in parts:
+                        if ':' in part and not part.startswith('::'):
+                            addr_part = part
+                            break
+                    
+                    if addr_part:
+                        try:
+                            port = int(addr_part.split(':')[-1])
+                            if 1024 < port < 65536:
+                                process_name = "unknown"
+                                for part in parts:
+                                    if '/' in part:
+                                        process_name = part.split('/')[-1]
+                                        break
+                                
+                                active_ports[port] = {
+                                    "port": port,
+                                    "process": process_name,
+                                    "address": addr_part
+                                }
+                        except ValueError:
+                            continue
+            
+            container = await self.container_manager.get_container(project_id)
+            if container:
+                container_info = await container.show()
+                if "NetworkSettings" in container_info and "Ports" in container_info["NetworkSettings"]:
+                    ports = container_info["NetworkSettings"]["Ports"]
+                    for container_port, host_bindings in ports.items():
+                        if host_bindings:
+                            port_num = int(container_port.split('/')[0])
+                            if port_num in active_ports:
+                                active_ports[port_num]["host_port"] = int(host_bindings[0]["HostPort"])
+                                active_ports[port_num]["url"] = f"http://localhost:{host_bindings[0]['HostPort']}"
+            
+            logger.info(f"Active ports in container {project_id}: {active_ports}")
+            return active_ports
+            
+        except Exception as e:
+            logger.error(f"Error getting active ports: {e}")
+            return {}
+    
+    async def list_directory_children(self, project_id: str, path: str = "/workspace") -> List[Dict[str, Any]]:
+        """List only immediate children of a directory"""
+        return await self.optimized_file_manager.list_directory_children(project_id, path)

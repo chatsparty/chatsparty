@@ -61,113 +61,74 @@ class UnifiedModelService:
     def __init__(self):
         self._agents = {}
         self._models = {}
+        self._initialized = False
 
+    async def initialize(self):
+        """Async initialization method to fetch dynamic models"""
+        if self._initialized:
+            return
+            
         openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
         if openrouter_api_key:
             print("Attempting to fetch OpenRouter models...")
             try:
-                models = asyncio.run(
-                    fetch_openrouter_models_async(openrouter_api_key))
+                models = await fetch_openrouter_models_async(openrouter_api_key)
                 if models:
-                    type(
-                        self).SUPPORTED_PROVIDERS['openrouter']['models'] = models
-                    print(
-                        f"Successfully fetched {len(models)} OpenRouter models.")
+                    type(self).SUPPORTED_PROVIDERS['openrouter']['models'] = models
+                    print(f"Successfully fetched {len(models)} OpenRouter models.")
                 else:
-                    print(
-                        "No models returned from OpenRouter or API key was missing for fetch method.")
-            except RuntimeError as e:
-                if "cannot be called when another loop is running" in str(e):
-                    print(
-                        f"Warning: Could not fetch OpenRouter models during init due to existing event loop: {e}")
-                    print(
-                        "Consider calling an async initialization method for UnifiedModelService if models are needed at startup in an async context.")
-                else:
-                    print(f"Error fetching OpenRouter models during init: {e}")
+                    print("No models returned from OpenRouter or API key was missing for fetch method.")
             except Exception as e:
-                print(
-                    f"An unexpected error occurred while fetching OpenRouter models during init: {e}")
+                print(f"Error fetching OpenRouter models: {e}")
         else:
-            print(
-                "OPENROUTER_API_KEY not found in environment. Skipping dynamic OpenRouter model fetching.")
+            print("OPENROUTER_API_KEY not found in environment. Skipping dynamic OpenRouter model fetching.")
 
         groq_api_key = os.getenv('GROQ_API_KEY')
         if groq_api_key:
             print("Attempting to fetch Groq models...")
             try:
-                models = asyncio.run(fetch_groq_models_async(groq_api_key))
+                models = await fetch_groq_models_async(groq_api_key)
                 if models:
                     type(self).SUPPORTED_PROVIDERS['groq']['models'] = models
                     print(f"Successfully fetched {len(models)} Groq models.")
                 else:
-                    print(
-                        "No models returned from Groq or API key was missing for fetch method.")
-            except RuntimeError as e:
-                if "cannot be called when another loop is running" in str(e):
-                    print(
-                        f"Warning: Could not fetch Groq models during init due to existing event loop: {e}")
-                    print(
-                        "Consider calling an async initialization method for UnifiedModelService if models are needed at startup in an async context.")
-                else:
-                    print(f"Error fetching Groq models during init: {e}")
+                    print("No models returned from Groq or API key was missing for fetch method.")
             except Exception as e:
-                print(
-                    f"An unexpected error occurred while fetching Groq models during init: {e}")
+                print(f"Error fetching Groq models: {e}")
         else:
-            print(
-                "GROQ_API_KEY not found in environment. Skipping dynamic Groq model fetching.")
+            print("GROQ_API_KEY not found in environment. Skipping dynamic Groq model fetching.")
 
         openai_api_key = os.getenv('OPENAI_API_KEY')
         if openai_api_key:
             print("Attempting to fetch OpenAI models...")
             try:
-                models = asyncio.run(fetch_openai_models_async(openai_api_key))
+                models = await fetch_openai_models_async(openai_api_key)
                 if models:
                     type(self).SUPPORTED_PROVIDERS['openai']['models'] = models
                     print(f"Successfully fetched {len(models)} OpenAI models.")
                 else:
-                    print(
-                        "No models returned from OpenAI or API key was missing for fetch method.")
-            except RuntimeError as e:
-                if "cannot be called when another loop is running" in str(e):
-                    print(
-                        f"Warning: Could not fetch OpenAI models during init due to existing event loop: {e}")
-                    print(
-                        "Consider calling an async initialization method for UnifiedModelService if models are needed at startup in an async context.")
-                else:
-                    print(f"Error fetching OpenAI models during init: {e}")
+                    print("No models returned from OpenAI or API key was missing for fetch method.")
             except Exception as e:
-                print(
-                    f"An unexpected error occurred while fetching OpenAI models during init: {e}")
+                print(f"Error fetching OpenAI models: {e}")
         else:
-            print(
-                "OPENAI_API_KEY not found in environment. Skipping dynamic OpenAI model fetching.")
+            print("OPENAI_API_KEY not found in environment. Skipping dynamic OpenAI model fetching.")
 
         gemini_api_key = os.getenv('GEMINI_API_KEY')
         if gemini_api_key:
             print("Attempting to fetch Gemini models...")
             try:
-                models = asyncio.run(fetch_gemini_models_async(gemini_api_key))
+                models = await fetch_gemini_models_async(gemini_api_key)
                 if models:
                     type(self).SUPPORTED_PROVIDERS['gemini']['models'] = models
                     print(f"Successfully fetched {len(models)} Gemini models.")
                 else:
-                    print(
-                        "No models returned from Gemini or API key was missing for fetch method.")
-            except RuntimeError as e:
-                if "cannot be called when another loop is running" in str(e):
-                    print(
-                        f"Warning: Could not fetch Gemini models during init due to existing event loop: {e}")
-                    print(
-                        "Consider calling an async initialization method for UnifiedModelService if models are needed at startup in an async context.")
-                else:
-                    print(f"Error fetching Gemini models during init: {e}")
+                    print("No models returned from Gemini or API key was missing for fetch method.")
             except Exception as e:
-                print(
-                    f"An unexpected error occurred while fetching Gemini models during init: {e}")
+                print(f"Error fetching Gemini models: {e}")
         else:
-            print(
-                "GEMINI_API_KEY not found in environment. Skipping dynamic Gemini model fetching.")
+            print("GEMINI_API_KEY not found in environment. Skipping dynamic Gemini model fetching.")
+            
+        self._initialized = True
 
     def get_available_providers(self) -> Dict[str, Dict]:
         """Get all available providers and their models"""
@@ -308,4 +269,13 @@ def get_unified_model_service() -> UnifiedModelService:
     global _unified_service
     if _unified_service is None:
         _unified_service = UnifiedModelService()
+    return _unified_service
+
+
+async def get_initialized_unified_model_service() -> UnifiedModelService:
+    """Get the singleton unified model service with async initialization"""
+    global _unified_service
+    if _unified_service is None:
+        _unified_service = UnifiedModelService()
+    await _unified_service.initialize()
     return _unified_service

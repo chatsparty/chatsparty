@@ -9,7 +9,6 @@ from app.models.chat import (
     ConnectionTestResult,
     ModelConfig
 )
-from app.services.ai.infrastructure.unified_model_service import UnifiedModelService
 from app.services.ai.infrastructure.database_repositories import RepositoryFactory
 from app.services.mcp.mcp_client_service import get_mcp_client_service
 from app.core.error_handler import DatabaseErrorHandler
@@ -20,7 +19,6 @@ class ConnectionService:
     """Service for managing model connections"""
     
     def __init__(self):
-        self.model_service = UnifiedModelService()
         self.mcp_client_service = get_mcp_client_service()
         self._initialize_default_connections()
     
@@ -39,7 +37,6 @@ class ConnectionService:
                 "base_url": request.base_url,
                 "is_active": True,
                 "user_id": user_id,
-                # MCP-specific fields
                 "mcp_server_url": getattr(request, 'mcp_server_url', None),
                 "mcp_server_config": getattr(request, 'mcp_server_config', None),
                 "available_tools": getattr(request, 'available_tools', None),
@@ -114,7 +111,6 @@ class ConnectionService:
                 start_time = time.time()
                 
                 if connection["provider"] == "mcp":
-                    # Test MCP server connection
                     return await self._test_mcp_connection(connection)
                 
                 elif connection["provider"] == "ollama":
@@ -179,8 +175,6 @@ class ConnectionService:
     
     def _initialize_default_connections(self):
         """Initialize some default connections for testing"""
-        # Skip default connection initialization since we now require user_id
-        # Default connections should be created per user when they register
         pass
     
     def create_default_connections_for_user(self, user_id: str):
@@ -206,7 +200,6 @@ class ConnectionService:
             request = ConnectionCreateRequest(**conn_data)
             self.create_connection(request, user_id)
     
-    # MCP-specific methods
     
     async def test_mcp_connection(self, server_url: str, server_config: Optional[Dict] = None) -> ConnectionTestResult:
         """Test MCP server connection without storing it"""
@@ -259,18 +252,15 @@ class ConnectionService:
             server_url = connection.mcp_server_url or connection.base_url
             server_config = connection.mcp_server_config
             
-            # Establish connection if not exists
             session = self.mcp_client_service.get_connection(connection_id)
             if not session:
                 await self.mcp_client_service.connect_to_server(
                     connection_id, server_url, server_config
                 )
             
-            # Discover capabilities
             capabilities = await self.mcp_client_service.discover_capabilities(connection_id)
             tools = capabilities.get('tools', [])
             
-            # Update connection with discovered tools
             update_data = {
                 'available_tools': tools,
                 'mcp_capabilities': capabilities
@@ -292,10 +282,8 @@ class ConnectionService:
             if not connection or connection.provider != "mcp":
                 raise ValueError("Invalid MCP connection")
             
-            # Discover current capabilities
             capabilities = await self.mcp_client_service.discover_capabilities(connection_id)
             
-            # Update connection
             update_data = {
                 'available_tools': capabilities.get('tools', []),
                 'mcp_capabilities': capabilities

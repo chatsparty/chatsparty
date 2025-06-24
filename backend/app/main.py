@@ -62,6 +62,7 @@ async def lifespan(app):
 
 app = create_app(lifespan=lifespan)
 
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(projects_router)

@@ -127,9 +127,9 @@ class DockerProvider(VMProviderInterface):
         logger.info(f"[DOCKER_PROVIDER] Destroying sandbox for project {project_id}")
         return await self.docker_facade.destroy_sandbox(project_id)
 
-    def is_sandbox_active(self, project_id: str) -> bool:
+    async def is_sandbox_active(self, project_id: str) -> bool:
         """Check if Docker container is active for project"""
-        return self.docker_facade.is_sandbox_active(project_id)
+        return await self.docker_facade.is_sandbox_active(project_id)
 
     async def get_sandbox_info(self, project_id: str) -> Optional[Dict[str, Any]]:
         """Get information about the project's Docker container"""
@@ -180,6 +180,14 @@ class DockerProvider(VMProviderInterface):
     ) -> Dict[str, Any]:
         """List files recursively in a tree structure"""
         return await self.docker_facade.list_files_recursive(project_id, path)
+    
+    async def list_directory_children(
+        self, 
+        project_id: str, 
+        path: str = "/workspace"
+    ) -> List[Dict[str, Any]]:
+        """List only immediate children of a directory"""
+        return await self.docker_facade.list_directory_children(project_id, path)
 
     async def execute_command(
         self, 
@@ -211,6 +219,10 @@ class DockerProvider(VMProviderInterface):
     async def stop_service(self, project_id: str, process_id: int) -> bool:
         """Stop a service by process ID"""
         return await self.docker_facade.stop_service(project_id, process_id)
+    
+    async def get_active_ports(self, project_id: str) -> Dict[int, Dict[str, Any]]:
+        """Get all active listening ports in the Docker container"""
+        return await self.docker_facade.get_active_ports(project_id)
 
     async def setup_file_watcher(self, project_id: str, callback: Callable[[str, str, str], None]) -> None:
         """Setup file system watcher for project"""

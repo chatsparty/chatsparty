@@ -3,7 +3,10 @@ Project file operations router
 """
 
 import logging
-from typing import Dict
+import time
+import asyncio
+from typing import Dict, Any
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -17,6 +20,9 @@ from .base import get_project_service
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects", tags=["projects-files"])
 
+file_list_cache = {}
+CACHE_TTL_SECONDS = 2
+
 
 @router.get("/{project_id}/files")
 async def get_vm_files(
@@ -27,6 +33,13 @@ async def get_vm_files(
 ) -> Dict:
     """Get file tree structure from the project's VM"""
     try:
+        cache_key = f"{project_id}:{path}:{current_user.id}"
+        if cache_key in file_list_cache:
+            cached_data, cache_time = file_list_cache[cache_key]
+            if datetime.now() - cache_time < timedelta(seconds=CACHE_TTL_SECONDS):
+                logger.info(f"Returning cached file list for project {project_id}")
+                return cached_data
+        
         logger.info(f"Getting VM files for project {project_id}, user {current_user.id}")
         
         project = project_service.get_project(project_id, current_user.id)
@@ -49,20 +62,73 @@ async def get_vm_files(
         
         vm_service = project_service.underlying_vm_service
         
-        # Use default workspace path without project ID
         if path == "/workspace":
             path = "/workspace"
         
-        file_tree = await vm_service.list_files_recursive(project_id, path)
+        logger.info(f"Starting file tree listing for project {project_id} at path: {path}")
+        start_time = time.time()
         
-        return {
-            "files": file_tree
-        }
+        try:
+            file_tree = await asyncio.wait_for(
+                vm_service.list_files_recursive(project_id, path),
+                timeout=10.0
+            )
+            elapsed = time.time() - start_time
+            logger.info(f"File tree listing completed in {elapsed:.2f}s for project {project_id}")
+            
+            result = {
+                "files": file_tree
+            }
+            
+            file_list_cache[cache_key] = (result, datetime.now())
+            
+            return result
+        except asyncio.TimeoutError:
+            elapsed = time.time() - start_time
+            logger.error(f"File tree listing timed out after {elapsed:.2f}s for project {project_id}")
+            raise HTTPException(
+                status_code=504,
+                detail="File listing operation timed out. The workspace may contain too many files."
+            )
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to get VM files for project {project_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{project_id}/files/children")
+async def get_directory_children(
+    project_id: str,
+    path: str = "/workspace",
+    current_user: User = Depends(get_current_user_dependency),
+    project_service: ProjectService = Depends(get_project_service)
+) -> Dict:
+    """Get only immediate children of a directory (for lazy loading)"""
+    try:
+        logger.info(f"Getting children for path {path} in project {project_id}")
+        
+        project = project_service.get_project(project_id, current_user.id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        if project.vm_status != "active":
+            raise HTTPException(status_code=400, detail="VM must be active to list files")
+        
+        vm_service = get_vm_service()
+        
+        children = await vm_service.list_directory_children(project_id, path)
+        
+        return {
+            "path": path,
+            "children": children
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get directory children: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -91,9 +157,6 @@ async def create_project_file(
         if not file_path:
             raise HTTPException(status_code=400, detail="File path is required")
         
-        # Keep file_path as is - no project ID needed
-        # if file_path.startswith("/workspace"):
-        #     file_path = file_path.replace("/workspace", f"/workspace/{project_id}", 1)
         
         success = False
         if is_folder:
@@ -248,7 +311,6 @@ async def read_project_file(
         
         vm_service = get_vm_service()
         
-        # Ensure file path is within workspace - no project ID needed
         if not file_path.startswith("/workspace"):
             file_path = f"/workspace/{file_path.lstrip('/')}"
         
@@ -299,7 +361,6 @@ async def write_project_file(
         if not file_path:
             raise HTTPException(status_code=400, detail="File path is required")
         
-        # Ensure file path is within workspace - no project ID needed
         if not file_path.startswith("/workspace"):
             file_path = f"/workspace/{file_path.lstrip('/')}"
         
@@ -318,6 +379,67 @@ async def write_project_file(
         raise
     except Exception as e:
         logger.error(f"Failed to write file for project {project_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{project_id}/files/debug")
+async def debug_vm_connection(
+    project_id: str,
+    current_user: User = Depends(get_current_user_dependency),
+    project_service: ProjectService = Depends(get_project_service)
+) -> Dict:
+    """Debug endpoint to test VM connection and basic file operations"""
+    try:
+        logger.info(f"Debug VM connection for project {project_id}, user {current_user.id}")
+        
+        project = project_service.get_project(project_id, current_user.id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        debug_info = {
+            "project_id": project_id,
+            "vm_status": project.vm_status,
+            "tests": {}
+        }
+        
+        if project.vm_status != "active":
+            debug_info["error"] = "VM is not active"
+            return debug_info
+        
+        vm_service = get_vm_service()
+        
+        try:
+            start = time.time()
+            result = await vm_service.execute_command(project_id, "ls -la /workspace")
+            debug_info["tests"]["ls_command"] = {
+                "success": result.exit_code == 0,
+                "duration": f"{time.time() - start:.2f}s",
+                "output_length": len(result.stdout) if result.stdout else 0
+            }
+        except Exception as e:
+            debug_info["tests"]["ls_command"] = {
+                "success": False,
+                "error": str(e)
+            }
+        
+        try:
+            container_info = await vm_service.get_container_info(project_id)
+            debug_info["tests"]["container_info"] = {
+                "success": container_info is not None,
+                "info": container_info
+            }
+        except Exception as e:
+            debug_info["tests"]["container_info"] = {
+                "success": False,
+                "error": str(e)
+            }
+        
+        return debug_info
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Debug VM connection failed for project {project_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -353,7 +475,6 @@ async def move_project_file(
         if not source_path or not target_path:
             raise HTTPException(status_code=400, detail="Both source_path and target_path are required")
         
-        # Validate paths are within workspace
         if not source_path.startswith("/workspace") or not target_path.startswith("/workspace"):
             raise HTTPException(status_code=400, detail="Paths must be within workspace")
         
@@ -375,4 +496,98 @@ async def move_project_file(
         logger.error(f"[MOVE_FILE] ❌ Error moving file/folder for project {project_id}: {str(e)}")
         import traceback
         logger.error(f"[MOVE_FILE] Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{project_id}/ports")
+async def get_project_ports(
+    project_id: str,
+    current_user: User = Depends(get_current_user_dependency),
+    project_service: ProjectService = Depends(get_project_service)
+) -> Dict[str, Any]:
+    """Get active ports and their mappings for the project VM"""
+    try:
+        project = project_service.get_project(project_id, current_user.id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        if project.vm_status != "active":
+            return {
+                "project_id": project_id,
+                "vm_status": project.vm_status,
+                "active_ports": {},
+                "message": "VM is not active"
+            }
+        
+        vm_service = get_vm_service()
+        active_ports = await vm_service.get_active_ports(project_id)
+        
+        preview_url = None
+        preview_port = None
+        
+        common_ports = [3000, 8080, 5173, 4200, 5000, 8000]
+        
+        for port in common_ports:
+            if port in active_ports and "url" in active_ports[port]:
+                preview_url = active_ports[port]["url"]
+                preview_port = port
+                break
+        
+        if not preview_url and active_ports:
+            first_port = list(active_ports.values())[0]
+            if "url" in first_port:
+                preview_url = first_port["url"]
+                preview_port = first_port["port"]
+        
+        if preview_url and project.vm_url != preview_url:
+            await project_service.update_project(
+                project_id,
+                current_user.id,
+                {"vm_url": preview_url}
+            )
+        
+        return {
+            "project_id": project_id,
+            "vm_status": project.vm_status,
+            "active_ports": active_ports,
+            "preview_url": preview_url,
+            "preview_port": preview_port
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting project ports: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{project_id}/ports/monitor")
+async def start_port_monitoring(
+    project_id: str,
+    current_user: User = Depends(get_current_user_dependency),
+    project_service: ProjectService = Depends(get_project_service)
+) -> Dict[str, Any]:
+    """Start monitoring ports for automatic preview updates"""
+    try:
+        project = project_service.get_project(project_id, current_user.id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        if project.vm_status != "active":
+            raise HTTPException(status_code=400, detail="VM must be active to monitor ports")
+        
+        from ...services.socketio.port_monitor_service import port_monitor_service
+        
+        await port_monitor_service.start_monitoring(project_id, current_user.id)
+        
+        return {
+            "project_id": project_id,
+            "monitoring": True,
+            "message": "Port monitoring started"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting port monitoring: {e}")
         raise HTTPException(status_code=500, detail=str(e))

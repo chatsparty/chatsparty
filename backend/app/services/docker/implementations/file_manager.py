@@ -3,8 +3,9 @@ import os
 import tarfile
 import tempfile
 import io
+import asyncio
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from ...project.domain.entities import ProjectFile
 from ...storage.storage_factory import get_storage_provider
@@ -20,6 +21,50 @@ class DockerFileManager:
     def __init__(self, container_manager: ContainerManager):
         self.container_manager = container_manager
         self.storage_provider = get_storage_provider()
+        
+    async def _exec_command(self, container, cmd, **kwargs):
+        """Helper method to execute commands in aiodocker container"""
+        try:
+            logger.info(f"[AIODOCKER] Executing command: {cmd}")
+            exec_obj = await container.exec(cmd, **kwargs)
+            stream = exec_obj.start(detach=False)
+            
+            output_chunks = []
+            async with stream:
+                while True:
+                    try:
+                        msg = await asyncio.wait_for(stream.read_out(), timeout=5.0)
+                        if msg is None:
+                            break
+                        if hasattr(msg, 'data'):
+                            output_chunks.append(msg.data)
+                        else:
+                            output_chunks.append(msg)
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Timeout reading stream for command: {cmd}")
+                        break
+            
+            output_bytes = b"".join(output_chunks)
+            logger.info(f"[AIODOCKER] Read {len(output_bytes)} bytes from command output")
+            
+            inspect_result = await exec_obj.inspect()
+            exit_code = inspect_result.get("ExitCode", 0)
+            logger.info(f"[AIODOCKER] Command exit code: {exit_code}")
+            
+            class ExecResult:
+                def __init__(self, output, exit_code):
+                    self.output = output
+                    self.exit_code = exit_code
+                    
+            return ExecResult(output_bytes, exit_code)
+        except Exception as e:
+            logger.error(f"Error executing command {cmd}: {e}")
+            class ExecResult:
+                def __init__(self, output, exit_code):
+                    self.output = output
+                    self.exit_code = exit_code
+                    
+            return ExecResult(b"", 1)
 
     async def sync_files_to_container(
         self,
@@ -27,7 +72,7 @@ class DockerFileManager:
         files: List[ProjectFile]
     ) -> bool:
         """Sync project files to the container workspace"""
-        container = self.container_manager.get_container(project_id)
+        container = await self.container_manager.get_container(project_id)
         if not container:
             logger.error(f"No active container for project {project_id}")
             return False
@@ -45,12 +90,12 @@ class DockerFileManager:
                 )
 
                 if file.file_permissions:
-                    container.exec_run(
-                        f"chmod {file.file_permissions} {container_path}"
+                    await self._exec_command(
+                        container, ["chmod", file.file_permissions, container_path]
                     )
 
                 if file.is_executable:
-                    container.exec_run(f"chmod +x {container_path}")
+                    await self._exec_command(container, ["chmod", "+x", container_path])
 
                 logger.info(
                     f"Synced file {file.filename} to container at {container_path}"
@@ -66,12 +111,12 @@ class DockerFileManager:
 
     async def read_file(self, project_id: str, file_path: str) -> str:
         """Read file content from container filesystem"""
-        container = self.container_manager.get_container(project_id)
+        container = await self.container_manager.get_container(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
         try:
-            result = container.exec_run(f"cat {file_path}")
+            result = await self._exec_command(container, ["cat", file_path])
             if result.exit_code == 0:
                 return result.output.decode()
             else:
@@ -88,7 +133,7 @@ class DockerFileManager:
         permissions: Optional[str] = None
     ) -> bool:
         """Write content to file in container filesystem"""
-        container = self.container_manager.get_container(project_id)
+        container = await self.container_manager.get_container(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
@@ -96,7 +141,7 @@ class DockerFileManager:
             await self._write_file_to_container(container, file_path, content)
 
             if permissions:
-                container.exec_run(["sh", "-c", f"chmod {permissions} {file_path}"])
+                await self._exec_command(container, ["chmod", permissions, file_path])
 
             return True
 
@@ -110,12 +155,12 @@ class DockerFileManager:
         path: str = "/workspace"
     ) -> List[DirectoryItem]:
         """List directory contents in container"""
-        container = self.container_manager.get_container(project_id)
+        container = await self.container_manager.get_container(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
         try:
-            result = container.exec_run(["sh", "-c", f"ls -la {path}"])
+            result = await self._exec_command(container, ["ls", "-la", path])
             if result.exit_code != 0:
                 logger.error(f"Failed to list directory {path}")
                 return []
@@ -150,13 +195,74 @@ class DockerFileManager:
         path: str = "/workspace"
     ) -> FileTreeNode:
         """List files recursively in a tree structure"""
-        container = self.container_manager.get_container(project_id)
+        container = await self.container_manager.get_container(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
         return await self._build_file_tree_from_container(
             container, project_id, path
         )
+    
+    async def list_directory_children(
+        self,
+        project_id: str,
+        path: str = "/workspace"
+    ) -> List[Dict[str, Any]]:
+        """List only immediate children of a directory (non-recursive)"""
+        container = await self.container_manager.get_container(project_id)
+        if not container:
+            raise ValueError(f"No active container for project {project_id}")
+        
+        try:
+            ls_cmd = ["ls", "-la", "--group-directories-first", path]
+            result = await self._exec_command(container, ls_cmd)
+            
+            if result.exit_code != 0:
+                logger.warning(f"ls command failed for {path}")
+                return []
+            
+            output = result.output.decode().strip()
+            children = []
+            
+            lines = output.split('\n')[1:]
+            for line in lines:
+                if not line.strip():
+                    continue
+                    
+                parts = line.split(None, 8)
+                if len(parts) < 9:
+                    continue
+                
+                name = parts[8]
+                if name in ['.', '..']:
+                    continue
+                
+                is_dir = parts[0].startswith('d')
+                file_path = os.path.join(path, name)
+                
+                child = {
+                    "id": file_path,
+                    "name": name,
+                    "path": file_path,
+                    "type": "directory" if is_dir else "file",
+                    "size": parts[4] if not is_dir else None,
+                    "modified": " ".join(parts[5:8])
+                }
+                
+                if is_dir:
+                    check_cmd = ["sh", "-c", f"ls -A '{file_path}' 2>/dev/null | head -1"]
+                    check_result = await self._exec_command(container, check_cmd)
+                    has_children = check_result.exit_code == 0 and check_result.output.strip() != b""
+                    child["children"] = [] if has_children else None
+                
+                children.append(child)
+            
+            logger.info(f"Found {len(children)} children in {path}")
+            return children
+            
+        except Exception as e:
+            logger.error(f"Failed to list directory children: {e}")
+            return []
 
     async def _build_file_tree_from_container(
         self,
@@ -164,65 +270,86 @@ class DockerFileManager:
         project_id: str,
         path: str
     ) -> FileTreeNode:
-        """Build file tree recursively from container"""
-
-        def build_tree(current_path: str) -> FileTreeNode:
-            try:
-                result = container.exec_run(f"ls -1 {current_path}")
-                if result.exit_code != 0:
-                    return FileTreeNode(
-                        name=os.path.basename(current_path) or project_id,
-                        path=current_path,
-                        type="directory"
-                    )
-
-                output = result.output.decode().strip()
-                paths = [line.strip() for line in output.split('\n') if line.strip()]
-
-                dir_name = (
-                    os.path.basename(current_path)
-                    if current_path != "/workspace"
-                    else "workspace"
-                )
-
-                node = FileTreeNode(
-                    name=dir_name,
-                    path=current_path,
-                    type="directory"
-                )
-
-                for item_name in paths:
-                    if not item_name or item_name in ['.', '..']:
-                        continue
-
-                    item_path = f"{current_path}/{item_name}"
-
-                    check_result = container.exec_run(f"test -d {item_path}")
-                    is_dir = check_result.exit_code == 0
-
-                    if is_dir:
-                        subdir = build_tree(item_path)
-                        node.children.append(subdir)
-                    else:
-                        node.children.append(FileTreeNode(
-                            name=item_name,
-                            path=item_path,
-                            type="file"
-                        ))
-
-                return node
-
-            except Exception as e:
-                logger.error(
-                    f"Failed to build file tree for {current_path}: {e}"
-                )
+        """Build file tree recursively from container using an efficient approach"""
+        try:
+            find_cmd = [
+                "sh", "-c",
+                f"""find {path} \\( \
+                -name node_modules -o \
+                -name .git -o \
+                -name venv -o \
+                -name .venv -o \
+                -name __pycache__ -o \
+                -name dist -o \
+                -name build -o \
+                -name .next -o \
+                -name .cache -o \
+                -name coverage \
+                \\) -prune -o \\( -type f -o -type d \\) -print | head -2000 | sort"""
+            ]
+            
+            logger.info(f"Building file tree for path: {path}")
+            result = await self._exec_command(container, find_cmd)
+            
+            if result.exit_code != 0:
+                logger.warning(f"Find command failed, falling back to simple tree")
                 return FileTreeNode(
-                    name=os.path.basename(current_path) or "workspace",
-                    path=current_path,
+                    name=os.path.basename(path) or "workspace",
+                    path=path,
                     type="directory"
                 )
-
-        return build_tree(path)
+            
+            output = result.output.decode().strip()
+            all_paths = [line.strip() for line in output.split('\n') if line.strip()]
+            
+            logger.info(f"Found {len(all_paths)} paths from find command")
+            if len(all_paths) < 20:
+                logger.info(f"All paths: {all_paths}")
+            else:
+                logger.info(f"First 10 paths: {all_paths[:10]}")
+            
+            root_name = os.path.basename(path) if path != "/workspace" else "workspace"
+            root = FileTreeNode(name=root_name, path=path, type="directory")
+            
+            nodes_map = {path: root}
+            
+            all_paths.sort()
+            
+            for file_path in all_paths:
+                if file_path == path:
+                    continue
+                
+                parent_path = os.path.dirname(file_path)
+                file_name = os.path.basename(file_path)
+                
+                if parent_path not in nodes_map:
+                    continue
+                
+                parent_node = nodes_map[parent_path]
+                
+                is_directory = any(p.startswith(file_path + "/") for p in all_paths)
+                
+                node = FileTreeNode(
+                    name=file_name,
+                    path=file_path,
+                    type="directory" if is_directory else "file"
+                )
+                
+                parent_node.children.append(node)
+                
+                if is_directory:
+                    nodes_map[file_path] = node
+            
+            logger.info(f"Successfully built file tree with {len(all_paths)} items")
+            return root
+            
+        except Exception as e:
+            logger.error(f"Failed to build file tree for {path}: {e}")
+            return FileTreeNode(
+                name=os.path.basename(path) or "workspace",
+                path=path,
+                type="directory"
+            )
 
     async def _write_file_to_container(
         self,
@@ -233,7 +360,7 @@ class DockerFileManager:
         """Write file to container using tar stream"""
         try:
             dir_path = str(Path(file_path).parent)
-            container.exec_run(f"mkdir -p {dir_path}")
+            await self._exec_command(container, ["mkdir", "-p", dir_path])
 
             with tempfile.NamedTemporaryFile() as temp_tar:
                 with tarfile.open(temp_tar.name, 'w') as tar:
@@ -246,7 +373,7 @@ class DockerFileManager:
                 temp_tar.seek(0)
                 tar_data = temp_tar.read()
 
-            container.put_archive(path=dir_path, data=tar_data)
+            await container.put_archive(path=dir_path, data=tar_data)
 
         except Exception as e:
             logger.error(f"Failed to write file to container: {e}")

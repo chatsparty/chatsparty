@@ -65,7 +65,7 @@ class VMProviderInterface(ABC):
         pass
 
     @abstractmethod
-    def is_sandbox_active(self, project_id: str) -> bool:
+    async def is_sandbox_active(self, project_id: str) -> bool:
         """Check if VM/container is active for project"""
         pass
 
@@ -126,6 +126,15 @@ class VMProviderInterface(ABC):
     ) -> Dict[str, Any]:
         """List files recursively in a tree structure"""
         pass
+    
+    @abstractmethod
+    async def list_directory_children(
+        self, 
+        project_id: str, 
+        path: str = "/workspace"
+    ) -> List[Dict[str, Any]]:
+        """List only immediate children of a directory"""
+        pass
 
     @abstractmethod
     async def execute_command(
@@ -160,6 +169,11 @@ class VMProviderInterface(ABC):
     @abstractmethod
     async def stop_service(self, project_id: str, process_id: int) -> bool:
         """Stop a service by process ID"""
+        pass
+    
+    @abstractmethod
+    async def get_active_ports(self, project_id: str) -> Dict[int, Dict[str, Any]]:
+        """Get all active listening ports in the VM/container"""
         pass
 
     @abstractmethod

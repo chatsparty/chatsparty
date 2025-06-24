@@ -15,6 +15,47 @@ class DockerCommandExecutor:
     def __init__(self, container_manager: ContainerManager):
         self.container_manager = container_manager
         self.default_timeout = 30
+        
+    async def _exec_command(self, container, cmd, **kwargs):
+        """Helper method to execute commands in aiodocker container"""
+        try:
+            exec_obj = await container.exec(cmd, **kwargs)
+            stream = exec_obj.start(detach=False)
+            
+            output_chunks = []
+            async with stream:
+                while True:
+                    try:
+                        msg = await asyncio.wait_for(stream.read_out(), timeout=5.0)
+                        if msg is None:
+                            break
+                        if hasattr(msg, 'data'):
+                            output_chunks.append(msg.data)
+                        else:
+                            output_chunks.append(msg)
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Timeout reading stream for command: {cmd}")
+                        break
+            
+            output_bytes = b"".join(output_chunks)
+            
+            inspect_result = await exec_obj.inspect()
+            exit_code = inspect_result.get("ExitCode", 0)
+            
+            class ExecResult:
+                def __init__(self, output, exit_code):
+                    self.output = output
+                    self.exit_code = exit_code
+                    
+            return ExecResult(output_bytes, exit_code)
+        except Exception as e:
+            logger.error(f"Error executing command {cmd}: {e}")
+            class ExecResult:
+                def __init__(self, output, exit_code):
+                    self.output = output
+                    self.exit_code = exit_code
+                    
+            return ExecResult(b"", 1)
 
     async def execute_command(
         self,
@@ -24,7 +65,7 @@ class DockerCommandExecutor:
         timeout: Optional[int] = None
     ) -> VMCommandResult:
         """Execute command in project container"""
-        container = self.container_manager.get_container(project_id)
+        container = await self.container_manager.get_container(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
@@ -41,35 +82,21 @@ class DockerCommandExecutor:
             logger.info(f"[VM] ⏱️ Timeout: {cmd_timeout}s")
             logger.info(f"[VM] 🔨 Full command: {full_command}")
 
-            # Execute command in container using thread pool
-            def _exec_command():
-                # Use bash to execute the command properly
-                return container.exec_run(
-                    ["bash", "-c", full_command],
+            result = await asyncio.wait_for(
+                self._exec_command(
+                    container, ["bash", "-c", full_command],
                     user="root",
                     workdir=work_dir,
-                    environment={"HOME": "/workspace", "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
-                    demux=True  # Separate stdout and stderr
-                )
-            
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                self.container_manager.executor, 
-                _exec_command
+                    environment={"HOME": "/workspace", "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
+                ),
+                timeout=cmd_timeout
             )
 
             end_time = datetime.now()
             execution_time = (end_time - start_time).total_seconds()
 
-            # Handle demuxed output
-            if isinstance(result.output, tuple):
-                stdout_bytes, stderr_bytes = result.output
-                stdout = stdout_bytes.decode() if stdout_bytes else ""
-                stderr = stderr_bytes.decode() if stderr_bytes else ""
-            else:
-                # Non-demuxed output (mixed stdout/stderr)
-                stdout = result.output.decode() if result.output else ""
-                stderr = ""
+            stdout = result.output.decode() if result.output else ""
+            stderr = ""
 
             cmd_result = VMCommandResult(
                 stdout=stdout,
@@ -94,11 +121,9 @@ class DockerCommandExecutor:
                 else:
                     logger.error(f"[VM] 🚨 No error output - likely 'command not found' (exit 127)")
                 
-                # Special handling for exit code 127 (command not found)
                 if result.exit_code == 127:
                     logger.error(f"[VM] 💡 Exit code 127 usually means 'command not found'")
                     logger.error(f"[VM] 💡 Check if the command exists in the container PATH")
-                    # Try to debug the PATH and available commands
                     logger.error(f"[VM] 🔍 Attempting to debug container environment...")
             
             return cmd_result
@@ -138,7 +163,6 @@ class DockerCommandExecutor:
                 execution_time=0
             )
 
-        # 5 minute timeout for installs
         logger.info(f"[VM] Running package installation with 5-minute timeout")
         result = await self.execute_command(project_id, command, timeout=300)
         

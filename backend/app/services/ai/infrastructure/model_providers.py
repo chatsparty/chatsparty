@@ -1,12 +1,18 @@
-from typing import List
+from typing import List, Optional
 from ..domain.entities import Message, ModelConfiguration
 from ..domain.interfaces import ModelProviderInterface
-from .unified_model_service import get_unified_model_service
+from .unified_model_service import get_unified_model_service, get_initialized_unified_model_service
 
 
 class UnifiedModelProvider(ModelProviderInterface):
     def __init__(self):
-        self.unified_service = get_unified_model_service()
+        self._unified_service = None
+    
+    async def _get_service(self):
+        """Get or initialize the unified service"""
+        if self._unified_service is None:
+            self._unified_service = await get_initialized_unified_model_service()
+        return self._unified_service
     
     async def chat_completion(
         self, 
@@ -15,12 +21,14 @@ class UnifiedModelProvider(ModelProviderInterface):
         model_config: ModelConfiguration
     ) -> str:
         try:
+            unified_service = await self._get_service()
+            
             message_dicts = [
                 {"role": msg.role, "content": msg.content} 
                 for msg in messages
             ]
             
-            return await self.unified_service.chat_completion(
+            return await unified_service.chat_completion(
                 messages=message_dicts,
                 system_prompt=system_prompt or "",
                 provider=model_config.provider,
