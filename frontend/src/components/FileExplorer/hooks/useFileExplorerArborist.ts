@@ -53,29 +53,6 @@ export const useFileExplorerArborist = (projectId: string) => {
     []
   );
 
-  const convertToArboristFormat = (fileStructure: any): FileNode[] => {
-    if (!fileStructure || !fileStructure.children) return [];
-
-    const convertNode = (node: any): FileNode => {
-      const fileNode: FileNode = {
-        id: node.path,
-        name: node.name,
-        type: node.type === "directory" ? "directory" : "file",
-        path: node.path,
-        size: node.size,
-        modified: node.modified,
-      };
-
-      if (node.children && node.children.length > 0) {
-        fileNode.children = node.children.map(convertNode);
-      }
-
-      return fileNode;
-    };
-
-    return fileStructure.children.map(convertNode);
-  };
-
   const fetchFiles = useCallback(async () => {
     if (!projectId) return;
 

@@ -36,7 +36,7 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [isSecure, setIsSecure] = useState(true);
-  const [pageTitle, setPageTitle] = useState('Preview');
+  const [, setPageTitle] = useState('Preview');
   const [tabs, setTabs] = useState<BrowserTab[]>([
     { id: '1', title: 'Preview', url: initialUrl || '', isActive: true }
   ]);
@@ -85,7 +85,7 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
       try {
         iframeRef.current.contentWindow?.history.back();
         setCanGoBack(false);
-      } catch (e) {
+      } catch {
         console.warn('Cannot access iframe history');
       }
     }
@@ -96,7 +96,7 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
       try {
         iframeRef.current.contentWindow?.history.forward();
         setCanGoForward(false);
-      } catch (e) {
+      } catch {
         console.warn('Cannot access iframe history');
       }
     }
@@ -137,7 +137,7 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
             : tab
         ));
       }
-    } catch (e) {
+    } catch {
       // Cross-origin restrictions
       setPageTitle('Preview');
     }

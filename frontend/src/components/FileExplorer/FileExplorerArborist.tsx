@@ -1,9 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Tree, NodeApi, TreeApi } from "react-arborist";
 import {
-  File,
   Folder,
-  FolderOpen,
   FileText,
   FolderPlus,
   Trash2,
@@ -137,13 +135,6 @@ export const FileExplorerArborist: React.FC<FileExplorerArboristProps> = ({
     dragHandle?: (el: HTMLDivElement | null) => void;
   }) => {
     const isDirectory = node.data.type === "directory";
-
-    // For directories, use lucide icons with colors
-    const DirectoryIcon = isDirectory
-      ? node.isOpen
-        ? FolderOpen
-        : Folder
-      : null;
 
     // For files, get extension and use react-file-icon
     const fileExtension = !isDirectory ? getFileExtension(node.data.name) : "";

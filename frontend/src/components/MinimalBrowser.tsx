@@ -62,7 +62,7 @@ const MinimalBrowser: React.FC<MinimalBrowserProps> = ({
       try {
         iframeRef.current.contentWindow?.history.back();
         setCanGoBack(false);
-      } catch (e) {
+      } catch {
         console.warn('Cannot access iframe history');
       }
     }
@@ -73,7 +73,7 @@ const MinimalBrowser: React.FC<MinimalBrowserProps> = ({
       try {
         iframeRef.current.contentWindow?.history.forward();
         setCanGoForward(false);
-      } catch (e) {
+      } catch {
         console.warn('Cannot access iframe history');
       }
     }

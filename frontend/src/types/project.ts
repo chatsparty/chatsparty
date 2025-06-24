@@ -45,7 +45,8 @@ export interface ProjectVMService {
   service_name: string;
   command: string;
   port?: number;
-  status: "starting" | "running" | "stopped" | "error";
+  host_port?: number;
+  status: "starting" | "running" | "stopped" | "error" | "exposing" | "exposure_failed";
   process_id?: number;
   service_url?: string;
   created_at: string;

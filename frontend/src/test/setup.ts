@@ -60,7 +60,7 @@ global.WebSocket = class MockWebSocket {
     }, 0);
   }
 
-  send(data: string) {
+  send(_data: string) {
     // Mock send - in tests we can override this
   }
 

@@ -9,12 +9,14 @@ interface ServicesPanelProps {
   vmServices: ProjectVMService[];
   onRefreshServices: () => void;
   onStopService: (serviceId: string) => void;
+  onStopServiceByPort: (port: number) => void;
 }
 
 export const ServicesPanel: React.FC<ServicesPanelProps> = ({
   vmServices,
   onRefreshServices,
   onStopService,
+  onStopServiceByPort,
 }) => {
   return (
     <div className="p-4">
@@ -44,12 +46,20 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
                     </span>
                     <Badge
                       variant={
-                        service.status === "running" ? "default" : "secondary"
+                        service.status === "running" ? "default" : 
+                        service.status === "exposing" ? "outline" :
+                        service.status === "exposure_failed" ? "destructive" :
+                        "secondary"
                       }
                     >
-                      {service.status}
+                      {service.status === "exposing" ? "exposing port..." : service.status}
                     </Badge>
                   </div>
+                  {service.port && service.host_port && (
+                    <div className="text-xs text-muted-foreground mb-1">
+                      Container: {service.port} → Host: {service.host_port}
+                    </div>
+                  )}
                   {service.service_url && (
                     <a
                       href={service.service_url}
@@ -62,7 +72,15 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
                   )}
                 </div>
                 <Button
-                  onClick={() => onStopService(service.id)}
+                  onClick={() => {
+                    // If service has is_discovered flag and a port, use port-based stopping
+                    // Otherwise use traditional service ID stopping
+                    if ((service as any).is_discovered && service.port) {
+                      onStopServiceByPort(service.port);
+                    } else {
+                      onStopService(service.id);
+                    }
+                  }}
                   variant="ghost"
                   size="sm"
                   className="text-red-600 hover:text-red-700 ml-2"

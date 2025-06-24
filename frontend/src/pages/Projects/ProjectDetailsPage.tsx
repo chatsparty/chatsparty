@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -19,9 +19,9 @@ export const ProjectDetailsPage: React.FC = () => {
     getProject,
     updateProject,
     setupVMWorkspace,
-    executeVMCommand,
     refreshProjectStatus,
     stopVMService,
+    stopServiceByPort,
     refreshVMServices,
   } = useProjects();
 
@@ -110,7 +110,7 @@ export const ProjectDetailsPage: React.FC = () => {
     );
   }
 
-  if (isEditing) {
+  if (isEditing && project) {
     return (
       <div className="h-screen flex flex-col bg-background">
         {/* Header */}
@@ -142,6 +142,18 @@ export const ProjectDetailsPage: React.FC = () => {
     );
   }
 
+  // If we reach here, project should be loaded
+  if (!project) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-muted-foreground mx-auto mb-4" />
+          <div className="text-lg text-muted-foreground">Loading project...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col bg-background">
       {/* Project Details - Full Screen */}
@@ -150,11 +162,9 @@ export const ProjectDetailsPage: React.FC = () => {
         projectStatus={projectStatus}
         vmServices={vmServices}
         onSetupVM={() => setupVMWorkspace(project.id)}
-        onExecuteCommand={(command, workingDir) =>
-          executeVMCommand(project.id, command, workingDir)
-        }
         onRefreshStatus={() => refreshProjectStatus(project.id)}
         onStopService={(serviceId) => stopVMService(project.id, serviceId)}
+        onStopServiceByPort={(port) => stopServiceByPort(project.id, port)}
         onRefreshServices={() => refreshVMServices(project.id)}
         onNavigateBack={() => navigate("/projects")}
         onEditProject={() => setIsEditing(true)}

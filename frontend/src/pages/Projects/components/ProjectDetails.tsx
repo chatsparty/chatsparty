@@ -31,6 +31,7 @@ interface ProjectDetailsProps {
   onSetupVM: () => void;
   onRefreshStatus: () => void;
   onStopService: (serviceId: string) => void;
+  onStopServiceByPort: (port: number) => void;
   onRefreshServices: () => void;
   onNavigateBack?: () => void;
   onEditProject?: () => void;
@@ -44,6 +45,7 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
   onSetupVM,
   onRefreshStatus,
   onStopService,
+  onStopServiceByPort,
   onRefreshServices,
   onNavigateBack,
   onEditProject,
@@ -168,6 +170,7 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
             vmServices={vmServices}
             onRefreshServices={onRefreshServices}
             onStopService={onStopService}
+            onStopServiceByPort={onStopServiceByPort}
           />
         </div>
 

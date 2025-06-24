@@ -103,6 +103,16 @@ export const projectApi = {
     await api.delete(`/api/projects/${projectId}/services/${serviceId}`);
   },
 
+  async getActiveServices(projectId: string): Promise<ProjectVMService[]> {
+    const response = await api.get(`/api/projects/${projectId}/active-services`);
+    return response.data.active_services;
+  },
+
+  async stopServiceByPort(projectId: string, port: number): Promise<{ success: boolean; message: string }> {
+    const response = await api.post(`/api/projects/${projectId}/services/stop`, { port });
+    return response.data;
+  },
+
   // ============= FILE MANAGEMENT =============
 
   async uploadFiles(

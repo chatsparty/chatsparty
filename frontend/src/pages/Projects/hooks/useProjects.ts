@@ -46,6 +46,7 @@ export interface UseProjectsReturn {
     port?: number
   ) => Promise<void>;
   stopVMService: (projectId: string, serviceId: string) => Promise<void>;
+  stopServiceByPort: (projectId: string, port: number) => Promise<void>;
   refreshVMServices: (projectId: string) => Promise<void>;
 }
 
@@ -298,10 +299,50 @@ export const useProjects = (): UseProjectsReturn => {
     [showToast]
   );
 
+  const stopServiceByPort = useCallback(
+    async (projectId: string, port: number) => {
+      try {
+        setLoading(true);
+        const result = await projectApi.stopServiceByPort(projectId, port);
+        if (result.success) {
+          showToast("Service stopped successfully!", "success");
+        } else {
+          showToast(result.message || "Failed to stop service", "error");
+        }
+
+        // Refresh services list
+        await refreshVMServices(projectId);
+      } catch (err) {
+        const errorMessage = projectApi.handleApiError(err);
+        setError(errorMessage);
+        showToast(errorMessage, "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showToast]
+  );
+
   const refreshVMServices = useCallback(async (projectId: string) => {
     try {
-      const services = await projectApi.getProjectServices(projectId);
-      setVmServices(services);
+      // Get both manually started services and discovered active services
+      const [services, activeServices] = await Promise.all([
+        projectApi.getProjectServices(projectId),
+        projectApi.getActiveServices(projectId)
+      ]);
+      
+      // Merge the services - active services take precedence
+      const allServices = [...services];
+      
+      // Add discovered services that aren't already in the list
+      activeServices.forEach(activeService => {
+        const existing = services.find(s => s.port === activeService.port);
+        if (!existing) {
+          allServices.push(activeService);
+        }
+      });
+      
+      setVmServices(allServices);
     } catch (err) {
       console.error(
         "Failed to refresh VM services:",
@@ -352,6 +393,7 @@ export const useProjects = (): UseProjectsReturn => {
     // Service Actions
     startVMService,
     stopVMService,
+    stopServiceByPort,
     refreshVMServices,
   };
 };
