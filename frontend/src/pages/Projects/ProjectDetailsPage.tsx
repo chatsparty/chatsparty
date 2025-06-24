@@ -10,13 +10,14 @@ import { useProjects } from "./hooks/useProjects";
 export const ProjectDetailsPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  
+
   const {
     projectStatus,
     vmServices,
     loading,
     error,
     getProject,
+    selectProject,
     updateProject,
     setupVMWorkspace,
     refreshProjectStatus,
@@ -33,19 +34,24 @@ export const ProjectDetailsPage: React.FC = () => {
       getProject(projectId)
         .then((project) => {
           setProject(project);
+          selectProject(project);
         })
         .catch((err) => {
-          console.error('Failed to load project:', err);
+          console.error("Failed to load project:", err);
           setProject(null);
+          selectProject(null);
         });
     }
-  }, [projectId, getProject]);
+
+    return () => {
+      selectProject(null);
+    };
+  }, [projectId, getProject, selectProject]);
 
   const handleUpdateProject = async (projectData: ProjectUpdate) => {
     if (project) {
       await updateProject(project.id, projectData);
       setIsEditing(false);
-      // Update local project state
       setProject({ ...project, ...projectData });
     }
   };
@@ -55,7 +61,9 @@ export const ProjectDetailsPage: React.FC = () => {
       <div className="h-screen w-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-muted-foreground mx-auto mb-4" />
-          <div className="text-lg text-muted-foreground">Loading project...</div>
+          <div className="text-lg text-muted-foreground">
+            Loading project...
+          </div>
         </div>
       </div>
     );
@@ -68,16 +76,19 @@ export const ProjectDetailsPage: React.FC = () => {
           <div className="w-24 h-24 mx-auto mb-6 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
             <ArrowLeft className="w-12 h-12 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-4">Error Loading Project</h1>
-          <p className="text-muted-foreground mb-6">
-            {error}
-          </p>
+          <h1 className="text-2xl font-bold text-foreground mb-4">
+            Error Loading Project
+          </h1>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <div className="flex gap-4 justify-center">
-            <Button onClick={() => {
-              if (projectId) {
-                getProject(projectId).then(setProject).catch(console.error);
-              }
-            }} variant="outline">
+            <Button
+              onClick={() => {
+                if (projectId) {
+                  getProject(projectId).then(setProject).catch(console.error);
+                }
+              }}
+              variant="outline"
+            >
               Retry
             </Button>
             <Button onClick={() => navigate("/projects")}>
@@ -97,9 +108,12 @@ export const ProjectDetailsPage: React.FC = () => {
           <div className="w-24 h-24 mx-auto mb-6 bg-muted rounded-full flex items-center justify-center">
             <ArrowLeft className="w-12 h-12 text-muted-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-4">Project Not Found</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-4">
+            Project Not Found
+          </h1>
           <p className="text-muted-foreground mb-6">
-            The project you're looking for doesn't exist or may have been deleted.
+            The project you're looking for doesn't exist or may have been
+            deleted.
           </p>
           <Button onClick={() => navigate("/projects")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -113,7 +127,6 @@ export const ProjectDetailsPage: React.FC = () => {
   if (isEditing && project) {
     return (
       <div className="h-screen flex flex-col bg-background">
-        {/* Header */}
         <div className="p-4 border-b border-border">
           <Button
             onClick={() => navigate("/projects")}
@@ -126,7 +139,6 @@ export const ProjectDetailsPage: React.FC = () => {
           </Button>
         </div>
 
-        {/* Edit Form */}
         <div className="flex-1 p-6 overflow-auto bg-background">
           <div className="max-w-2xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Edit Project</h1>
@@ -142,13 +154,14 @@ export const ProjectDetailsPage: React.FC = () => {
     );
   }
 
-  // If we reach here, project should be loaded
   if (!project) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-muted-foreground mx-auto mb-4" />
-          <div className="text-lg text-muted-foreground">Loading project...</div>
+          <div className="text-lg text-muted-foreground">
+            Loading project...
+          </div>
         </div>
       </div>
     );
@@ -156,7 +169,6 @@ export const ProjectDetailsPage: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background">
-      {/* Project Details - Full Screen */}
       <ProjectDetails
         project={project}
         projectStatus={projectStatus}

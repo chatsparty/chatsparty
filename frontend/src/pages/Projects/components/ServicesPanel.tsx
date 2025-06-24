@@ -10,6 +10,7 @@ interface ServicesPanelProps {
   onRefreshServices: () => void;
   onStopService: (serviceId: string) => void;
   onStopServiceByPort: (port: number) => void;
+  onServiceUrlClick?: (url: string) => void;
 }
 
 export const ServicesPanel: React.FC<ServicesPanelProps> = ({
@@ -17,6 +18,7 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
   onRefreshServices,
   onStopService,
   onStopServiceByPort,
+  onServiceUrlClick,
 }) => {
   return (
     <div className="p-4">
@@ -61,14 +63,12 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
                     </div>
                   )}
                   {service.service_url && (
-                    <a
-                      href={service.service_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline truncate block"
+                    <button
+                      onClick={() => onServiceUrlClick?.(service.service_url!)}
+                      className="text-xs text-blue-600 hover:underline truncate block text-left"
                     >
                       {service.service_url}
-                    </a>
+                    </button>
                   )}
                 </div>
                 <Button

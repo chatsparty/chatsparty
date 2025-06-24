@@ -332,7 +332,7 @@ export const FileExplorerArborist: React.FC<FileExplorerArboristProps> = ({
           <Tree<FileNode>
             ref={treeRef}
             data={data}
-            openByDefault={false}
+            openByDefault={true}
             width={width}
             height={height - 100}
             indent={20}

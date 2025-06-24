@@ -1,5 +1,5 @@
 import { File, Loader2, MessageSquare, X } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import type {
   Project,
   ProjectStatus,
@@ -11,13 +11,17 @@ import { FileEditor } from "./FileEditor";
 import { FileExplorerArborist } from "../../../components/FileExplorer/FileExplorerArborist";
 import { FilesPanel } from "./FilesPanel";
 import { IconSidebar } from "./IconSidebar";
-import { PreviewPanel } from "./PreviewPanel";
+import { PreviewPanel, type PreviewPanelRef } from "./PreviewPanel";
 import { ProjectHeader } from "./ProjectHeader";
 import { ResizeHandle } from "./ResizeHandle";
 import { ServicesPanel } from "./ServicesPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { useFileManager } from "../hooks/useFileManager";
-import { useTabManager, type LeftTab, type RightTab } from "../hooks/useTabManager";
+import {
+  useTabManager,
+  type LeftTab,
+  type RightTab,
+} from "../hooks/useTabManager";
 import { useChatMessages } from "../hooks/useChatMessages";
 import { useResizeablePanes } from "../hooks/useResizeablePanes";
 import { useDragAndDrop } from "../hooks/useDragAndDrop";
@@ -37,7 +41,6 @@ interface ProjectDetailsProps {
   onEditProject?: () => void;
 }
 
-
 export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
   project,
   projectStatus,
@@ -50,7 +53,8 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
   onNavigateBack,
   onEditProject,
 }) => {
-  const [fileViewerOpen, setFileViewerOpen] = useState(false);
+  const [fileViewerOpen, setFileViewerOpen] = useState(true);
+  const previewPanelRef = useRef<PreviewPanelRef>(null);
 
   // Custom hooks
   const fileManager = useFileManager({ project });
@@ -67,7 +71,16 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
     onSaveFile: fileManager.saveFile,
   });
 
+  // Handle service URL navigation
+  const handleServiceUrlClick = (url: string) => {
+    // Switch to preview tab
+    tabManager.setRightTab("preview");
 
+    // Navigate to the URL using the preview panel ref
+    setTimeout(() => {
+      previewPanelRef.current?.navigateToUrl(url);
+    }, 100); // Small delay to ensure the preview tab is rendered
+  };
 
   if (!project) {
     return (
@@ -82,8 +95,6 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
     );
   }
 
-
-
   const handleCloseLeftTab = (tab: LeftTab, e: React.MouseEvent) => {
     e.stopPropagation();
     tabManager.handleCloseLeftTab(tab);
@@ -96,7 +107,9 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
 
   const openFile = async (filePath: string, fileName: string) => {
     // Check if file is already open
-    const existingTab = fileManager.openFileTabs.find((tab) => tab.path === filePath);
+    const existingTab = fileManager.openFileTabs.find(
+      (tab) => tab.path === filePath
+    );
     if (existingTab) {
       tabManager.switchToExistingFileTab(existingTab.id);
       return;
@@ -109,13 +122,12 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
 
   const closeFileTab = async (tabId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     const success = await fileManager.closeFileTab(tabId);
     if (success) {
       tabManager.removeFileTabFromLeft(tabId);
     }
   };
-
 
   const renderLeftTabContent = () => {
     if (tabManager.leftTab === "chat") {
@@ -133,9 +145,9 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
     const fileTab = fileManager.getFileTab(tabManager.leftTab);
     if (fileTab) {
       return (
-        <FileEditor 
-          fileTab={fileTab} 
-          onUpdateContent={fileManager.updateFileContent} 
+        <FileEditor
+          fileTab={fileTab}
+          onUpdateContent={fileManager.updateFileContent}
           onSave={fileManager.saveFile}
         />
       );
@@ -147,7 +159,11 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
   const renderRightTabContent = () => {
     return (
       <>
-        <div className={tabManager.rightTab === "files" ? "block h-full" : "hidden"}>
+        <div
+          className={
+            tabManager.rightTab === "files" ? "block h-full" : "hidden"
+          }
+        >
           <FilesPanel
             dragOver={dragAndDrop.dragOver}
             onDrop={dragAndDrop.handleDrop}
@@ -156,7 +172,11 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
           />
         </div>
 
-        <div className={tabManager.rightTab === "settings" ? "block h-full" : "hidden"}>
+        <div
+          className={
+            tabManager.rightTab === "settings" ? "block h-full" : "hidden"
+          }
+        >
           <SettingsPanel
             project={project}
             projectStatus={projectStatus}
@@ -165,21 +185,35 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
           />
         </div>
 
-        <div className={tabManager.rightTab === "services" ? "block h-full" : "hidden"}>
+        <div
+          className={
+            tabManager.rightTab === "services" ? "block h-full" : "hidden"
+          }
+        >
           <ServicesPanel
             vmServices={vmServices}
             onRefreshServices={onRefreshServices}
             onStopService={onStopService}
             onStopServiceByPort={onStopServiceByPort}
+            onServiceUrlClick={handleServiceUrlClick}
           />
         </div>
 
-        <div className={tabManager.rightTab === "terminal" ? "block h-full" : "hidden"}>
+        <div
+          className={
+            tabManager.rightTab === "terminal" ? "block h-full" : "hidden"
+          }
+        >
           <TerminalPanel projectId={project.id} />
         </div>
 
-        <div className={tabManager.rightTab === "preview" ? "block h-full" : "hidden"}>
-          <PreviewPanel 
+        <div
+          className={
+            tabManager.rightTab === "preview" ? "block h-full" : "hidden"
+          }
+        >
+          <PreviewPanel
+            ref={previewPanelRef}
             projectId={project.id}
             previewUrl={projectStatus?.preview_url}
           />
@@ -207,7 +241,7 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
         />
 
         {fileViewerOpen && (
-          <div 
+          <div
             style={{ width: fileExplorerResize.width }}
             className="bg-neutral-900 border-r border-border relative m-1.5 rounded-md"
           >
@@ -215,11 +249,9 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
               projectId={project.id}
               onOpenFile={openFile}
               width={fileExplorerResize.width}
-              height={window.innerHeight - 60} // Adjust for header
+              height={window.innerHeight - 60}
             />
-            <ResizeHandle
-              onMouseDown={fileExplorerResize.handleMouseDown}
-            />
+            <ResizeHandle onMouseDown={fileExplorerResize.handleMouseDown} />
           </div>
         )}
 

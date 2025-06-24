@@ -23,6 +23,7 @@ interface BrowserTab {
   title: string;
   url: string;
   isActive: boolean;
+  iframeRef?: React.RefObject<HTMLIFrameElement | null>;
 }
 
 const BrowserPreview: React.FC<BrowserPreviewProps> = ({ 
@@ -30,7 +31,6 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   initialUrl,
   className = '' 
 }) => {
-  const [currentUrl, setCurrentUrl] = useState(initialUrl || '');
   const [addressBarUrl, setAddressBarUrl] = useState(initialUrl || '');
   const [isLoading, setIsLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -38,17 +38,19 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   const [isSecure, setIsSecure] = useState(true);
   const [, setPageTitle] = useState('Preview');
   const [tabs, setTabs] = useState<BrowserTab[]>([
-    { id: '1', title: 'Preview', url: initialUrl || '', isActive: true }
+    { id: '1', title: 'Preview', url: initialUrl || '', isActive: true, iframeRef: useRef<HTMLIFrameElement>(null) }
   ]);
   const [activeTabId, setActiveTabId] = useState('1');
-  
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (initialUrl) {
-      setCurrentUrl(initialUrl);
       setAddressBarUrl(initialUrl);
       setIsSecure(initialUrl.startsWith('https://') || initialUrl.startsWith('http://localhost'));
+      
+      // Update the first tab's URL if it's empty
+      setTabs(prevTabs => prevTabs.map(tab => 
+        tab.id === '1' && !tab.url ? { ...tab, url: initialUrl } : tab
+      ));
     }
   }, [initialUrl]);
 
@@ -56,7 +58,6 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
     if (!url) return;
     
     setIsLoading(true);
-    setCurrentUrl(url);
     setAddressBarUrl(url);
     setIsSecure(url.startsWith('https://') || url.startsWith('http://localhost'));
     
@@ -81,9 +82,10 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   };
 
   const handleBack = () => {
-    if (iframeRef.current) {
+    const activeTab = tabs.find(tab => tab.id === activeTabId);
+    if (activeTab?.iframeRef?.current) {
       try {
-        iframeRef.current.contentWindow?.history.back();
+        activeTab.iframeRef.current.contentWindow?.history.back();
         setCanGoBack(false);
       } catch {
         console.warn('Cannot access iframe history');
@@ -92,9 +94,10 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   };
 
   const handleForward = () => {
-    if (iframeRef.current) {
+    const activeTab = tabs.find(tab => tab.id === activeTabId);
+    if (activeTab?.iframeRef?.current) {
       try {
-        iframeRef.current.contentWindow?.history.forward();
+        activeTab.iframeRef.current.contentWindow?.history.forward();
         setCanGoForward(false);
       } catch {
         console.warn('Cannot access iframe history');
@@ -103,8 +106,9 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   };
 
   const handleRefresh = () => {
-    if (iframeRef.current) {
-      iframeRef.current.src = currentUrl;
+    const activeTab = tabs.find(tab => tab.id === activeTabId);
+    if (activeTab?.iframeRef?.current && activeTab.url) {
+      activeTab.iframeRef.current.src = activeTab.url;
       setIsLoading(true);
     }
   };
@@ -116,8 +120,9 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   };
 
   const handleOpenInNewTab = () => {
-    if (currentUrl) {
-      window.open(currentUrl, '_blank', 'noopener,noreferrer');
+    const activeTab = tabs.find(tab => tab.id === activeTabId);
+    if (activeTab?.url) {
+      window.open(activeTab.url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -125,7 +130,8 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
     setIsLoading(false);
     
     try {
-      const iframe = iframeRef.current;
+      const activeTab = tabs.find(tab => tab.id === activeTabId);
+      const iframe = activeTab?.iframeRef?.current;
       if (iframe?.contentDocument) {
         const title = iframe.contentDocument.title || 'Preview';
         setPageTitle(title);
@@ -149,12 +155,12 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
       id: newTabId,
       title: 'New Tab',
       url: '',
-      isActive: true
+      isActive: true,
+      iframeRef: useRef<HTMLIFrameElement>(null)
     };
     
     setTabs([...tabs.map(t => ({ ...t, isActive: false })), newTab]);
     setActiveTabId(newTabId);
-    setCurrentUrl('');
     setAddressBarUrl('');
   };
 
@@ -169,7 +175,6 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
     if (activeTabId === tabId) {
       const newActiveTab = newTabs[newTabs.length - 1];
       setActiveTabId(newActiveTab.id);
-      setCurrentUrl(newActiveTab.url);
       setAddressBarUrl(newActiveTab.url);
     }
   };
@@ -180,8 +185,8 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
     
     setTabs(tabs.map(t => ({ ...t, isActive: t.id === tabId })));
     setActiveTabId(tabId);
-    setCurrentUrl(tab.url);
     setAddressBarUrl(tab.url);
+    // Don't set currentUrl here to prevent iframe reload
   };
 
   return (
@@ -289,32 +294,44 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
 
       {/* Browser Content */}
       <div className="browser-content">
-        {currentUrl ? (
-          <iframe
-            ref={iframeRef}
-            src={currentUrl}
-            className="browser-iframe"
-            onLoad={handleIframeLoad}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-            title={`Preview for project ${projectId}`}
-          />
-        ) : (
-          <div className="empty-tab">
-            <div className="empty-tab-content">
-              <Home className="w-16 h-16 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-600 mb-2">New Tab</h3>
-              <p className="text-gray-500 mb-6">Enter a URL in the address bar to get started</p>
-              {initialUrl && (
-                <button 
-                  onClick={() => handleNavigation(initialUrl)}
-                  className="quick-action-btn"
-                >
-                  Go to Preview
-                </button>
-              )}
-            </div>
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            className={`tab-content ${tab.isActive ? 'active' : 'hidden'}`}
+            style={{ display: tab.isActive ? 'block' : 'none', height: '100%' }}
+          >
+            {tab.url ? (
+              <iframe
+                ref={tab.iframeRef}
+                src={tab.url}
+                className="browser-iframe"
+                onLoad={() => {
+                  if (tab.isActive) {
+                    handleIframeLoad();
+                  }
+                }}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                title={`Preview for project ${projectId} - Tab ${tab.id}`}
+              />
+            ) : (
+              <div className="empty-tab">
+                <div className="empty-tab-content">
+                  <Home className="w-16 h-16 text-gray-300 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-600 mb-2">New Tab</h3>
+                  <p className="text-gray-500 mb-6">Enter a URL in the address bar to get started</p>
+                  {initialUrl && (
+                    <button 
+                      onClick={() => handleNavigation(initialUrl)}
+                      className="quick-action-btn"
+                    >
+                      Go to Preview
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        ))}
         
         {isLoading && (
           <div className="loading-overlay">

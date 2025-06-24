@@ -10,7 +10,6 @@ import type {
 } from "../../../types/project";
 
 export interface UseProjectsReturn {
-  // State
   projects: Project[];
   selectedProject: Project | null;
   projectStatus: ProjectStatus | null;
@@ -18,7 +17,6 @@ export interface UseProjectsReturn {
   loading: boolean;
   error: string | null;
 
-  // Actions
   loadProjects: () => Promise<void>;
   getProject: (projectId: string) => Promise<Project>;
   createProject: (projectData: ProjectCreate) => Promise<void>;
@@ -29,7 +27,6 @@ export interface UseProjectsReturn {
   deleteProject: (projectId: string) => Promise<void>;
   selectProject: (project: Project | null) => void;
 
-  // VM Actions
   setupVMWorkspace: (projectId: string) => Promise<void>;
   executeVMCommand: (
     projectId: string,
@@ -38,7 +35,6 @@ export interface UseProjectsReturn {
   ) => Promise<string>;
   refreshProjectStatus: (projectId: string) => Promise<void>;
 
-  // Service Actions
   startVMService: (
     projectId: string,
     name: string,
@@ -61,8 +57,6 @@ export const useProjects = (): UseProjectsReturn => {
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  // ============= PROJECT MANAGEMENT =============
-
   const loadProjects = useCallback(async () => {
     try {
       setLoading(true);
@@ -78,20 +72,23 @@ export const useProjects = (): UseProjectsReturn => {
     }
   }, [showToast]);
 
-  const getProject = useCallback(async (projectId: string): Promise<Project> => {
-    try {
-      setLoading(true);
-      setError(null);
-      const project = await projectApi.getProject(projectId);
-      return project;
-    } catch (err) {
-      const errorMessage = projectApi.handleApiError(err);
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const getProject = useCallback(
+    async (projectId: string): Promise<Project> => {
+      try {
+        setLoading(true);
+        setError(null);
+        const project = await projectApi.getProject(projectId);
+        return project;
+      } catch (err) {
+        const errorMessage = projectApi.handleApiError(err);
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   const createProject = useCallback(
     async (projectData: ProjectCreate) => {
@@ -105,7 +102,6 @@ export const useProjects = (): UseProjectsReturn => {
           "success"
         );
 
-        // Auto-setup VM if requested
         if (projectData.auto_setup_vm) {
           await setupVMWorkspace(newProject.id);
         }
@@ -178,13 +174,38 @@ export const useProjects = (): UseProjectsReturn => {
     setVmServices([]);
 
     if (project) {
-      // Auto-load project status and services
-      refreshProjectStatus(project.id);
-      refreshVMServices(project.id);
+      (async () => {
+        try {
+          const [statusResponse] = await Promise.all([
+            projectApi.getProjectStatus(project.id),
+            Promise.all([
+              projectApi.getProjectServices(project.id),
+              projectApi.getActiveServices(project.id),
+            ]).then(([services, activeServices]) => {
+              const allServices = [...services];
+
+              activeServices.forEach((activeService) => {
+                const existing = services.find(
+                  (s) => s.port === activeService.port
+                );
+                if (!existing) {
+                  allServices.push(activeService);
+                }
+              });
+
+              setVmServices(allServices);
+            }),
+          ]);
+          setProjectStatus(statusResponse);
+        } catch (err) {
+          console.error(
+            "Failed to load project data:",
+            projectApi.handleApiError(err)
+          );
+        }
+      })();
     }
   }, []);
-
-  // ============= VM WORKSPACE MANAGEMENT =============
 
   const setupVMWorkspace = useCallback(
     async (projectId: string) => {
@@ -193,7 +214,6 @@ export const useProjects = (): UseProjectsReturn => {
         await projectApi.setupVMWorkspace(projectId);
         showToast("VM workspace setup completed!", "success");
 
-        // Refresh project status
         await refreshProjectStatus(projectId);
       } catch (err) {
         const errorMessage = projectApi.handleApiError(err);
@@ -238,7 +258,6 @@ export const useProjects = (): UseProjectsReturn => {
       const status = await projectApi.getProjectStatus(projectId);
       setProjectStatus(status);
 
-      // Update the project in the list with latest VM status
       setProjects((prev) =>
         prev.map((p) =>
           p.id === projectId
@@ -257,8 +276,6 @@ export const useProjects = (): UseProjectsReturn => {
     }
   }, []);
 
-  // ============= VM SERVICES MANAGEMENT =============
-
   const startVMService = useCallback(
     async (projectId: string, name: string, command: string, port?: number) => {
       try {
@@ -266,7 +283,6 @@ export const useProjects = (): UseProjectsReturn => {
         await projectApi.startVMService(projectId, { name, command, port });
         showToast(`Service "${name}" started successfully!`, "success");
 
-        // Refresh services list
         await refreshVMServices(projectId);
       } catch (err) {
         const errorMessage = projectApi.handleApiError(err);
@@ -286,7 +302,6 @@ export const useProjects = (): UseProjectsReturn => {
         await projectApi.stopVMService(projectId, serviceId);
         showToast("Service stopped successfully!", "success");
 
-        // Refresh services list
         await refreshVMServices(projectId);
       } catch (err) {
         const errorMessage = projectApi.handleApiError(err);
@@ -310,7 +325,6 @@ export const useProjects = (): UseProjectsReturn => {
           showToast(result.message || "Failed to stop service", "error");
         }
 
-        // Refresh services list
         await refreshVMServices(projectId);
       } catch (err) {
         const errorMessage = projectApi.handleApiError(err);
@@ -325,23 +339,20 @@ export const useProjects = (): UseProjectsReturn => {
 
   const refreshVMServices = useCallback(async (projectId: string) => {
     try {
-      // Get both manually started services and discovered active services
       const [services, activeServices] = await Promise.all([
         projectApi.getProjectServices(projectId),
-        projectApi.getActiveServices(projectId)
+        projectApi.getActiveServices(projectId),
       ]);
-      
-      // Merge the services - active services take precedence
+
       const allServices = [...services];
-      
-      // Add discovered services that aren't already in the list
-      activeServices.forEach(activeService => {
-        const existing = services.find(s => s.port === activeService.port);
+
+      activeServices.forEach((activeService) => {
+        const existing = services.find((s) => s.port === activeService.port);
         if (!existing) {
           allServices.push(activeService);
         }
       });
-      
+
       setVmServices(allServices);
     } catch (err) {
       console.error(
@@ -351,13 +362,10 @@ export const useProjects = (): UseProjectsReturn => {
     }
   }, []);
 
-  // ============= EFFECTS =============
-
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
 
-  // Auto-refresh project status every 30 seconds for active projects
   useEffect(() => {
     if (!selectedProject || selectedProject.vm_status === "inactive") return;
 
@@ -368,8 +376,17 @@ export const useProjects = (): UseProjectsReturn => {
     return () => clearInterval(interval);
   }, [selectedProject, refreshProjectStatus]);
 
+  useEffect(() => {
+    if (!selectedProject || selectedProject.vm_status === "inactive") return;
+
+    const interval = setInterval(() => {
+      refreshVMServices(selectedProject.id);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [selectedProject, refreshVMServices]);
+
   return {
-    // State
     projects,
     selectedProject,
     projectStatus,
@@ -377,7 +394,6 @@ export const useProjects = (): UseProjectsReturn => {
     loading,
     error,
 
-    // Actions
     loadProjects,
     getProject,
     createProject,
@@ -385,12 +401,10 @@ export const useProjects = (): UseProjectsReturn => {
     deleteProject,
     selectProject,
 
-    // VM Actions
     setupVMWorkspace,
     executeVMCommand,
     refreshProjectStatus,
 
-    // Service Actions
     startVMService,
     stopVMService,
     stopServiceByPort,

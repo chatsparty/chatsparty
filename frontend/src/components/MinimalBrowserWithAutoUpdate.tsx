@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,6 +17,10 @@ interface MinimalBrowserProps {
   className?: string;
 }
 
+export interface MinimalBrowserRef {
+  navigateToUrl: (url: string) => void;
+}
+
 interface PortInfo {
   port: number;
   process: string;
@@ -33,11 +37,11 @@ interface PortUpdateData {
   timestamp?: string;
 }
 
-const MinimalBrowserWithAutoUpdate: React.FC<MinimalBrowserProps> = ({
+const MinimalBrowserWithAutoUpdate = forwardRef<MinimalBrowserRef, MinimalBrowserProps>(({
   projectId,
   initialUrl,
   className = "",
-}) => {
+}, ref) => {
   const [currentUrl, setCurrentUrl] = useState(initialUrl || "");
   const [addressBarUrl, setAddressBarUrl] = useState(initialUrl || "");
   const [isLoading, setIsLoading] = useState(false);
@@ -153,6 +157,11 @@ const MinimalBrowserWithAutoUpdate: React.FC<MinimalBrowserProps> = ({
       url.startsWith("https://") || url.startsWith("http://localhost")
     );
   };
+
+  // Expose navigation function to parent
+  useImperativeHandle(ref, () => ({
+    navigateToUrl: handleNavigation
+  }), []);
 
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,6 +363,8 @@ const MinimalBrowserWithAutoUpdate: React.FC<MinimalBrowserProps> = ({
       </div>
     </div>
   );
-};
+});
+
+MinimalBrowserWithAutoUpdate.displayName = 'MinimalBrowserWithAutoUpdate';
 
 export default MinimalBrowserWithAutoUpdate;
