@@ -305,7 +305,7 @@ export const FileExplorerArborist: React.FC<FileExplorerArboristProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col p-2">
       <div className="p-2 border-b">
         <Input
           type="text"

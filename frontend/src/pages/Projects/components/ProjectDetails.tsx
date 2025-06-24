@@ -206,7 +206,7 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
         {fileViewerOpen && (
           <div 
             style={{ width: fileExplorerResize.width }}
-            className="border-r border-border relative"
+            className="bg-neutral-900 border-r border-border relative m-1.5 rounded-md"
           >
             <FileExplorerArborist
               projectId={project.id}
@@ -225,7 +225,7 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
             style={{ width: `${resizeablePanes.splitPosition}%` }}
             className="border-r border-border flex flex-col"
           >
-            <div className="h-full m-1 flex flex-col border border-border rounded-sm bg-card">
+            <div className="h-full m-1.5 flex flex-col rounded-md bg-card">
               <div className="border-b border-border">
                 <div className="flex overflow-x-auto">
                   {tabManager.openLeftTabs.map((tab) => {
@@ -294,7 +294,7 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
             style={{ width: `${100 - resizeablePanes.splitPosition}%` }}
             className="flex flex-col"
           >
-            <div className="h-full m-1 flex flex-col border border-border rounded-sm bg-card">
+            <div className="h-full m-1.5 flex flex-col rounded-md bg-card">
               <div className="border-b border-border">
                 <div className="flex">
                   {tabManager.openRightTabs.map((tab, index) => {
