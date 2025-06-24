@@ -14,6 +14,7 @@ import {
   RefreshCw,
   ChevronRight,
 } from "lucide-react";
+import { FileIcon, defaultStyles } from "react-file-icon";
 import { useFileExplorerArborist } from "./hooks/useFileExplorerArborist";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
@@ -121,6 +122,11 @@ export const FileExplorerArborist: React.FC<FileExplorerArboristProps> = ({
     }
   };
 
+  const getFileExtension = (filename: string): string => {
+    const lastDot = filename.lastIndexOf(".");
+    return lastDot > 0 ? filename.substring(lastDot + 1).toLowerCase() : "";
+  };
+
   const Node = ({
     node,
     style,
@@ -130,16 +136,19 @@ export const FileExplorerArborist: React.FC<FileExplorerArboristProps> = ({
     style: React.CSSProperties;
     dragHandle?: (el: HTMLDivElement | null) => void;
   }) => {
-    const Icon =
-      node.data.type === "directory"
-        ? node.isOpen
-          ? FolderOpen
-          : Folder
-        : File;
-
-    const iconColor =
-      node.data.type === "directory" ? "text-blue-500" : "text-gray-400";
     const isDirectory = node.data.type === "directory";
+
+    // For directories, use lucide icons with colors
+    const DirectoryIcon = isDirectory
+      ? node.isOpen
+        ? FolderOpen
+        : Folder
+      : null;
+
+    // For files, get extension and use react-file-icon
+    const fileExtension = !isDirectory ? getFileExtension(node.data.name) : "";
+
+    const iconColor = isDirectory ? "text-blue-500" : "text-gray-400";
     const hasOrMightHaveChildren =
       isDirectory &&
       (node.data.children === undefined ||
@@ -185,7 +194,18 @@ export const FileExplorerArborist: React.FC<FileExplorerArboristProps> = ({
             {!hasOrMightHaveChildren && isDirectory && (
               <span className="inline-flex w-4 h-4" />
             )}
-            <Icon className={cn("w-4 h-4 flex-shrink-0", iconColor)} />
+            {isDirectory ? (
+              <Folder className={cn("w-4 h-4 flex-shrink-0", iconColor)} />
+            ) : (
+              <div className="w-4 h-4 flex-shrink-0">
+                <FileIcon
+                  extension={fileExtension}
+                  {...(defaultStyles[
+                    fileExtension as keyof typeof defaultStyles
+                  ] || defaultStyles.txt)}
+                />
+              </div>
+            )}
             <span className="truncate flex-1">
               {node.isEditing ? (
                 <Input
