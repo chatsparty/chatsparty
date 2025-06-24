@@ -1,0 +1,3 @@
+[submodule "editor"]
+	path = editor
+	url = https://github.com/chatsparty/code-server.git
