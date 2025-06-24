@@ -410,11 +410,6 @@ export const useTerminal = ({
       offMessage(MessageType.TERMINAL_LIST, handleTerminalList);
       offMessage(MessageType.SUCCESS, handleSuccess);
       offMessage(MessageType.ERROR, handleError);
-
-      sessions.forEach((session) => {
-        const channel = `project:${projectId}:terminal:${session.session_id}`;
-        unsubscribe(channel);
-      });
     };
   }, [
     isConnected,

@@ -143,50 +143,46 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
   };
 
   const renderRightTabContent = () => {
-    switch (tabManager.rightTab) {
-      case "files":
-        return (
+    return (
+      <>
+        <div className={tabManager.rightTab === "files" ? "block h-full" : "hidden"}>
           <FilesPanel
             dragOver={dragAndDrop.dragOver}
             onDrop={dragAndDrop.handleDrop}
             onDragOver={dragAndDrop.handleDragOver}
             onDragLeave={dragAndDrop.handleDragLeave}
           />
-        );
+        </div>
 
-      case "settings":
-        return (
+        <div className={tabManager.rightTab === "settings" ? "block h-full" : "hidden"}>
           <SettingsPanel
             project={project}
             projectStatus={projectStatus}
             onRefreshStatus={onRefreshStatus}
             onSetupVM={onSetupVM}
           />
-        );
+        </div>
 
-      case "services":
-        return (
+        <div className={tabManager.rightTab === "services" ? "block h-full" : "hidden"}>
           <ServicesPanel
             vmServices={vmServices}
             onRefreshServices={onRefreshServices}
             onStopService={onStopService}
           />
-        );
+        </div>
 
-      case "terminal":
-        return <TerminalPanel projectId={project.id} />;
+        <div className={tabManager.rightTab === "terminal" ? "block h-full" : "hidden"}>
+          <TerminalPanel projectId={project.id} />
+        </div>
 
-      case "preview":
-        return (
+        <div className={tabManager.rightTab === "preview" ? "block h-full" : "hidden"}>
           <PreviewPanel 
             projectId={project.id}
             previewUrl={projectStatus?.preview_url}
           />
-        );
-
-      default:
-        return null;
-    }
+        </div>
+      </>
+    );
   };
 
   return (
