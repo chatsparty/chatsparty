@@ -423,13 +423,30 @@ class FlyProvider(VMProviderInterface):
             logger.error(f"[FLY_PROVIDER] Failed to stop service with PID {process_id}: {e}")
             return False
     
+    async def kill_process_by_port(self, project_id: str, port: int) -> bool:
+        """Kill process listening on specific port"""
+        try:
+            result = await self.execute_command(
+                project_id, 
+                f"ss -tlnp | grep :{port} | awk '{{print $NF}}' | cut -d'/' -f1"
+            )
+            
+            if result.exit_code != 0 or not result.stdout.strip():
+                logger.warning(f"[FLY_PROVIDER] No process found listening on port {port}")
+                return False
+            
+            process_id = int(result.stdout.strip())
+            logger.info(f"[FLY_PROVIDER] Killing process {process_id} listening on port {port}")
+            return await self.stop_service(project_id, process_id)
+            
+        except Exception as e:
+            logger.error(f"[FLY_PROVIDER] Failed to kill process on port {port}: {e}")
+            return False
+    
     async def get_active_ports(self, project_id: str) -> Dict[int, Dict[str, Any]]:
         """Get all active listening ports in the Fly.io machine"""
-        # For Fly.io, ports are predefined in the configuration
-        # Return the configured ports with Fly.io URLs
         active_ports = {}
         
-        # Check common ports
         for port in [3000, 8000, 8080, 5000]:
             active_ports[port] = {
                 "port": port,
@@ -506,7 +523,6 @@ class FlyProvider(VMProviderInterface):
         try:
             logger.info(f"[FLY_PROVIDER] 📁 Moving file from {source_path} to {destination_path} in project {project_id}")
             
-            # Use mv command to move/rename the file
             result = await self.execute_command(
                 project_id, 
                 f"mv '{source_path}' '{destination_path}'",

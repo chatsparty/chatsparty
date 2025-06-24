@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -272,56 +273,142 @@ class DockerFacade:
         """Stop a service by process ID"""
         try:
             result = await self.execute_command(project_id, f"kill {process_id}")
-            return result.exit_code == 0
+            if result.exit_code == 0:
+                logger.info(f"Successfully sent SIGTERM to process {process_id}")
+                await asyncio.sleep(2)
+                
+                check_result = await self.execute_command(project_id, f"kill -0 {process_id}")
+                if check_result.exit_code != 0:
+                    logger.info(f"Process {process_id} terminated gracefully")
+                    return True
+                
+                logger.info(f"Process {process_id} still running, sending SIGKILL")
+                force_result = await self.execute_command(project_id, f"kill -9 {process_id}")
+                return force_result.exit_code == 0
+            else:
+                logger.warning(f"Failed to send SIGTERM to process {process_id}: {result.stderr}")
+                return False
         except Exception as e:
             logger.error(f"Failed to stop service with PID {process_id}: {e}")
             return False
+            
+    async def kill_process_by_port(self, project_id: str, port: int) -> bool:
+        """Kill process listening on specific port"""
+        try:
+            active_ports = await self.get_active_ports(project_id)
+            if port in active_ports and active_ports[port].get("process_id"):
+                process_id = active_ports[port]["process_id"]
+                logger.info(f"Killing process {process_id} listening on port {port}")
+                return await self.stop_service(project_id, process_id)
+            else:
+                logger.warning(f"No process found listening on port {port}")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to kill process on port {port}: {e}")
+            return False
     
     async def get_active_ports(self, project_id: str) -> Dict[int, Dict[str, Any]]:
-        """Get all active listening ports in the container"""
+        """Get all active listening ports using the monitoring agent (much more reliable)"""
         try:
             result = await self.execute_command(
                 project_id, 
-                "ss -tlnp 2>/dev/null | grep LISTEN || netstat -tlnp 2>/dev/null | grep LISTEN"
+                "python3 /tmp/monitoring_agent.py"
             )
             
             if result.exit_code != 0:
-                logger.warning(f"Failed to get active ports: {result.stderr}")
+                logger.warning(f"Monitoring agent failed, falling back to /proc parsing: {result.stderr}")
+                return await self._get_active_ports_fallback(project_id)
+            
+            try:
+                import json
+                monitoring_data = json.loads(result.stdout)
+                active_ports = monitoring_data.get("active_ports", {})
+                
+                system_metrics = monitoring_data.get("system_metrics", {})
+                if system_metrics:
+                    logger.debug(f"[VM] System metrics for {project_id}: CPU {system_metrics.get('cpu_percent', 0):.1f}%, Memory {system_metrics.get('memory_percent', 0):.1f}%")
+                
+                active_ports_int = {}
+                for port_str, details in active_ports.items():
+                    try:
+                        port_int = int(port_str)
+                        active_ports_int[port_int] = details
+                    except ValueError:
+                        continue
+                
+                return await self._add_port_mappings(project_id, active_ports_int)
+                
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse monitoring agent JSON: {e}, falling back to /proc parsing")
+                return await self._get_active_ports_fallback(project_id)
+            
+        except Exception as e:
+            logger.error(f"Error getting active ports with monitoring agent: {e}")
+            return await self._get_active_ports_fallback(project_id)
+
+    async def _get_active_ports_fallback(self, project_id: str) -> Dict[int, Dict[str, Any]]:
+        """Fallback method using /proc/net/tcp parsing"""
+        try:
+            result = await self.execute_command(
+                project_id, 
+                "cat /proc/net/tcp 2>/dev/null | awk '$4==\"0A\" {print $2}' | cut -d: -f2"
+            )
+            
+            if result.exit_code != 0:
+                logger.warning(f"Fallback /proc parsing also failed: {result.stderr}")
                 return {}
             
             active_ports = {}
+            if not result.stdout.strip():
+                return {}
+            
             lines = result.stdout.strip().split('\n')
-            
             for line in lines:
-                parts = line.split()
-                if len(parts) >= 4:
-                    addr_part = None
-                    for part in parts:
-                        if ':' in part and not part.startswith('::'):
-                            addr_part = part
-                            break
-                    
-                    if addr_part:
-                        try:
-                            port = int(addr_part.split(':')[-1])
-                            if 1024 < port < 65536:
-                                process_name = "unknown"
-                                for part in parts:
-                                    if '/' in part:
-                                        process_name = part.split('/')[-1]
-                                        break
-                                
-                                active_ports[port] = {
-                                    "port": port,
-                                    "process": process_name,
-                                    "address": addr_part
-                                }
-                        except ValueError:
-                            continue
+                if line.strip():
+                    try:
+                        port = int(line.strip(), 16)
+                        if 1024 < port < 65536:
+                            active_ports[port] = {
+                                "port": port,
+                                "process": "unknown",
+                                "process_id": None,
+                                "address": f"0.0.0.0:{port}",
+                                "service_name": f"service:{port}",
+                                "status": "running"
+                            }
+                    except ValueError:
+                        continue
             
-            container = await self.container_manager.get_container(project_id)
+            return await self._add_port_mappings(project_id, active_ports)
+            
+        except Exception as e:
+            logger.error(f"Fallback port detection failed: {e}")
+            return {}
+
+    async def _add_port_mappings(self, project_id: str, active_ports: Dict[int, Dict[str, Any]]) -> Dict[int, Dict[str, Any]]:
+        """Add Docker port mappings to active ports and handle dynamic exposure"""
+        try:
+            container = await self.container_manager.ensure_container_running(project_id)
             if container:
                 container_info = await container.show()
+                existing_ports = container_info.get("NetworkSettings", {}).get("Ports", {})
+                
+                ports_to_expose = []
+                for port in active_ports.keys():
+                    port_key = f"{port}/tcp"
+                    if port_key not in existing_ports or not existing_ports[port_key]:
+                        ports_to_expose.append(port)
+                
+                if ports_to_expose:
+                    logger.info(f"[VM] 🔍 Discovered new ports {ports_to_expose} for project {project_id}, queuing for background exposure...")
+                    
+                    from .background_port_service import get_background_port_service
+                    port_service = get_background_port_service()
+                    
+                    for port in ports_to_expose:
+                        task_id = port_service.queue_port_exposure(project_id, port)
+                        logger.info(f"[VM] 📋 Queued port {port} exposure with task_id: {task_id}")
+                
                 if "NetworkSettings" in container_info and "Ports" in container_info["NetworkSettings"]:
                     ports = container_info["NetworkSettings"]["Ports"]
                     for container_port, host_bindings in ports.items():
@@ -335,8 +422,8 @@ class DockerFacade:
             return active_ports
             
         except Exception as e:
-            logger.error(f"Error getting active ports: {e}")
-            return {}
+            logger.error(f"Error adding port mappings: {e}")
+            return active_ports
     
     async def list_directory_children(self, project_id: str, path: str = "/workspace") -> List[Dict[str, Any]]:
         """List only immediate children of a directory"""

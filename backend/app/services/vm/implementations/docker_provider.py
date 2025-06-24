@@ -220,6 +220,10 @@ class DockerProvider(VMProviderInterface):
         """Stop a service by process ID"""
         return await self.docker_facade.stop_service(project_id, process_id)
     
+    async def kill_process_by_port(self, project_id: str, port: int) -> bool:
+        """Kill process listening on specific port"""
+        return await self.docker_facade.kill_process_by_port(project_id, port)
+    
     async def get_active_ports(self, project_id: str) -> Dict[int, Dict[str, Any]]:
         """Get all active listening ports in the Docker container"""
         return await self.docker_facade.get_active_ports(project_id)
@@ -411,7 +415,6 @@ class DockerProvider(VMProviderInterface):
         try:
             logger.info(f"[DOCKER_PROVIDER] 📁 Moving file from {source_path} to {destination_path} in project {project_id}")
             
-            # Use mv command to move/rename the file
             result = await self.docker_facade.execute_command(
                 project_id, 
                 f"mv '{source_path}' '{destination_path}'",
@@ -426,7 +429,6 @@ class DockerProvider(VMProviderInterface):
             logger.info(f"[DOCKER_PROVIDER] Move file result: {success}")
             
             if success:
-                # Trigger file events for the move operation
                 await self._trigger_file_event(project_id, "deleted", source_path)
                 await self._trigger_file_event(project_id, "created", destination_path)
             
@@ -471,13 +473,9 @@ class DockerProvider(VMProviderInterface):
         try:
             container_name = f"chatsparty-project-{project_id}"
             
-            # Use docker client to resize
             import docker
             client = docker.from_env()
             
-            # This is a limitation - docker API doesn't support resize after exec
-            # For full terminal support, we might need to use docker API directly
-            # or implement a different approach
             pass
         except Exception as e:
             raise Exception(f"Failed to resize terminal: {str(e)}")

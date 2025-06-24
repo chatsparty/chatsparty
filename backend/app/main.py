@@ -43,6 +43,13 @@ async def lifespan(app):
     except Exception as e:
         print(f"⚠️ Terminal manager startup failed: {e}")
     
+    try:
+        from .services.docker.background_port_service import get_background_port_service
+        get_background_port_service()  # This starts the worker
+        print("✅ Background port service started successfully")
+    except Exception as e:
+        print(f"⚠️ Background port service startup failed: {e}")
+    
     yield
     
     try:
@@ -53,6 +60,13 @@ async def lifespan(app):
         print("⚠️ Terminal manager shutdown timeout - forcing stop")
     except Exception as e:
         print(f"⚠️ Terminal manager shutdown failed: {e}")
+    
+    try:
+        from .services.docker.background_port_service import shutdown_background_port_service
+        await shutdown_background_port_service()
+        print("✅ Background port service stopped successfully")
+    except Exception as e:
+        print(f"⚠️ Background port service shutdown failed: {e}")
     
     try:
         await db_manager.close()

@@ -177,7 +177,7 @@ class OptimizedDockerFileManager:
         path: str = "/workspace"
     ) -> List[Dict[str, Any]]:
         """Async wrapper for listing immediate children of a directory"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
         
@@ -272,7 +272,7 @@ except Exception as e:
 
     async def create_file(self, project_id: str, file_path: str, content: str = "") -> bool:
         """Create a new file with content"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
         
@@ -306,7 +306,7 @@ with open('{file_path}', 'w') as f:
 
     async def read_file(self, project_id: str, file_path: str) -> str:
         """Read file content"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
         
@@ -331,7 +331,7 @@ with open('{file_path}', 'w') as f:
 
     async def delete_file(self, project_id: str, file_path: str) -> bool:
         """Delete a file"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
         
@@ -348,7 +348,7 @@ with open('{file_path}', 'w') as f:
 
     async def delete_directory(self, project_id: str, dir_path: str, recursive: bool = False) -> bool:
         """Delete a directory"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
         
@@ -363,7 +363,7 @@ with open('{file_path}', 'w') as f:
 
     async def create_directory(self, project_id: str, dir_path: str) -> bool:
         """Create a new directory"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
         
@@ -380,7 +380,7 @@ with open('{file_path}', 'w') as f:
 
     async def move_file(self, project_id: str, source_path: str, target_path: str) -> bool:
         """Move/rename a file or directory"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
         

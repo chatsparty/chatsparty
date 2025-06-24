@@ -178,7 +178,10 @@ class ProjectOrchestratorService:
 
     async def get_project_status(self, project_id: str) -> Dict[str, Any]:
         """Get comprehensive project status"""
-        return await self.monitoring_service.get_project_status(project_id)
+        project = self.crud_service.project_repo.get_by_id_only(project_id)
+        if not project:
+            return {"error": "Project not found"}
+        return await self.monitoring_service.get_real_project_status(project)
 
     def get_project_status_with_project(self, project: Project) -> Dict[str, Any]:
         """Get project status using an already validated project object"""

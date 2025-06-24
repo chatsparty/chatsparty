@@ -111,7 +111,7 @@ class DockerFileManager:
 
     async def read_file(self, project_id: str, file_path: str) -> str:
         """Read file content from container filesystem"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
@@ -133,7 +133,7 @@ class DockerFileManager:
         permissions: Optional[str] = None
     ) -> bool:
         """Write content to file in container filesystem"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
@@ -155,7 +155,7 @@ class DockerFileManager:
         path: str = "/workspace"
     ) -> List[DirectoryItem]:
         """List directory contents in container"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
@@ -195,7 +195,7 @@ class DockerFileManager:
         path: str = "/workspace"
     ) -> FileTreeNode:
         """List files recursively in a tree structure"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 
@@ -209,7 +209,7 @@ class DockerFileManager:
         path: str = "/workspace"
     ) -> List[Dict[str, Any]]:
         """List only immediate children of a directory (non-recursive)"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
         

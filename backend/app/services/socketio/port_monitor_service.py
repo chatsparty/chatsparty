@@ -137,6 +137,50 @@ class PortMonitorService:
             
         except Exception as e:
             logger.error(f"Error sending port update: {e}")
+            
+    async def perform_initial_port_scan(self, project_id: str):
+        """Perform initial port scan to detect already running services"""
+        try:
+            logger.info(f"Performing initial port scan for project {project_id}")
+            vm_service = get_vm_service()
+            active_ports = await vm_service.get_active_ports(project_id)
+            
+            if active_ports:
+                logger.info(f"Found {len(active_ports)} active ports for project {project_id}: {list(active_ports.keys())}")
+                
+                self.last_port_state[project_id] = active_ports
+                
+                preview_url, preview_port = self._find_best_preview_port(active_ports)
+                
+                if preview_url:
+                    project_service = ProjectService()
+                    try:
+                        from ...core.database import db_manager
+                        async with db_manager.get_async_session() as db:
+                            result = await db.execute(
+                                "SELECT user_id FROM projects WHERE id = :project_id",
+                                {"project_id": project_id}
+                            )
+                            project_row = result.fetchone()
+                            if project_row:
+                                user_id = project_row[0]
+                                project = project_service.get_project(project_id, user_id)
+                                if project and project.vm_url != preview_url:
+                                    await project_service.update_project(
+                                        project_id,
+                                        user_id,
+                                        {"vm_url": preview_url}
+                                    )
+                                    logger.info(f"Updated initial preview URL for project {project_id}: {preview_url}")
+                    except Exception as e:
+                        logger.error(f"Error updating project preview URL during initial scan: {e}")
+                
+                await self._send_port_update(project_id, active_ports, preview_url, preview_port)
+            else:
+                logger.info(f"No active ports found for project {project_id}")
+                
+        except Exception as e:
+            logger.error(f"Error performing initial port scan for project {project_id}: {e}")
 
 
 port_monitor_service = PortMonitorService()

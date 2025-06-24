@@ -99,6 +99,7 @@ async def join_project(sid, data):
         
         if project.vm_status == 'active':
             await port_monitor_service.start_monitoring(project_id, user_id)
+            await port_monitor_service.perform_initial_port_scan(project_id)
             
         await sio.emit('joined_project', {
             'project_id': project_id,

@@ -146,6 +146,17 @@ class TerminalManager:
     async def _start_terminal_process(self, session: TerminalSession):
         """Start the docker exec terminal process using pexpect"""
         try:
+            vm_service = get_vm_service()
+            
+            from ..docker.implementations.container_manager import ContainerManager
+            container_manager = ContainerManager()
+            container = await container_manager.ensure_container_running(session.project_id)
+            
+            if not container:
+                raise Exception(f"Failed to start container for project {session.project_id}")
+            
+            print(f"[TERMINAL] Container ensured running for project {session.project_id}")
+            
             terminal_cmd = f"docker exec -it --env TERM=xterm-256color --env COLUMNS=80 --env LINES=24 --workdir /workspace chatsparty-project-{session.project_id} /bin/bash"
             
             print(f"[TERMINAL] Starting pexpect process: {terminal_cmd}")

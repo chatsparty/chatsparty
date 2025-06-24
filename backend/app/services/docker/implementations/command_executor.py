@@ -65,7 +65,7 @@ class DockerCommandExecutor:
         timeout: Optional[int] = None
     ) -> VMCommandResult:
         """Execute command in project container"""
-        container = await self.container_manager.get_container(project_id)
+        container = await self.container_manager.ensure_container_running(project_id)
         if not container:
             raise ValueError(f"No active container for project {project_id}")
 

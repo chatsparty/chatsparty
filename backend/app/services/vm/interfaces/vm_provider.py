@@ -172,6 +172,11 @@ class VMProviderInterface(ABC):
         pass
     
     @abstractmethod
+    async def kill_process_by_port(self, project_id: str, port: int) -> bool:
+        """Kill process listening on specific port"""
+        pass
+    
+    @abstractmethod
     async def get_active_ports(self, project_id: str) -> Dict[int, Dict[str, Any]]:
         """Get all active listening ports in the VM/container"""
         pass

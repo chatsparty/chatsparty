@@ -130,18 +130,24 @@ class ContainerManager(IContainerManager):
                     "CpuQuota": 100000,
                     "Binds": [f"{workspace_path}:/workspace:rw"],
                     "PortBindings": {
+                        # Common development ports
                         "3000/tcp": [{"HostPort": ""}],
                         "8000/tcp": [{"HostPort": ""}],
                         "5000/tcp": [{"HostPort": ""}],
                         "8080/tcp": [{"HostPort": ""}],
+                        # Pre-expose common frontend dev server ports to avoid container recreation
+                        **{f"{port}/tcp": [{"HostPort": ""}] for port in [3001, 4000, 5173, 5174, 5175, 5176, 5177, 8081, 8082, 8083, 9000]},
                     },
                     "SecurityOpt": ["seccomp:unconfined"]
                 },
                 "ExposedPorts": {
+                    # Common development ports
                     "3000/tcp": {},
                     "8000/tcp": {},
                     "5000/tcp": {},
                     "8080/tcp": {},
+                    # Pre-expose common frontend dev server ports
+                    **{f"{port}/tcp": {} for port in [3001, 4000, 5173, 5174, 5175, 5176, 5177, 8081, 8082, 8083, 9000]},
                 }
             }
             
@@ -223,6 +229,7 @@ class ContainerManager(IContainerManager):
             "minimal": [
                 "apt-get update -qq",
                 "apt-get install -y python3 python3-pip vim nano",
+                "pip3 install psutil",
                 "apt-get clean",
                 "rm -rf /var/lib/apt/lists/*"
             ],
@@ -230,11 +237,16 @@ class ContainerManager(IContainerManager):
                 "apt-get update -qq",
                 "apt-get install -y python3 python3-pip python3-venv",
                 "pip3 install --upgrade pip",
+                "pip3 install psutil",
                 "apt-get clean",
                 "rm -rf /var/lib/apt/lists/*"
             ],
             "nodejs": [
-                "echo 'Node.js and npm already available in base image'"
+                "apt-get update -qq",
+                "apt-get install -y python3 python3-pip",
+                "pip3 install psutil",
+                "apt-get clean",
+                "rm -rf /var/lib/apt/lists/*"
             ],
             "full": [
                 "apt-get update -qq",
@@ -276,6 +288,43 @@ class ContainerManager(IContainerManager):
             logger.info(f"[VM] Failed commands: {failed_commands}")
 
         logger.info(f"[VM] ✅ Container environment setup completed for {environment_type}")
+        
+        # Deploy monitoring agent after setup
+        await self._deploy_monitoring_agent(container)
+
+    async def _deploy_monitoring_agent(self, container) -> None:
+        """Deploy the monitoring agent script to the container"""
+        try:
+            logger.info(f"[VM] 📊 Deploying monitoring agent to container {container.id[:12]}")
+            
+            # Read the monitoring agent script
+            import os
+            agent_path = os.path.join(os.path.dirname(__file__), '..', 'monitoring_agent.py')
+            with open(agent_path, 'r') as f:
+                agent_script = f.read()
+            
+            # Create the agent script in the container
+            create_script_command = f"""cat > /tmp/monitoring_agent.py << 'EOF'
+{agent_script}
+EOF"""
+            
+            result = await self._exec_command(
+                container, ["sh", "-c", create_script_command], 
+                user="root"
+            )
+            
+            if result.exit_code == 0:
+                # Make it executable
+                await self._exec_command(
+                    container, ["chmod", "+x", "/tmp/monitoring_agent.py"], 
+                    user="root"
+                )
+                logger.info(f"[VM] ✅ Monitoring agent deployed successfully")
+            else:
+                logger.warning(f"[VM] ⚠️ Failed to deploy monitoring agent: {result.output}")
+                
+        except Exception as e:
+            logger.error(f"[VM] ❌ Error deploying monitoring agent: {e}")
 
     async def start_container(self, project_id: str) -> bool:
         """Start an existing container"""
@@ -459,7 +508,8 @@ class ContainerManager(IContainerManager):
                 return container
             else:
                 logger.warning(f"[VM] ⚠️ Found container for project {project_id} but it's not running (status: {container_status})")
-                return None
+                self.active_containers[project_id] = container
+                return container
                 
         except aiodocker.DockerError as e:
             if e.status == 404:
@@ -473,3 +523,157 @@ class ContainerManager(IContainerManager):
         except Exception as e:
             logger.error(f"[VM] ❌ Error looking up container for project {project_id}: {e}")
             return None
+
+    async def ensure_container_running(self, project_id: str) -> Optional[DockerContainer]:
+        """Ensure container is running, start it if stopped"""
+        container = await self.get_container(project_id)
+        if not container:
+            logger.warning(f"[VM] No container found for project {project_id}")
+            return None
+        
+        try:
+            container_info = await container.show()
+            container_status = container_info["State"]["Status"]
+            
+            if container_status == 'running':
+                return container
+            elif container_status in ['exited', 'stopped']:
+                logger.info(f"[VM] Container for project {project_id} is {container_status}, starting it...")
+                await container.start()
+                
+                await asyncio.sleep(1)
+                container_info = await container.show()
+                new_status = container_info["State"]["Status"]
+                
+                if new_status == 'running':
+                    logger.info(f"[VM] ✅ Successfully started container for project {project_id}")
+                    return container
+                else:
+                    logger.error(f"[VM] ❌ Failed to start container for project {project_id}, status: {new_status}")
+                    return None
+            else:
+                logger.warning(f"[VM] Container for project {project_id} has unexpected status: {container_status}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"[VM] ❌ Error ensuring container is running for project {project_id}: {e}")
+            return None
+
+    async def ensure_port_exposed(self, project_id: str, container_port: int) -> bool:
+        """Dynamically expose a port by recreating the container with additional port binding"""
+        try:
+            # Add timeout to prevent blocking
+            return await asyncio.wait_for(
+                self._ensure_port_exposed_impl(project_id, container_port),
+                timeout=30.0  # 30 second timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"[VM] ❌ Timeout exposing port {container_port} for project {project_id}")
+            return False
+        except Exception as e:
+            logger.error(f"[VM] ❌ Failed to expose port {container_port} for project {project_id}: {e}")
+            return False
+
+    async def _ensure_port_exposed_impl(self, project_id: str, container_port: int) -> bool:
+        """Implementation of port exposure with safety checks"""
+        try:
+            container = await self.ensure_container_running(project_id)
+            if not container:
+                logger.error(f"[VM] Cannot expose port {container_port}: no running container for project {project_id}")
+                return False
+
+            # Check if port is already exposed
+            container_info = await container.show()
+            existing_ports = container_info.get("NetworkSettings", {}).get("Ports", {})
+            port_key = f"{container_port}/tcp"
+            
+            if port_key in existing_ports and existing_ports[port_key]:
+                logger.info(f"[VM] Port {container_port} already exposed for project {project_id}")
+                return True
+
+            logger.info(f"[VM] 🔄 Exposing new port {container_port} for project {project_id}")
+            
+            # Check what processes are running before stopping
+            try:
+                ps_result = await self._exec_command(container, ["ps", "aux"], user="root")
+                if ps_result.exit_code == 0:
+                    logger.debug(f"[VM] 📋 Processes before container stop:\n{ps_result.output.decode()[:500]}")
+            except Exception:
+                pass  # Don't fail if ps command fails
+            
+            # Get current container configuration
+            container_config = await self._get_container_config_for_recreation(container, container_port)
+            
+            # Stop and remove current container with timeout and force kill fallback
+            try:
+                # Try graceful stop first
+                await asyncio.wait_for(container.stop(), timeout=15.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"[VM] ⚠️ Graceful stop timeout, force killing container for project {project_id}")
+                await asyncio.wait_for(container.kill(), timeout=5.0)
+            
+            # Delete container
+            await asyncio.wait_for(container.delete(), timeout=10.0)
+            
+            # Remove from active containers temporarily
+            if project_id in self.active_containers:
+                del self.active_containers[project_id]
+            
+            # Create new container with additional port
+            docker = await self._get_docker_client()
+            container_name = f"chatsparty-project-{project_id}"
+            
+            new_container = await docker.containers.create(
+                config=container_config,
+                name=container_name
+            )
+            
+            await new_container.start()
+            self.active_containers[project_id] = new_container
+            
+            logger.info(f"[VM] ✅ Successfully exposed port {container_port} for project {project_id}")
+            return True
+            
+        except asyncio.TimeoutError:
+            logger.error(f"[VM] ❌ Timeout during container recreation for port {container_port}")
+            return False
+        except Exception as e:
+            logger.error(f"[VM] ❌ Failed to expose port {container_port} for project {project_id}: {e}")
+            return False
+
+    async def _get_container_config_for_recreation(self, container, new_port: int) -> dict:
+        """Get container configuration for recreation with additional port"""
+        container_info = await container.show()
+        
+        # Get current port bindings
+        current_port_bindings = container_info.get("HostConfig", {}).get("PortBindings", {})
+        
+        # Add new port binding
+        current_port_bindings[f"{new_port}/tcp"] = [{"HostPort": ""}]
+        
+        # Get workspace path
+        workspace_path = "/tmp/chatsparty/workspace"
+        
+        return {
+            "Image": self.base_image,
+            "Cmd": ["tail", "-f", "/dev/null"],
+            "WorkingDir": "/workspace",
+            "Env": [
+                f"PROJECT_ID={container_info.get('Config', {}).get('Env', [''])[0].split('=')[1] if container_info.get('Config', {}).get('Env') else ''}",
+                "DEBIAN_FRONTEND=noninteractive",
+                "HOME=/workspace"
+            ],
+            "User": "root",
+            "HostConfig": {
+                "Memory": 2147483648,
+                "CpuQuota": 100000,
+                "Binds": [f"{workspace_path}:/workspace:rw"],
+                "PortBindings": current_port_bindings,
+                "SecurityOpt": ["seccomp:unconfined"]
+            },
+            "NetworkingConfig": {
+                "EndpointsConfig": {
+                    "bridge": {}
+                }
+            }
+        }
