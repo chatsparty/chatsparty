@@ -2,6 +2,7 @@ import {
   ChevronsRight,
   FileUp,
   MessageSquare,
+  Monitor,
   Play,
   Settings,
   Terminal,
@@ -40,6 +41,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
     },
     { id: "services", icon: Play, label: "Services", type: "right" as const },
     { id: "terminal", icon: Terminal, label: "Terminal", type: "right" as const },
+    { id: "preview", icon: Monitor, label: "Preview", type: "right" as const },
   ];
 
   return (

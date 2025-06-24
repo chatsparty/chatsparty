@@ -219,7 +219,13 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   }, [isResizing, onWidthChange, onResizeEnd, dragStartX, startWidth]);
 
   const getDisplayableChildren = () => {
-    if (!state.fileStructure?.children) return [];
+    if (!state.fileStructure?.children) {
+      console.log("No children in file structure");
+      return [];
+    }
+    
+    console.log("File structure has", state.fileStructure.children.length, "children");
+    console.log("Children:", state.fileStructure.children.map(c => ({ name: c.name, type: c.type })));
     
     // If there's only one child and it's a UUID folder, show its children instead
     if (state.fileStructure.children.length === 1) {
@@ -228,6 +234,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         child.name.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
       
       if (isUUIDFolder && child.children && child.children.length > 0) {
+        console.log("Detected UUID folder, showing its children instead");
         return child.children;
       }
     }

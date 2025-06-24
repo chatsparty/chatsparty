@@ -8,7 +8,7 @@ import type {
 import { ChatPanel } from "./ChatPanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { FileEditor } from "./FileEditor";
-import { FileExplorer } from "./FileExplorer";
+import { FileExplorerArborist } from "../../../components/FileExplorer/FileExplorerArborist";
 import { FilesPanel } from "./FilesPanel";
 import { IconSidebar } from "./IconSidebar";
 import { PreviewPanel } from "./PreviewPanel";
@@ -177,7 +177,12 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
         return <TerminalPanel projectId={project.id} />;
 
       case "preview":
-        return <PreviewPanel />;
+        return (
+          <PreviewPanel 
+            projectId={project.id}
+            previewUrl={projectStatus?.preview_url}
+          />
+        );
 
       default:
         return null;
@@ -203,15 +208,20 @@ export const ProjectDetails: React.FC<ProjectDetailsProps> = ({
         />
 
         {fileViewerOpen && (
-          <FileExplorer
-            project={project}
-            expandedFolders={fileManager.expandedFolders}
-            onToggleFolder={fileManager.toggleFolder}
-            onOpenFile={openFile}
-            onClose={() => setFileViewerOpen(false)}
-            width={fileExplorerResize.width}
-            onWidthChange={fileExplorerResize.setWidth}
-          />
+          <div 
+            style={{ width: fileExplorerResize.width }}
+            className="border-r border-border relative"
+          >
+            <FileExplorerArborist
+              projectId={project.id}
+              onOpenFile={openFile}
+              width={fileExplorerResize.width}
+              height={window.innerHeight - 60} // Adjust for header
+            />
+            <ResizeHandle
+              onMouseDown={fileExplorerResize.handleMouseDown}
+            />
+          </div>
         )}
 
         <div ref={resizeablePanes.containerRef} className="flex-1 flex">

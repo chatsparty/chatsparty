@@ -42,39 +42,32 @@ export const ProjectHeader: React.FC<ProjectHeaderProps> = ({
   };
 
   return (
-    <div className="px-4 py-2 border-b border-border flex-shrink-0">
+    <div className="px-3 py-1.5 border-b border-border flex-shrink-0">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {onNavigateBack && (
-            <Button onClick={onNavigateBack} variant="ghost" size="sm">
-              <Home className="w-4 h-4 mr-1" />
-              Home
+            <Button onClick={onNavigateBack} variant="ghost" size="sm" className="px-2 py-1">
+              <Home className="w-3 h-3 mr-1" />
+              <span className="text-xs">Home</span>
             </Button>
           )}
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">
-              {project?.name || "Unnamed Project"}
-            </h1>
-            {project?.description && (
-              <p className="text-sm text-muted-foreground">
-                {project?.description}
-              </p>
-            )}
-          </div>
+          <h1 className="text-sm font-semibold text-foreground">
+            {project?.name || "Unnamed Project"}
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
           {getStatusIcon()}
-          <Badge className={getStatusColor()}>
+          <Badge className={`text-xs px-1.5 py-0.5 ${getStatusColor()}`}>
             {(project?.vm_status || "inactive").toUpperCase()}
           </Badge>
         </div>
 
         <div className="flex items-center gap-2">
           {onEditProject && (
-            <Button onClick={onEditProject} variant="outline" size="sm">
-              <Edit className="w-4 h-4 mr-1" />
-              Edit
+            <Button onClick={onEditProject} variant="outline" size="sm" className="px-2 py-1">
+              <Edit className="w-3 h-3 mr-1" />
+              <span className="text-xs">Edit</span>
             </Button>
           )}
         </div>

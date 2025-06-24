@@ -26,6 +26,25 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ projectId }) => {
   );
 
   useEffect(() => {
+    console.log("[TerminalPanel] State:", {
+      projectId,
+      isConnected,
+      sessionsCount: sessions.length,
+      sessions,
+      activeSession,
+      isCreatingSession,
+      error,
+    });
+  }, [
+    projectId,
+    isConnected,
+    sessions,
+    activeSession,
+    isCreatingSession,
+    error,
+  ]);
+
+  useEffect(() => {
     setTerminalInstances((prev) => {
       const newInstances = new Map(prev);
       const sessionIds = new Set(sessions.map((s) => s.session_id));

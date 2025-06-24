@@ -59,6 +59,7 @@ export class SocketIOService {
           auth: {
             token: token,
           },
+          transports: ["polling", "websocket"],
           autoConnect: true,
           reconnection: true,
           reconnectionAttempts: 10,
@@ -69,28 +70,16 @@ export class SocketIOService {
         });
 
         this.socket.on("connect", () => {
-          console.log("[SOCKETIO] ✅ Connected successfully - authenticating...");
-          
-          // Authenticate after connection
-          this.socket?.emit("authenticate", { token });
-        });
-
-        this.socket.on("auth_success", (data) => {
-          console.log("[SOCKETIO] ✅ Authentication successful:", data);
+          console.log("[SOCKETIO] ✅ Connected successfully");
           this.isConnecting = false;
 
+          // Re-subscribe to channels after reconnection
           this.channelSubscriptions.forEach((channel) => {
             console.log(`[SOCKETIO] 🔄 Re-subscribing to channel: ${channel}`);
             this.subscribe(channel);
           });
 
           resolve();
-        });
-
-        this.socket.on("auth_error", (error) => {
-          console.error("[SOCKETIO] ❌ Authentication failed:", error);
-          this.isConnecting = false;
-          reject(new Error(`Authentication failed: ${error.message}`));
         });
 
         this.socket.on("connect_error", (error) => {

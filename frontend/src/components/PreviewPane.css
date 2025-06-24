@@ -1,0 +1,231 @@
+.preview-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+/* When used within project tabs, remove border and border-radius */
+.preview-pane.border-0 {
+  border: none;
+}
+
+.preview-pane.rounded-none {
+  border-radius: 0;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  min-height: 40px;
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.preview-url {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  color: #0066cc;
+  font-weight: 500;
+}
+
+.container-status {
+  font-size: 11px;
+  color: #666;
+}
+
+.preview-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.control-btn, .refresh-btn {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.control-btn:hover, .refresh-btn:hover {
+  background: #f0f0f0;
+  border-color: #bbb;
+}
+
+.control-btn:active, .refresh-btn:active {
+  background: #e0e0e0;
+}
+
+.preview-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+/* Loading state */
+.preview-pane.loading .preview-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f9f9;
+}
+
+.loading-spinner {
+  color: #666;
+  font-size: 14px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Error state */
+.preview-pane.error .preview-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff5f5;
+}
+
+.error-message {
+  text-align: center;
+  color: #d32f2f;
+  padding: 20px;
+  max-width: 400px;
+}
+
+.error-message p {
+  margin: 8px 0;
+}
+
+.error-message pre {
+  background: #f5f5f5;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 12px 0;
+  white-space: pre-wrap;
+  color: #333;
+}
+
+/* No preview state */
+.preview-pane.no-preview .preview-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f9f9;
+}
+
+.no-preview-message {
+  text-align: center;
+  color: #666;
+  padding: 40px 20px;
+  max-width: 400px;
+}
+
+.no-preview-message h3 {
+  margin: 0 0 16px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.no-preview-message p {
+  margin: 12px 0;
+  line-height: 1.5;
+}
+
+.no-preview-message code {
+  background: #e8f4fd;
+  color: #0066cc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .preview-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .preview-info {
+    align-items: center;
+  }
+  
+  .preview-controls {
+    justify-content: center;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .preview-pane {
+    background: #1e1e1e;
+    border-color: #333;
+  }
+  
+  .preview-header {
+    background: #2d2d2d;
+    border-bottom-color: #333;
+  }
+  
+  .preview-url {
+    color: #4fc3f7;
+  }
+  
+  .container-status {
+    color: #bbb;
+  }
+  
+  .control-btn, .refresh-btn {
+    background: #333;
+    border-color: #555;
+    color: #fff;
+  }
+  
+  .control-btn:hover, .refresh-btn:hover {
+    background: #404040;
+    border-color: #666;
+  }
+  
+  .no-preview-message {
+    color: #bbb;
+  }
+  
+  .no-preview-message h3 {
+    color: #fff;
+  }
+  
+  .no-preview-message code {
+    background: #2a4a5a;
+    color: #4fc3f7;
+  }
+}

@@ -57,6 +57,7 @@ export interface ProjectStatus {
   project_id: string;
   vm_status: string;
   vm_url?: string;
+  preview_url?: string;
   sandbox_id?: string;
   services: Array<{
     name: string;
