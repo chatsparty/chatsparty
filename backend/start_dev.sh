@@ -18,12 +18,8 @@ JWT_SECRET_KEY=your-secret-key-here
 JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# VM Provider (docker or fly)
+# VM Provider (currently only docker is supported)
 VM_PROVIDER=docker
-
-# Optional: Fly.io settings (if using fly provider)
-# FLY_TOKEN=your_fly_token_here
-# FLY_APP_NAME=wisty-workspace
 
 # Optional: AI API Keys
 # OPENAI_API_KEY=your_openai_key_here

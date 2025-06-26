@@ -113,6 +113,37 @@ export const projectApi = {
     return response.data;
   },
 
+  // ============= IDE MANAGEMENT =============
+  
+  async setupVSCodeServer(projectId: string): Promise<any> {
+    const response = await api.post(`/api/projects/${projectId}/ide/setup`, {
+      ide_type: "vscode",
+      port: 8080
+    });
+    return response.data;
+  },
+
+  async getVSCodeStatus(projectId: string): Promise<any> {
+    const response = await api.get(`/api/projects/${projectId}/ide/status`);
+    return response.data;
+  },
+
+  async stopVSCodeServer(projectId: string): Promise<any> {
+    const response = await api.post(`/api/projects/${projectId}/ide/stop`);
+    return response.data;
+  },
+
+  async customizeVSCode(projectId: string, customization: {
+    theme?: string;
+    font_size?: number;
+    font_family?: string;
+    tab_size?: number;
+    settings?: Record<string, any>;
+  }): Promise<any> {
+    const response = await api.post(`/api/projects/${projectId}/ide/customize`, customization);
+    return response.data;
+  },
+
   // ============= FILE MANAGEMENT =============
 
   async uploadFiles(

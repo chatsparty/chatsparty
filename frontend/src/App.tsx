@@ -21,7 +21,7 @@ import {
   LandingPage,
   MultiAgentChatPage,
   ProjectsPage,
-  ProjectDetailsPage,
+  VSCodePage,
 } from "./pages";
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
@@ -41,7 +41,7 @@ const Layout = () => {
 
     const getPageName = (path: string) => {
       if (path === "/projects") return "projects";
-      if (path.startsWith("/projects/")) return "project_details";
+      if (path.includes("/vscode")) return "vscode_ide";
       if (path === "/agents") return "agents";
       if (path === "/chat") return "multi_agent_chat";
       if (path === "/settings") return "settings";
@@ -220,7 +220,7 @@ const MainApp = () => {
     return (
       <div className="h-screen w-screen bg-background">
         <Routes>
-          <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
+          <Route path="/projects/:id/vscode" element={<VSCodePage />} />
         </Routes>
       </div>
     );

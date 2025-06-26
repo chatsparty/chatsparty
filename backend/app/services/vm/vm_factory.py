@@ -4,7 +4,6 @@ from typing import Type
 
 from .interfaces.vm_provider import VMProviderInterface
 from .implementations.docker_provider import DockerProvider
-from .implementations.fly_provider import FlyProvider
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +13,6 @@ class VMProviderFactory:
     
     _providers = {
         "docker": DockerProvider,
-        "fly": FlyProvider,
     }
 
     @classmethod
@@ -23,7 +21,7 @@ class VMProviderFactory:
         Create a VM provider instance based on provider type
         
         Args:
-            provider_type: Type of provider ("docker", "fly"). 
+            provider_type: Type of provider ("docker"). 
                           If None, uses VM_PROVIDER environment variable, 
                           defaults to "docker"
         
@@ -86,7 +84,7 @@ def get_vm_service(provider_type: str = None) -> VMProviderInterface:
     Convenience function to get a VM service instance (singleton)
     
     Args:
-        provider_type: VM provider type ("docker", "fly")
+        provider_type: VM provider type ("docker")
         
     Returns:
         VMProviderInterface instance (singleton)

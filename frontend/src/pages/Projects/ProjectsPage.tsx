@@ -27,7 +27,7 @@ export const ProjectsPage: React.FC = () => {
 
 
   const handleProjectClick = (project: Project) => {
-    navigate(`/projects/${project.id}`);
+    navigate(`/projects/${project.id}/vscode`);
   };
 
 

@@ -109,32 +109,6 @@ class VMProviderInterface(ABC):
         """Write content to file in VM/container filesystem"""
         pass
 
-    @abstractmethod
-    async def list_directory(
-        self, 
-        project_id: str, 
-        path: str = "/workspace"
-    ) -> List[Dict[str, Any]]:
-        """List directory contents in VM/container"""
-        pass
-
-    @abstractmethod
-    async def list_files_recursive(
-        self, 
-        project_id: str, 
-        path: str = "/workspace"
-    ) -> Dict[str, Any]:
-        """List files recursively in a tree structure"""
-        pass
-    
-    @abstractmethod
-    async def list_directory_children(
-        self, 
-        project_id: str, 
-        path: str = "/workspace"
-    ) -> List[Dict[str, Any]]:
-        """List only immediate children of a directory"""
-        pass
 
     @abstractmethod
     async def execute_command(
@@ -181,44 +155,6 @@ class VMProviderInterface(ABC):
         """Get all active listening ports in the VM/container"""
         pass
 
-    @abstractmethod
-    async def setup_file_watcher(self, project_id: str, callback: Callable[[str, str, str], None]) -> None:
-        """
-        Setup file system watcher for project
-        callback(event_type, file_path, project_id)
-        event_type: 'created', 'modified', 'deleted', 'folder_created'
-        """
-        pass
-
-    @abstractmethod
-    async def stop_file_watcher(self, project_id: str) -> None:
-        """Stop file system watcher for project"""
-        pass
-
-    @abstractmethod
-    async def create_file(self, project_id: str, file_path: str, content: str = "") -> bool:
-        """Create a new file with specified content"""
-        pass
-
-    @abstractmethod
-    async def create_directory(self, project_id: str, dir_path: str) -> bool:
-        """Create a new directory"""
-        pass
-
-    @abstractmethod
-    async def delete_file(self, project_id: str, file_path: str) -> bool:
-        """Delete a file"""
-        pass
-
-    @abstractmethod
-    async def delete_directory(self, project_id: str, dir_path: str, recursive: bool = False) -> bool:
-        """Delete a directory (optionally recursive)"""
-        pass
-
-    @abstractmethod
-    async def move_file(self, project_id: str, source_path: str, destination_path: str) -> bool:
-        """Move/rename a file or directory"""
-        pass
 
     @abstractmethod
     async def resize_terminal(self, project_id: str, exec_id: str, rows: int, cols: int) -> None:
@@ -228,4 +164,31 @@ class VMProviderInterface(ABC):
     @abstractmethod
     async def get_container_info(self, project_id: str) -> Optional[Dict[str, Any]]:
         """Get container information for terminal access"""
+        pass
+
+    # ============= IDE MANAGEMENT =============
+    
+    @abstractmethod
+    async def setup_ide_server(
+        self, 
+        project_id: str, 
+        ide_type: str = "vscode",
+        port: int = 8080
+    ) -> Dict[str, Any]:
+        """Setup and start an IDE server (VS Code, Theia, etc.) in the VM/container"""
+        pass
+
+    @abstractmethod
+    async def get_ide_status(self, project_id: str) -> Dict[str, Any]:
+        """Get IDE server status and connection information"""
+        pass
+
+    @abstractmethod
+    async def stop_ide_server(self, project_id: str) -> bool:
+        """Stop the IDE server"""
+        pass
+
+    @abstractmethod
+    async def is_ide_running(self, project_id: str) -> bool:
+        """Check if IDE server is currently running"""
         pass

@@ -1,8 +1,6 @@
 import logging
 import asyncio
-from typing import Dict, List, Optional, Any, Callable
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from typing import Dict, List, Optional, Any
 
 from ...docker.docker_facade import DockerFacade
 from ...project.domain.entities import ProjectFile, VMCommandResult
@@ -10,87 +8,12 @@ from ..interfaces.vm_provider import VMProviderInterface
 
 logger = logging.getLogger(__name__)
 
-_global_watched_paths: Dict[str, Observer] = {}
-_global_watch_lock = asyncio.Lock()
-
-class DockerFileWatcher(FileSystemEventHandler):
-    def __init__(self, project_id: str, callback, event_loop=None):
-        self.project_id = project_id
-        self.callback = callback
-        self.event_loop = event_loop
-        
-    def on_created(self, event):
-        print(f"[WATCHER_DEBUG] on_created called: {event.src_path} (is_directory: {event.is_directory})")
-        if not event.is_directory:
-            self._schedule_callback('created', event.src_path)
-        else:
-            self._schedule_callback('folder_created', event.src_path)
-            
-    def on_modified(self, event):
-        print(f"[WATCHER_DEBUG] on_modified called: {event.src_path} (is_directory: {event.is_directory})")
-        if not event.is_directory:
-            self._schedule_callback('modified', event.src_path)
-            
-    def on_deleted(self, event):
-        print(f"[WATCHER_DEBUG] on_deleted called: {event.src_path} (is_directory: {event.is_directory})")
-        event_type = 'deleted' if not event.is_directory else 'folder_deleted'
-        self._schedule_callback(event_type, event.src_path)
-    
-    def _schedule_callback(self, event_type: str, file_path: str):
-        """Schedule callback to run in the main event loop"""
-        import inspect
-        
-        print(f"[WATCHER_DEBUG] _schedule_callback called: {event_type} - {file_path}")
-        
-        is_async = inspect.iscoroutinefunction(self.callback)
-        
-        print(f"[WATCHER_DEBUG] Callback is async: {is_async}")
-        logger.info(f"[FILE_WATCHER] Scheduling callback: {event_type} - {file_path} (async: {is_async})")
-        
-        if is_async:
-            print(f"[WATCHER_DEBUG] Handling async callback...")
-            if self.event_loop and not self.event_loop.is_closed():
-                try:
-                    print(f"[WATCHER_DEBUG] Using stored event loop: {self.event_loop}")
-                    future = asyncio.run_coroutine_threadsafe(
-                        self.callback(event_type, file_path, self.project_id), 
-                        self.event_loop
-                    )
-                    print(f"[WATCHER_DEBUG] Scheduled coroutine, future: {future}")
-                    logger.info(f"[FILE_WATCHER] ✅ Async callback scheduled successfully")
-                    return
-                except Exception as e:
-                    print(f"[WATCHER_DEBUG] ERROR scheduling callback in stored loop: {e}")
-                    logger.error(f"[FILE_WATCHER] Failed to schedule async callback in stored event loop: {e}")
-            
-            print(f"[WATCHER_DEBUG] Trying fallback event loop...")
-            try:
-                loop = asyncio.get_running_loop()
-                print(f"[WATCHER_DEBUG] Found running loop: {loop}")
-                future = asyncio.run_coroutine_threadsafe(
-                    self.callback(event_type, file_path, self.project_id), 
-                    loop
-                )
-                print(f"[WATCHER_DEBUG] Scheduled in running loop, future: {future}")
-                logger.info(f"[FILE_WATCHER] ✅ Async callback scheduled in running loop")
-            except RuntimeError as e:
-                print(f"[WATCHER_DEBUG] No running loop available: {e}")
-                logger.warning(f"[FILE_WATCHER] No event loop available for async file event: {event_type} - {file_path}")
-        else:
-            try:
-                self.callback(event_type, file_path, self.project_id)
-                logger.info(f"[FILE_WATCHER] ✅ Sync callback executed successfully")
-            except Exception as e:
-                logger.error(f"[FILE_WATCHER] Failed to execute sync callback: {e}")
-
 
 class DockerProvider(VMProviderInterface):
     """Docker implementation of VM provider interface"""
     
     def __init__(self):
         self.docker_facade = DockerFacade()
-        self.file_observers: Dict[str, Observer] = {}
-        self.file_callbacks: Dict[str, Callable] = {}
         logger.info("[DOCKER_PROVIDER] Docker provider initialized")
 
     async def create_project_sandbox(
@@ -165,29 +88,8 @@ class DockerProvider(VMProviderInterface):
         """Write content to file in Docker container filesystem"""
         return await self.docker_facade.write_file(project_id, file_path, content, permissions)
 
-    async def list_directory(
-        self, 
-        project_id: str, 
-        path: str = "/workspace"
-    ) -> List[Dict[str, Any]]:
-        """List directory contents in Docker container"""
-        return await self.docker_facade.list_directory(project_id, path)
 
-    async def list_files_recursive(
-        self, 
-        project_id: str, 
-        path: str = "/workspace"
-    ) -> Dict[str, Any]:
-        """List files recursively in a tree structure"""
-        return await self.docker_facade.list_files_recursive(project_id, path)
     
-    async def list_directory_children(
-        self, 
-        project_id: str, 
-        path: str = "/workspace"
-    ) -> List[Dict[str, Any]]:
-        """List only immediate children of a directory"""
-        return await self.docker_facade.list_directory_children(project_id, path)
 
     async def execute_command(
         self, 
@@ -228,245 +130,14 @@ class DockerProvider(VMProviderInterface):
         """Get all active listening ports in the Docker container"""
         return await self.docker_facade.get_active_ports(project_id)
 
-    async def setup_file_watcher(self, project_id: str, callback: Callable[[str, str, str], None]) -> None:
-        """Setup file system watcher for project"""
-        print(f"[DOCKER_DEBUG] setup_file_watcher called for project {project_id}")
-        async with _global_watch_lock:
-            print(f"[DOCKER_DEBUG] Acquired global watch lock")
-            try:
-                workspace_path = "/tmp/chatsparty/workspace"
-                print(f"[DOCKER_DEBUG] Workspace path: {workspace_path}")
-                
-                import os
-                if not os.path.exists(workspace_path):
-                    print(f"[DOCKER_DEBUG] Directory does not exist, creating: {workspace_path}")
-                    logger.warning(f"[DOCKER_PROVIDER] Workspace path {workspace_path} does not exist, creating it")
-                    os.makedirs(workspace_path, exist_ok=True)
-                else:
-                    print(f"[DOCKER_DEBUG] Directory already exists: {workspace_path}")
-                
-                print(f"[DOCKER_DEBUG] Checking if path already watched: {workspace_path}")
-                print(f"[DOCKER_DEBUG] _global_watched_paths keys: {list(_global_watched_paths.keys())}")
-                if workspace_path in _global_watched_paths:
-                    print(f"[DOCKER_DEBUG] Path already being watched globally")
-                    observer = _global_watched_paths[workspace_path]
-                    if observer.is_alive():
-                        print(f"[DOCKER_DEBUG] Reusing existing observer")
-                        logger.info(f"[DOCKER_PROVIDER] Reusing existing file watcher for project {project_id}")
-                        self.file_observers[project_id] = observer
-                        self.file_callbacks[project_id] = callback
-                        print(f"[DOCKER_DEBUG] Stored callback for project {project_id}")
-                        return
-                    else:
-                        print(f"[DOCKER_DEBUG] Observer is dead, cleaning up")
-                        del _global_watched_paths[workspace_path]
-                
-                if project_id in self.file_observers:
-                    await self._stop_file_watcher_unsafe(project_id)
-                
-                print(f"[DOCKER_DEBUG] Creating new observer")
-                try:
-                    current_loop = asyncio.get_running_loop()
-                    print(f"[DOCKER_DEBUG] Got current event loop: {current_loop}")
-                except RuntimeError:
-                    current_loop = None
-                    print(f"[DOCKER_DEBUG] No running event loop")
-                
-                print(f"[DOCKER_DEBUG] Creating DockerFileWatcher with callback: {callback}")
-                event_handler = DockerFileWatcher(project_id, callback, current_loop)
-                observer = Observer()
-                print(f"[DOCKER_DEBUG] Scheduling observer for path: {workspace_path}")
-                observer.schedule(event_handler, workspace_path, recursive=True)
-                print(f"[DOCKER_DEBUG] Starting observer")
-                observer.start()
-                
-                print(f"[DOCKER_DEBUG] Registering observer globally and locally")
-                _global_watched_paths[workspace_path] = observer
-                self.file_observers[project_id] = observer
-                self.file_callbacks[project_id] = callback
-                print(f"[DOCKER_DEBUG] Stored callback for project {project_id}")
-                
-                logger.info(f"[DOCKER_PROVIDER] Started new file watcher for project {project_id}")
-                print(f"[DOCKER_DEBUG] File watcher setup completed successfully")
-                
-            except Exception as e:
-                logger.error(f"[DOCKER_PROVIDER] Failed to setup file watcher for project {project_id}: {e}")
 
-    async def stop_file_watcher(self, project_id: str) -> None:
-        """Stop file system watcher for project"""
-        async with _global_watch_lock:
-            await self._stop_file_watcher_unsafe(project_id)
     
-    async def _stop_file_watcher_unsafe(self, project_id: str) -> None:
-        """Stop file watcher without acquiring lock (internal use)"""
-        if project_id in self.file_observers:
-            try:
-                observer = self.file_observers[project_id]
-                workspace_path = "/tmp/chatsparty/workspace"
-                
-                other_projects_using_observer = [
-                    pid for pid, obs in self.file_observers.items() 
-                    if obs is observer and pid != project_id
-                ]
-                
-                if other_projects_using_observer:
-                    logger.info(f"[DOCKER_PROVIDER] Keeping watcher alive for other projects: {other_projects_using_observer}")
-                    del self.file_observers[project_id]
-                    if project_id in self.file_callbacks:
-                        del self.file_callbacks[project_id]
-                else:
-                    observer.stop()
-                    
-                    loop = asyncio.get_event_loop()
-                    await loop.run_in_executor(None, lambda: observer.join(timeout=2.0))
-                    
-                    if workspace_path in _global_watched_paths:
-                        del _global_watched_paths[workspace_path]
-                    
-                    del self.file_observers[project_id]
-                    
-                    if project_id in self.file_callbacks:
-                        del self.file_callbacks[project_id]
-                    
-                    logger.info(f"[DOCKER_PROVIDER] Stopped file watcher for project {project_id}")
-                
-            except Exception as e:
-                logger.error(f"[DOCKER_PROVIDER] Error stopping file watcher for project {project_id}: {e}")
-                if project_id in self.file_observers:
-                    del self.file_observers[project_id]
 
-    async def create_file(self, project_id: str, file_path: str, content: str = "") -> bool:
-        """Create a new file with specified content"""
-        try:
-            return await self.docker_facade.write_file(project_id, file_path, content)
-        except Exception as e:
-            logger.error(f"[DOCKER_PROVIDER] Error creating file {file_path}: {e}")
-            return False
 
-    async def create_directory(self, project_id: str, dir_path: str) -> bool:
-        """Create a new directory"""
-        try:
-            result = await self.docker_facade.execute_command(
-                project_id, 
-                f"mkdir -p {dir_path}",
-                working_dir="/workspace"
-            )
-            return result.exit_code == 0
-        except Exception as e:
-            logger.error(f"[DOCKER_PROVIDER] Error creating directory {dir_path}: {e}")
-            return False
 
-    async def delete_file(self, project_id: str, file_path: str) -> bool:
-        """Delete a file"""
-        try:
-            logger.info(f"[DOCKER_PROVIDER] 🗑️ Deleting file: {file_path} in project {project_id}")
-            logger.info(f"[DOCKER_PROVIDER] Executing command: rm -f {file_path}")
-            
-            result = await self.docker_facade.execute_command(
-                project_id, 
-                f"rm -f {file_path}",
-                working_dir="/workspace"
-            )
-            
-            logger.info(f"[DOCKER_PROVIDER] Delete command result: exit_code={result.exit_code}")
-            logger.info(f"[DOCKER_PROVIDER] Command stdout: {result.stdout}")
-            logger.info(f"[DOCKER_PROVIDER] Command stderr: {result.stderr}")
-            
-            success = result.exit_code == 0
-            logger.info(f"[DOCKER_PROVIDER] Delete file result: {success}")
-            
-            if success:
-                await self._trigger_file_event(project_id, "deleted", file_path)
-            
-            return success
-            
-        except Exception as e:
-            logger.error(f"[DOCKER_PROVIDER] ❌ Error deleting file {file_path}: {e}")
-            import traceback
-            logger.error(f"[DOCKER_PROVIDER] Traceback: {traceback.format_exc()}")
-            return False
 
-    async def delete_directory(self, project_id: str, dir_path: str, recursive: bool = False) -> bool:
-        """Delete a directory (optionally recursive)"""
-        try:
-            if recursive:
-                command = f"rm -rf {dir_path}"
-            else:
-                command = f"rmdir {dir_path}"
-            
-            result = await self.docker_facade.execute_command(
-                project_id, 
-                command,
-                working_dir="/workspace"
-            )
-            success = result.exit_code == 0
-            
-            if success:
-                event_type = "folder_deleted" if recursive else "folder_deleted"
-                await self._trigger_file_event(project_id, event_type, dir_path)
-            
-            return success
-        except Exception as e:
-            logger.error(f"[DOCKER_PROVIDER] Error deleting directory {dir_path}: {e}")
-            return False
 
-    async def move_file(self, project_id: str, source_path: str, destination_path: str) -> bool:
-        """Move/rename a file or directory"""
-        try:
-            logger.info(f"[DOCKER_PROVIDER] 📁 Moving file from {source_path} to {destination_path} in project {project_id}")
-            
-            result = await self.docker_facade.execute_command(
-                project_id, 
-                f"mv '{source_path}' '{destination_path}'",
-                working_dir="/workspace"
-            )
-            
-            logger.info(f"[DOCKER_PROVIDER] Move command result: exit_code={result.exit_code}")
-            logger.info(f"[DOCKER_PROVIDER] Command stdout: {result.stdout}")
-            logger.info(f"[DOCKER_PROVIDER] Command stderr: {result.stderr}")
-            
-            success = result.exit_code == 0
-            logger.info(f"[DOCKER_PROVIDER] Move file result: {success}")
-            
-            if success:
-                await self._trigger_file_event(project_id, "deleted", source_path)
-                await self._trigger_file_event(project_id, "created", destination_path)
-            
-            return success
-            
-        except Exception as e:
-            logger.error(f"[DOCKER_PROVIDER] ❌ Error moving file from {source_path} to {destination_path}: {e}")
-            import traceback
-            logger.error(f"[DOCKER_PROVIDER] Traceback: {traceback.format_exc()}")
-            return False
 
-    async def _trigger_file_event(self, project_id: str, event_type: str, file_path: str):
-        """Manually trigger a file system event for WebSocket notifications"""
-        try:
-            if project_id in self.file_callbacks:
-                callback = self.file_callbacks[project_id]
-                
-                workspace_path = "/tmp/chatsparty/workspace"
-                if file_path.startswith("/workspace/"):
-                    host_file_path = file_path.replace("/workspace/", f"{workspace_path}/")
-                else:
-                    host_file_path = f"{workspace_path}/{file_path.lstrip('/')}"
-                
-                logger.info(f"[DOCKER_PROVIDER] 🎯 Manually triggering file event: {event_type} - {host_file_path}")
-                
-                import inspect
-                if inspect.iscoroutinefunction(callback):
-                    await callback(event_type, host_file_path, project_id)
-                else:
-                    callback(event_type, host_file_path, project_id)
-                
-                logger.info(f"[DOCKER_PROVIDER] ✅ File event triggered successfully")
-            else:
-                logger.warning(f"[DOCKER_PROVIDER] No callback registered for project {project_id}")
-        except Exception as e:
-            logger.error(f"[DOCKER_PROVIDER] Failed to trigger file event: {e}")
-            import traceback
-            logger.error(f"[DOCKER_PROVIDER] Traceback: {traceback.format_exc()}")
 
     async def resize_terminal(self, project_id: str, exec_id: str, rows: int, cols: int) -> None:
         """Resize terminal session"""
@@ -483,8 +154,7 @@ class DockerProvider(VMProviderInterface):
     async def get_container_info(self, project_id: str) -> Optional[Dict[str, Any]]:
         """Get container information"""
         try:
-            container_name = f"chatsparty-project-{project_id}"
-            container = await self._get_container(container_name)
+            container = await self.docker_facade.container_manager.get_container(project_id)
             
             if container:
                 return {
@@ -496,3 +166,323 @@ class DockerProvider(VMProviderInterface):
         except Exception:
             pass
         return None
+
+    # ============= IDE MANAGEMENT =============
+    
+    async def setup_ide_server(
+        self, 
+        project_id: str, 
+        ide_type: str = "vscode",
+        port: int = 8080
+    ) -> Dict[str, Any]:
+        """Setup and start an IDE server (VS Code, Theia, etc.) in the VM/container"""
+        try:
+            logger.info(f"Setting up {ide_type} IDE server for project {project_id} on port {port}")
+            
+            # Check if container is running
+            if not await self.is_sandbox_active(project_id):
+                raise ValueError(f"Container for project {project_id} is not active")
+            
+            # Check if IDE is already running
+            if await self.is_ide_running(project_id):
+                logger.info(f"IDE server already running for project {project_id}")
+                ide_status = await self.get_ide_status(project_id)
+                return ide_status
+            
+            if ide_type == "vscode":
+                return await self._setup_vscode_server(project_id, port)
+            elif ide_type == "theia":
+                return await self._setup_theia_server(project_id, port)
+            else:
+                raise ValueError(f"Unsupported IDE type: {ide_type}")
+                
+        except Exception as e:
+            logger.error(f"Failed to setup IDE server for project {project_id}: {str(e)}")
+            raise
+
+    async def _setup_vscode_server(self, project_id: str, port: int = 8080) -> Dict[str, Any]:
+        """Setup VS Code server specifically"""
+        try:
+            logger.info(f"Installing VS Code server for project {project_id}")
+            
+            # Install code-server
+            install_result = await self.execute_command(
+                project_id, 
+                "curl -fsSL https://code-server.dev/install.sh | sh",
+                timeout=300  # 5 minutes timeout for installation
+            )
+            
+            if install_result.exit_code != 0:
+                logger.error(f"Failed to install code-server: {install_result.stderr}")
+                raise RuntimeError(f"Failed to install code-server: {install_result.stderr}")
+            
+            logger.info(f"VS Code server installed successfully for project {project_id}")
+            
+            # Setup VS Code configuration and themes
+            await self._setup_vscode_config(project_id)
+            
+            # Start code-server in background
+            start_command = f"""
+            nohup code-server \
+                --bind-addr 0.0.0.0:{port} \
+                --auth none \
+                --disable-telemetry \
+                --disable-update-check \
+                --disable-workspace-trust \
+                /workspace > /tmp/code-server.log 2>&1 &
+            """
+            
+            start_result = await self.execute_command(project_id, start_command.strip())
+            
+            if start_result.exit_code != 0:
+                logger.error(f"Failed to start code-server: {start_result.stderr}")
+                raise RuntimeError(f"Failed to start code-server: {start_result.stderr}")
+            
+            # Wait a moment for server to start
+            await asyncio.sleep(2)
+            
+            # Get the mapped port
+            host_port = await self._get_host_port(project_id, port)
+            
+            if not host_port:
+                logger.warning(f"Could not determine host port for project {project_id}, using {port}")
+                host_port = port
+            
+            ide_url = f"http://localhost:{host_port}"
+            
+            logger.info(f"VS Code server started for project {project_id} at {ide_url}")
+            
+            return {
+                "ide_type": "vscode",
+                "url": ide_url,
+                "port": host_port,
+                "container_port": port,
+                "status": "running",
+                "workspace_path": "/workspace"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to setup VS Code server: {str(e)}")
+            raise
+
+    async def _setup_theia_server(self, project_id: str, port: int = 3000) -> Dict[str, Any]:
+        """Setup Theia IDE server"""
+        try:
+            logger.info(f"Setting up Theia IDE server for project {project_id}")
+            
+            # Install Node.js and Theia (simplified version)
+            install_commands = [
+                "curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
+                "apt-get install -y nodejs",
+                "npm install -g @theia/cli",
+                "theia init /workspace/theia-app",
+                "cd /workspace/theia-app && npm install"
+            ]
+            
+            for cmd in install_commands:
+                result = await self.execute_command(project_id, cmd, timeout=300)
+                if result.exit_code != 0:
+                    logger.error(f"Failed to execute: {cmd}, Error: {result.stderr}")
+                    raise RuntimeError(f"Failed to install Theia: {result.stderr}")
+            
+            # Start Theia server
+            start_command = f"cd /workspace/theia-app && nohup theia start --hostname 0.0.0.0 --port {port} > /tmp/theia.log 2>&1 &"
+            start_result = await self.execute_command(project_id, start_command)
+            
+            if start_result.exit_code != 0:
+                raise RuntimeError(f"Failed to start Theia: {start_result.stderr}")
+            
+            await asyncio.sleep(3)  # Wait for Theia to start
+            
+            host_port = await self._get_host_port(project_id, port)
+            ide_url = f"http://localhost:{host_port or port}"
+            
+            return {
+                "ide_type": "theia",
+                "url": ide_url,
+                "port": host_port or port,
+                "container_port": port,
+                "status": "running",
+                "workspace_path": "/workspace"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to setup Theia server: {str(e)}")
+            raise
+
+    async def get_ide_status(self, project_id: str) -> Dict[str, Any]:
+        """Get IDE server status and connection information"""
+        try:
+            # Check if any IDE servers are running
+            active_ports = await self.get_active_ports(project_id)
+            
+            # Common IDE ports
+            ide_ports = {
+                8080: "vscode",     # code-server default
+                3000: "theia",      # Theia default
+                8000: "jupyter",    # Jupyter default
+                9000: "eclipse"     # Eclipse Che
+            }
+            
+            running_ides = []
+            for port, process_info in active_ports.items():
+                if port in ide_ports:
+                    host_port = await self._get_host_port(project_id, port)
+                    
+                    running_ides.append({
+                        "ide_type": ide_ports[port],
+                        "url": f"http://localhost:{host_port or port}",
+                        "port": host_port or port,
+                        "container_port": port,
+                        "status": "running",
+                        "process_info": process_info
+                    })
+            
+            if running_ides:
+                # Return the first running IDE (usually VS Code)
+                return running_ides[0]
+            else:
+                return {
+                    "status": "not_running",
+                    "available_ides": list(ide_ports.values())
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to get IDE status for project {project_id}: {str(e)}")
+            return {"status": "error", "error": str(e)}
+
+    async def stop_ide_server(self, project_id: str) -> bool:
+        """Stop the IDE server"""
+        try:
+            logger.info(f"Stopping IDE server for project {project_id}")
+            
+            # Get active IDE ports and stop them
+            active_ports = await self.get_active_ports(project_id)
+            ide_ports = [8080, 3000, 8000, 9000]  # Common IDE ports
+            
+            stopped_any = False
+            for port in ide_ports:
+                if port in active_ports:
+                    success = await self.kill_process_by_port(project_id, port)
+                    if success:
+                        logger.info(f"Stopped IDE server on port {port}")
+                        stopped_any = True
+                    else:
+                        logger.warning(f"Failed to stop IDE server on port {port}")
+            
+            if not stopped_any:
+                logger.info(f"No IDE servers found running for project {project_id}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to stop IDE server for project {project_id}: {str(e)}")
+            return False
+
+    async def is_ide_running(self, project_id: str) -> bool:
+        """Check if IDE server is currently running"""
+        try:
+            active_ports = await self.get_active_ports(project_id)
+            ide_ports = [8080, 3000, 8000, 9000]  # Common IDE ports
+            
+            return any(port in active_ports for port in ide_ports)
+            
+        except Exception as e:
+            logger.error(f"Failed to check IDE status for project {project_id}: {str(e)}")
+            return False
+
+    async def _get_host_port(self, project_id: str, container_port: int) -> Optional[int]:
+        """Get the host port mapped to a container port"""
+        try:
+            # Use the active ports functionality which already exists
+            active_ports = await self.docker_facade.get_active_ports(project_id)
+            
+            if container_port in active_ports:
+                port_info = active_ports[container_port]
+                if 'host_port' in port_info:
+                    return port_info['host_port']
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to get host port for project {project_id}: {str(e)}")
+            return None
+    
+    async def _setup_vscode_config(self, project_id: str) -> None:
+        """Setup VS Code configuration, themes, and extensions"""
+        try:
+            logger.info(f"Setting up VS Code configuration for project {project_id}")
+            
+            # Create VS Code config directory
+            config_setup = """
+            mkdir -p ~/.local/share/code-server/User
+            mkdir -p ~/.local/share/code-server/extensions
+            """
+            
+            await self.execute_command(project_id, config_setup.strip())
+            
+            # Setup default VS Code settings
+            vscode_settings = {
+                "workbench.colorTheme": "Default Dark+",
+                "workbench.iconTheme": "vs-seti",
+                "editor.fontSize": 14,
+                "editor.fontFamily": "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+                "editor.tabSize": 2,
+                "editor.insertSpaces": True,
+                "editor.wordWrap": "on",
+                "editor.minimap.enabled": True,
+                "editor.lineNumbers": "on",
+                "editor.renderWhitespace": "selection",
+                "files.autoSave": "onDelay",
+                "files.autoSaveDelay": 1000,
+                "terminal.integrated.fontSize": 13,
+                "workbench.startupEditor": "welcomePage",
+                "explorer.confirmDelete": False,
+                "explorer.confirmDragAndDrop": False,
+                "workbench.editor.untitled.hint": "hidden",
+                "workbench.tips.enabled": False,
+                "telemetry.telemetryLevel": "off",
+                "update.mode": "none",
+                "extensions.autoUpdate": False,
+                "workbench.colorCustomizations": {
+                    "statusBar.background": "#1e1e1e",
+                    "statusBar.foreground": "#ffffff",
+                    "activityBar.background": "#2d2d30",
+                    "sideBar.background": "#252526"
+                }
+            }
+            
+            import json
+            settings_content = json.dumps(vscode_settings, indent=2)
+            
+            # Write settings to file
+            await self.docker_facade.write_file(
+                project_id, 
+                "~/.local/share/code-server/User/settings.json", 
+                settings_content
+            )
+            
+            # Setup keybindings
+            keybindings = [
+                {
+                    "key": "ctrl+shift+p",
+                    "command": "workbench.action.showCommands"
+                },
+                {
+                    "key": "ctrl+`",
+                    "command": "workbench.action.terminal.toggleTerminal"
+                }
+            ]
+            
+            keybindings_content = json.dumps(keybindings, indent=2)
+            await self.docker_facade.write_file(
+                project_id,
+                "~/.local/share/code-server/User/keybindings.json",
+                keybindings_content
+            )
+            
+            logger.info(f"VS Code configuration setup completed for project {project_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to setup VS Code configuration for project {project_id}: {str(e)}")
+            # Don't fail the IDE setup if config setup fails

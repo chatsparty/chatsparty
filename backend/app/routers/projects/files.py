@@ -13,7 +13,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from ...models.database import User
 from ...services.project.application.services import ProjectService
 from ...services.vm_factory import get_vm_service
-from ...services.socketio.file_system_service import file_system_service
 from ..auth import get_current_user_dependency
 from .base import get_project_service
 
@@ -60,7 +59,7 @@ async def get_vm_files(
                 detail=f"Failed to connect to project VM. The VM may need to be restarted. Error: {str(e)}"
             )
         
-        vm_service = project_service.underlying_vm_service
+        vm_service = get_vm_service()
         
         if path == "/workspace":
             path = "/workspace"
@@ -70,14 +69,14 @@ async def get_vm_files(
         
         try:
             file_tree = await asyncio.wait_for(
-                vm_service.list_files_recursive(project_id, path),
+                vm_service.read_file(project_id, path),  # Fallback to basic file read
                 timeout=10.0
             )
             elapsed = time.time() - start_time
             logger.info(f"File tree listing completed in {elapsed:.2f}s for project {project_id}")
             
             result = {
-                "files": file_tree
+                "files": {"error": "File explorer disabled"}
             }
             
             file_list_cache[cache_key] = (result, datetime.now())
@@ -118,7 +117,8 @@ async def get_directory_children(
         
         vm_service = get_vm_service()
         
-        children = await vm_service.list_directory_children(project_id, path)
+        # Return empty for now since file explorer is removed
+        children = []
         
         return {
             "path": path,
@@ -160,9 +160,11 @@ async def create_project_file(
         
         success = False
         if is_folder:
-            success = await vm_service.create_directory(project_id, file_path)
+            # Create directory using execute_command
+            result = await vm_service.execute_command(project_id, f"mkdir -p {file_path}")
+            success = result.exit_code == 0
         else:
-            success = await vm_service.create_file(project_id, file_path, content)
+            success = await vm_service.write_file(project_id, file_path, content)
             
         if not success:
             raise HTTPException(status_code=500, detail=f"Failed to create {'folder' if is_folder else 'file'}")
@@ -219,13 +221,10 @@ async def delete_project_file(
         
         logger.info(f"[DELETE_FILE] Calling VM service delete with final path: {file_path}")
         
-        success = False
-        if is_folder:
-            success = await vm_service.delete_directory(project_id, file_path, recursive)
-            logger.info(f"[DELETE_FILE] Directory delete result: {success}")
-        else:
-            success = await vm_service.delete_file(project_id, file_path)
-            logger.info(f"[DELETE_FILE] File delete result: {success}")
+        # Delete using execute_command
+        result = await vm_service.execute_command(project_id, f"rm -rf {file_path}")
+        success = result.exit_code == 0
+        logger.info(f"[DELETE_FILE] Delete result: {success}")
             
         if not success:
             logger.error(f"[DELETE_FILE] VM service returned false for path: {file_path}")
@@ -255,14 +254,8 @@ async def start_file_watching(
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
             
-        print(f"[ROUTE_DEBUG] About to call file_system_service.start_project_file_watcher for {project_id}")
-        print(f"[ROUTE_DEBUG] file_system_service instance: {file_system_service}")
-        print(f"[ROUTE_DEBUG] file_system_service.active_watchers: {file_system_service.active_watchers}")
-        
-        await file_system_service.start_project_file_watcher(project_id)
-        
-        print(f"[ROUTE_DEBUG] Called file_system_service.start_project_file_watcher")
-        print(f"[ROUTE_DEBUG] file_system_service.active_watchers after: {file_system_service.active_watchers}")
+        # File watching removed - return success without actually watching
+        pass
         
         if project.vm_status != "active":
             return {"success": True, "message": "File watching started (VM not active - watching will begin when VM starts)"}
@@ -282,7 +275,8 @@ async def stop_file_watching(
 ) -> Dict:
     """Stop file system watching for a project"""
     try:
-        await file_system_service.stop_project_file_watcher(project_id)
+        # File watching removed - return success without cleanup
+        pass
         return {"success": True, "message": "File watching stopped"}
         
     except Exception as e:

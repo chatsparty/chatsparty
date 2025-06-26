@@ -27,32 +27,28 @@ vm/
 ├── interfaces/
 │   └── vm_provider.py          # ⭐ MAIN INTERFACE - Add new methods here
 ├── implementations/
-│   ├── docker_provider.py      # Docker implementation
-│   └── fly_provider.py         # Fly.io implementation
+│   └── docker_provider.py      # Docker implementation
 └── vm_factory.py               # Factory pattern
 ```
 
 ## Adding New VM Features
 
 1. **Add method to `VMProviderInterface`** (interfaces/vm_provider.py)
-2. **Implement in ALL providers** (implementations/*.py)
+2. **Implement in Docker provider** (implementations/docker_provider.py)
 3. **Use factory pattern** in your code
-4. **Test both providers**
+4. **Test the provider implementation**
 
 ## Provider Configuration
 
 ```bash
 # Environment Variables
-VM_PROVIDER=docker  # or 'fly'
-FLY_TOKEN=xxx       # if using Fly.io
-FLY_APP_NAME=xxx    # if using Fly.io
+VM_PROVIDER=docker  # Currently only Docker is supported
 ```
 
 ## Current Providers
 
 - **Docker** (`docker`): Local development
-- **Fly.io** (`fly`): Production deployment
-- **Future**: GKE, AWS ECS, etc. (easy to add)
+- **Future**: Additional providers can be added as needed (Fly.io, GKE, AWS ECS, etc.)
 
 ---
 **Remember**: This abstraction allows seamless switching between cloud providers without changing business logic!
