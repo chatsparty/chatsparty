@@ -9,6 +9,7 @@ from aiodocker.containers import DockerContainer
 
 from ..domain.models import ContainerInfo, ContainerSystemInfo
 from ..interfaces.container_manager import IContainerManager
+from ....core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,8 @@ class ContainerManager(IContainerManager):
     def __init__(self):
         self.docker_client: Optional[aiodocker.Docker] = None
         self.active_containers: Dict[str, DockerContainer] = {}
-        self.base_image = "node:20-bookworm"
+        self.base_image = settings.docker_image
+        self.mode = settings.docker_mode
         
     async def _exec_command(self, container, cmd, **kwargs):
         """Helper method to execute commands in aiodocker container"""
@@ -73,6 +75,41 @@ class ContainerManager(IContainerManager):
                 logger.error(f"Failed to connect to Docker with aiodocker: {e}")
                 raise
         return self.docker_client
+    
+    async def _ensure_image_available(self) -> bool:
+        """Ensure the Docker image is available (local or cloud)"""
+        docker = await self._get_docker_client()
+        
+        try:
+            # Check if image exists locally
+            try:
+                await docker.images.get(self.base_image)
+                logger.info(f"[VM] Image {self.base_image} found locally")
+                return True
+            except aiodocker.DockerError as e:
+                if e.status == 404:
+                    logger.info(f"[VM] Image {self.base_image} not found locally")
+                else:
+                    logger.error(f"[VM] Error checking for local image: {e}")
+                    return False
+            
+            # If not found locally, try to pull based on mode
+            if self.mode == "cloud":
+                logger.info(f"[VM] Attempting to pull image {self.base_image} from cloud")
+                try:
+                    await docker.images.pull(self.base_image)
+                    logger.info(f"[VM] ✅ Successfully pulled image {self.base_image} from cloud")
+                    return True
+                except Exception as pull_error:
+                    logger.error(f"[VM] ❌ Failed to pull image from cloud: {pull_error}")
+                    return False
+            else:
+                logger.error(f"[VM] ❌ Image {self.base_image} not found locally and mode is '{self.mode}'")
+                return False
+            
+        except Exception as e:
+            logger.error(f"[VM] ❌ Failed to ensure image availability: {e}")
+            return False
         
     async def close(self):
         """Close Docker client connection"""
@@ -92,6 +129,10 @@ class ContainerManager(IContainerManager):
         try:
             logger.info(f"[VM] Starting container creation process for project {project_id}")
             logger.info(f"[VM] Environment type: {environment_type}, Template: {template_id}")
+
+            # Ensure image is available before creating container
+            if not await self._ensure_image_available():
+                raise Exception(f"Docker image '{self.base_image}' not available. Mode: {self.mode}")  
 
             container_name = f"chatsparty-project-{project_id}"
             logger.info(f"[VM] Container name: {container_name}")
@@ -117,14 +158,14 @@ class ContainerManager(IContainerManager):
             
             container_config = {
                 "Image": self.base_image,
-                "Cmd": ["tail", "-f", "/dev/null"],
+                "Cmd": ["code-server", "--bind-addr=0.0.0.0:8080", "--auth=none", "/workspace"],
                 "WorkingDir": "/workspace",
                 "Env": [
                     f"PROJECT_ID={project_id}",
                     "DEBIAN_FRONTEND=noninteractive",
                     "HOME=/workspace"
                 ],
-                "User": "root",
+                "User": "codespace",
                 "HostConfig": {
                     "Memory": 2147483648,
                     "CpuQuota": 100000,
@@ -160,18 +201,15 @@ class ContainerManager(IContainerManager):
 
             logger.info(f"[VM] Setting up container workspace directory")
             try:
-                await self._exec_command(container, ["chown", "-R", "root:root", "/workspace"])
-                await self._exec_command(container, ["chmod", "-R", "755", "/workspace"])
+                # Fix permissions for codespace user
+                await self._exec_command(container, ["chown", "-R", "codespace:codespace", "/workspace"], user="root")
+                await self._exec_command(container, ["chmod", "-R", "755", "/workspace"], user="root")
                 logger.info(f"[VM] Container workspace directory setup completed")
             except Exception as dir_error:
                 logger.error(f"[VM] Failed to setup workspace directory: {dir_error}")
                 
-            logger.info(f"[VM] Setting up development environment in container")
-            try:
-                await self._setup_container_environment(container, environment_type)
-                logger.info(f"[VM] Development environment setup completed")
-            except Exception as env_error:
-                logger.error(f"[VM] ⚠️ Environment setup failed but container is still usable: {env_error}")
+            # Note: Environment setup is handled by the custom Dockerfile
+            logger.info(f"[VM] Using custom Docker image with pre-configured environment")
 
             self.active_containers[project_id] = container
 
@@ -656,14 +694,14 @@ EOF"""
         
         return {
             "Image": self.base_image,
-            "Cmd": ["tail", "-f", "/dev/null"],
+            "Cmd": ["code-server", "--bind-addr=0.0.0.0:8080", "--auth=none", "/workspace"],
             "WorkingDir": "/workspace",
             "Env": [
                 f"PROJECT_ID={container_info.get('Config', {}).get('Env', [''])[0].split('=')[1] if container_info.get('Config', {}).get('Env') else ''}",
                 "DEBIAN_FRONTEND=noninteractive",
                 "HOME=/workspace"
             ],
-            "User": "root",
+            "User": "codespace",
             "HostConfig": {
                 "Memory": 2147483648,
                 "CpuQuota": 100000,
