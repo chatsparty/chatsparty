@@ -139,18 +139,6 @@ class DockerProvider(VMProviderInterface):
 
 
 
-    async def resize_terminal(self, project_id: str, exec_id: str, rows: int, cols: int) -> None:
-        """Resize terminal session"""
-        try:
-            container_name = f"chatsparty-project-{project_id}"
-            
-            import docker
-            client = docker.from_env()
-            
-            pass
-        except Exception as e:
-            raise Exception(f"Failed to resize terminal: {str(e)}")
-            
     async def get_container_info(self, project_id: str) -> Optional[Dict[str, Any]]:
         """Get container information"""
         try:
@@ -175,9 +163,9 @@ class DockerProvider(VMProviderInterface):
         ide_type: str = "vscode",
         port: int = 8080
     ) -> Dict[str, Any]:
-        """Setup and start an IDE server (VS Code, Theia, etc.) in the VM/container"""
+        """Start pre-installed IDE server in the container"""
         try:
-            logger.info(f"Setting up {ide_type} IDE server for project {project_id} on port {port}")
+            logger.info(f"Starting {ide_type} IDE server for project {project_id} on port {port}")
             
             # Check if container is running
             if not await self.is_sandbox_active(project_id):
@@ -190,38 +178,20 @@ class DockerProvider(VMProviderInterface):
                 return ide_status
             
             if ide_type == "vscode":
-                return await self._setup_vscode_server(project_id, port)
-            elif ide_type == "theia":
-                return await self._setup_theia_server(project_id, port)
+                return await self._start_vscode_server(project_id, port)
             else:
                 raise ValueError(f"Unsupported IDE type: {ide_type}")
                 
         except Exception as e:
-            logger.error(f"Failed to setup IDE server for project {project_id}: {str(e)}")
+            logger.error(f"Failed to start IDE server for project {project_id}: {str(e)}")
             raise
 
-    async def _setup_vscode_server(self, project_id: str, port: int = 8080) -> Dict[str, Any]:
-        """Setup VS Code server specifically"""
+    async def _start_vscode_server(self, project_id: str, port: int = 8080) -> Dict[str, Any]:
+        """Start pre-installed VS Code server"""
         try:
-            logger.info(f"Installing VS Code server for project {project_id}")
+            logger.info(f"Starting VS Code server for project {project_id}")
             
-            # Install code-server
-            install_result = await self.execute_command(
-                project_id, 
-                "curl -fsSL https://code-server.dev/install.sh | sh",
-                timeout=300  # 5 minutes timeout for installation
-            )
-            
-            if install_result.exit_code != 0:
-                logger.error(f"Failed to install code-server: {install_result.stderr}")
-                raise RuntimeError(f"Failed to install code-server: {install_result.stderr}")
-            
-            logger.info(f"VS Code server installed successfully for project {project_id}")
-            
-            # Setup VS Code configuration and themes
-            await self._setup_vscode_config(project_id)
-            
-            # Start code-server in background
+            # Start code-server in background (assuming it's pre-installed)
             start_command = f"""
             nohup code-server \
                 --bind-addr 0.0.0.0:{port} \
@@ -262,52 +232,7 @@ class DockerProvider(VMProviderInterface):
             }
             
         except Exception as e:
-            logger.error(f"Failed to setup VS Code server: {str(e)}")
-            raise
-
-    async def _setup_theia_server(self, project_id: str, port: int = 3000) -> Dict[str, Any]:
-        """Setup Theia IDE server"""
-        try:
-            logger.info(f"Setting up Theia IDE server for project {project_id}")
-            
-            # Install Node.js and Theia (simplified version)
-            install_commands = [
-                "curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
-                "apt-get install -y nodejs",
-                "npm install -g @theia/cli",
-                "theia init /workspace/theia-app",
-                "cd /workspace/theia-app && npm install"
-            ]
-            
-            for cmd in install_commands:
-                result = await self.execute_command(project_id, cmd, timeout=300)
-                if result.exit_code != 0:
-                    logger.error(f"Failed to execute: {cmd}, Error: {result.stderr}")
-                    raise RuntimeError(f"Failed to install Theia: {result.stderr}")
-            
-            # Start Theia server
-            start_command = f"cd /workspace/theia-app && nohup theia start --hostname 0.0.0.0 --port {port} > /tmp/theia.log 2>&1 &"
-            start_result = await self.execute_command(project_id, start_command)
-            
-            if start_result.exit_code != 0:
-                raise RuntimeError(f"Failed to start Theia: {start_result.stderr}")
-            
-            await asyncio.sleep(3)  # Wait for Theia to start
-            
-            host_port = await self._get_host_port(project_id, port)
-            ide_url = f"http://localhost:{host_port or port}"
-            
-            return {
-                "ide_type": "theia",
-                "url": ide_url,
-                "port": host_port or port,
-                "container_port": port,
-                "status": "running",
-                "workspace_path": "/workspace"
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to setup Theia server: {str(e)}")
+            logger.error(f"Failed to start VS Code server: {str(e)}")
             raise
 
     async def get_ide_status(self, project_id: str) -> Dict[str, Any]:
@@ -408,81 +333,3 @@ class DockerProvider(VMProviderInterface):
             logger.error(f"Failed to get host port for project {project_id}: {str(e)}")
             return None
     
-    async def _setup_vscode_config(self, project_id: str) -> None:
-        """Setup VS Code configuration, themes, and extensions"""
-        try:
-            logger.info(f"Setting up VS Code configuration for project {project_id}")
-            
-            # Create VS Code config directory
-            config_setup = """
-            mkdir -p ~/.local/share/code-server/User
-            mkdir -p ~/.local/share/code-server/extensions
-            """
-            
-            await self.execute_command(project_id, config_setup.strip())
-            
-            # Setup default VS Code settings
-            vscode_settings = {
-                "workbench.colorTheme": "Default Dark+",
-                "workbench.iconTheme": "vs-seti",
-                "editor.fontSize": 14,
-                "editor.fontFamily": "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
-                "editor.tabSize": 2,
-                "editor.insertSpaces": True,
-                "editor.wordWrap": "on",
-                "editor.minimap.enabled": True,
-                "editor.lineNumbers": "on",
-                "editor.renderWhitespace": "selection",
-                "files.autoSave": "onDelay",
-                "files.autoSaveDelay": 1000,
-                "terminal.integrated.fontSize": 13,
-                "workbench.startupEditor": "welcomePage",
-                "explorer.confirmDelete": False,
-                "explorer.confirmDragAndDrop": False,
-                "workbench.editor.untitled.hint": "hidden",
-                "workbench.tips.enabled": False,
-                "telemetry.telemetryLevel": "off",
-                "update.mode": "none",
-                "extensions.autoUpdate": False,
-                "workbench.colorCustomizations": {
-                    "statusBar.background": "#1e1e1e",
-                    "statusBar.foreground": "#ffffff",
-                    "activityBar.background": "#2d2d30",
-                    "sideBar.background": "#252526"
-                }
-            }
-            
-            import json
-            settings_content = json.dumps(vscode_settings, indent=2)
-            
-            # Write settings to file
-            await self.docker_facade.write_file(
-                project_id, 
-                "~/.local/share/code-server/User/settings.json", 
-                settings_content
-            )
-            
-            # Setup keybindings
-            keybindings = [
-                {
-                    "key": "ctrl+shift+p",
-                    "command": "workbench.action.showCommands"
-                },
-                {
-                    "key": "ctrl+`",
-                    "command": "workbench.action.terminal.toggleTerminal"
-                }
-            ]
-            
-            keybindings_content = json.dumps(keybindings, indent=2)
-            await self.docker_facade.write_file(
-                project_id,
-                "~/.local/share/code-server/User/keybindings.json",
-                keybindings_content
-            )
-            
-            logger.info(f"VS Code configuration setup completed for project {project_id}")
-            
-        except Exception as e:
-            logger.error(f"Failed to setup VS Code configuration for project {project_id}: {str(e)}")
-            # Don't fail the IDE setup if config setup fails

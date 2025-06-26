@@ -6,7 +6,6 @@ from .routers import (
     health,
     mcp,
     podcast,
-    terminal,
     voice_connections,
 )
 from .routers.projects import router as projects_router
@@ -36,12 +35,6 @@ async def lifespan(app):
     except Exception as e:
         print(f"⚠️ Database table creation failed: {e}")
     
-    try:
-        from .services.terminal.terminal_manager import terminal_manager
-        await terminal_manager.start()
-        print("✅ Terminal manager started successfully")
-    except Exception as e:
-        print(f"⚠️ Terminal manager startup failed: {e}")
     
     try:
         from .services.docker.background_port_service import get_background_port_service
@@ -52,14 +45,6 @@ async def lifespan(app):
     
     yield
     
-    try:
-        from .services.terminal.terminal_manager import terminal_manager
-        await asyncio.wait_for(terminal_manager.stop(), timeout=5.0)
-        print("✅ Terminal manager stopped successfully")
-    except asyncio.TimeoutError:
-        print("⚠️ Terminal manager shutdown timeout - forcing stop")
-    except Exception as e:
-        print(f"⚠️ Terminal manager shutdown failed: {e}")
     
     try:
         from .services.docker.background_port_service import shutdown_background_port_service
@@ -86,10 +71,7 @@ app.include_router(voice_connections.router)
 app.include_router(podcast.router)
 app.include_router(files.router)
 app.include_router(mcp.router)
-app.include_router(terminal.router, prefix="/api", tags=["terminal"])
 
-from .services.socketio.socketio_manager import socketio_manager
-app.mount("/socket.io", socketio_manager.get_app())
 
 def signal_handler(signum, frame):
     print(f"\n🔌 Received signal {signum}, shutting down gracefully...")

@@ -1,10 +1,9 @@
 import { Loader2 } from "lucide-react";
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
-import type { Project, ProjectCreate } from "../../types/project";
+import type { Project } from "../../types/project";
 import { ProjectCard } from "./components/ProjectCard";
-import { ProjectForm } from "./components/ProjectForm";
 import { useProjects } from "./hooks/useProjects";
 
 export const ProjectsPage: React.FC = () => {
@@ -13,23 +12,12 @@ export const ProjectsPage: React.FC = () => {
     projects,
     loading,
     error,
-    createProject,
     deleteProject,
   } = useProjects();
-
-  const [showCreateForm, setShowCreateForm] = useState(false);
-
-  const handleCreateProject = async (projectData: ProjectCreate) => {
-    await createProject(projectData);
-    setShowCreateForm(false);
-  };
-
-
 
   const handleProjectClick = (project: Project) => {
     navigate(`/projects/${project.id}/vscode`);
   };
-
 
   const handleDeleteProject = async (projectId: string) => {
     if (
@@ -59,67 +47,73 @@ export const ProjectsPage: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 p-6 overflow-auto bg-background">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-card-foreground">
-              Projects
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your development projects and VM workspaces
-            </p>
-          </div>
-          {!showCreateForm && (
-            <Button onClick={() => setShowCreateForm(true)}>
+    <div className="flex-1 overflow-auto bg-background">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+        <div className="space-y-8">
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-bold text-card-foreground">
+                Projects
+              </h1>
+              <p className="text-muted-foreground">
+                Manage your development projects and VM workspaces
+              </p>
+            </div>
+            <Button 
+              onClick={() => navigate('/projects/new')}
+              className="w-full sm:w-auto"
+            >
               Create New Project
             </Button>
+          </div>
+
+          {/* Projects Grid Section */}
+          {projects && projects.length === 0 && !loading && !error ? (
+            <div className="text-center py-16">
+              <div className="max-w-md mx-auto">
+                <div className="text-muted-foreground mb-6 text-lg">
+                  No projects configured yet
+                </div>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Create your first project to get started with VM workspaces and development environments.
+                </p>
+                <Button 
+                  onClick={() => navigate('/projects/new')}
+                  size="lg"
+                >
+                  Create Your First Project
+                </Button>
+              </div>
+            </div>
+          ) : (
+            projects && projects.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-medium">Your Projects</h2>
+                  <span className="text-sm text-muted-foreground">
+                    {projects.length} project{projects.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {projects
+                    .filter((project) => project && project.id)
+                    .map((project) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        isSelected={false}
+                        onClick={() => handleProjectClick(project)}
+                        onEdit={() => handleProjectClick(project)}
+                        onDelete={() => handleDeleteProject(project.id)}
+                      />
+                    ))}
+                </div>
+              </div>
+            )
           )}
         </div>
-
-        {showCreateForm && (
-          <div className="mb-6">
-            <ProjectForm
-              onSubmit={(data) => handleCreateProject(data as ProjectCreate)}
-              onCancel={() => setShowCreateForm(false)}
-              loading={loading}
-            />
-          </div>
-        )}
-
-        {projects && projects.length === 0 && !loading && !error ? (
-          <div className="text-center py-12">
-            <div className="text-muted-foreground mb-4">
-              No projects configured yet
-            </div>
-            {!showCreateForm && (
-              <Button onClick={() => setShowCreateForm(true)}>
-                Create Your First Project
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {projects &&
-              projects.length > 0 &&
-              projects
-                .filter((project) => project && project.id)
-                .map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    isSelected={false}
-                    onClick={() => handleProjectClick(project)}
-                    onEdit={() => handleProjectClick(project)}
-                    onDelete={() => handleDeleteProject(project.id)}
-                  />
-                ))}
-          </div>
-        )}
-
       </div>
-
- 
     </div>
   );
 };

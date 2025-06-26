@@ -14,13 +14,13 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { AuthPage } from "./components/auth/AuthPage";
 import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { SocketIOProvider } from "./services/socketio/useSocketIO";
 import { useTracking } from "./hooks/useTracking";
 import {
   AgentManagerPage,
   LandingPage,
   MultiAgentChatPage,
   ProjectsPage,
+  CreateProjectPage,
   VSCodePage,
 } from "./pages";
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
@@ -176,6 +176,7 @@ const Layout = () => {
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/new" element={<CreateProjectPage />} />
             <Route path="/agents" element={<AgentManagerPage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
@@ -209,6 +210,14 @@ const MainApp = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (location.pathname === "/projects/new") {
+    return (
+      <div className="h-screen w-screen bg-background">
+        <CreateProjectPage />
       </div>
     );
   }
@@ -256,9 +265,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <SocketIOProvider>
-          <MainApp />
-        </SocketIOProvider>
+        <MainApp />
       </AuthProvider>
     </Router>
   );

@@ -71,7 +71,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
 }) => {
   const fullPath = item.path || (path ? `${path}/${item.name}` : item.name);
 
-  const renderInlineInput = (parentPath: string, inputDepth: number) => (
+  const renderInlineInput = (_parentPath: string, inputDepth: number) => (
     <div
       className="flex items-center gap-1 px-2 py-1 text-sm"
       style={{ paddingLeft: `${inputDepth * 12 + 20}px` }}

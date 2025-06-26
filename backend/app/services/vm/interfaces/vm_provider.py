@@ -157,13 +157,8 @@ class VMProviderInterface(ABC):
 
 
     @abstractmethod
-    async def resize_terminal(self, project_id: str, exec_id: str, rows: int, cols: int) -> None:
-        """Resize terminal session"""
-        pass
-        
-    @abstractmethod
     async def get_container_info(self, project_id: str) -> Optional[Dict[str, Any]]:
-        """Get container information for terminal access"""
+        """Get container information"""
         pass
 
     # ============= IDE MANAGEMENT =============

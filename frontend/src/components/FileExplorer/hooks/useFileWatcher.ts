@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { fileOperationsService } from "../services/fileOperationsService";
-import { useFileSystemWebSocket } from "../../../pages/Projects/hooks/useFileSystemWebSocket";
 import type { Project } from "../../../types/project";
 
 interface UseFileWatcherProps {
@@ -8,9 +7,7 @@ interface UseFileWatcherProps {
   onFileChange: () => void;
 }
 
-export const useFileWatcher = ({ project, onFileChange }: UseFileWatcherProps) => {
-  const { recentEvents, clearEvents } = useFileSystemWebSocket(project?.id || "");
-
+export const useFileWatcher = ({ project }: UseFileWatcherProps) => {
   useEffect(() => {
     const startWatching = async () => {
       if (project?.id && project?.vm_status === "active") {
@@ -33,15 +30,5 @@ export const useFileWatcher = ({ project, onFileChange }: UseFileWatcherProps) =
     };
   }, [project?.id, project?.vm_status]);
 
-  useEffect(() => {
-    if (recentEvents.length > 0) {
-      const timeoutId = setTimeout(() => {
-        onFileChange();
-      }, 1000);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [recentEvents, onFileChange]);
-
-  return { recentEvents, clearEvents };
+  return { recentEvents: [], clearEvents: () => {} };
 };

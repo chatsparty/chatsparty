@@ -5,16 +5,13 @@ import {
   Loader2, 
   AlertCircle, 
   RefreshCw, 
-  ExternalLink, 
   Power,
-  Monitor,
-  Settings
+  Monitor
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { vscodeApi, type VSCodeSetupResult, type VSCodeStatus } from '../../services/vscodeApi';
+import { vscodeApi, type VSCodeSetupResult } from '../../services/vscodeApi';
 import { projectApi } from '../../services/projectApi';
 import type { Project } from '../../types/project';
-import { VSCodeCustomizer } from './components/VSCodeCustomizer';
 
 type SetupStatus = 'idle' | 'checking' | 'setting-up' | 'ready' | 'error';
 
@@ -27,7 +24,6 @@ export const VSCodePage: React.FC = () => {
   const [vscodeUrl, setVscodeUrl] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [setupProgress, setSetupProgress] = useState<string>('');
-  const [showCustomizer, setShowCustomizer] = useState<boolean>(false);
 
   useEffect(() => {
     if (projectId) {
@@ -143,26 +139,8 @@ export const VSCodePage: React.FC = () => {
     }
   };
 
-  const handleOpenInNewTab = () => {
-    if (vscodeUrl) {
-      window.open(vscodeUrl, '_blank');
-    }
-  };
-
   const handleBackToProject = () => {
     navigate('/projects');
-  };
-
-  const handleCustomizationApplied = () => {
-    setShowCustomizer(false);
-    // Optionally refresh the iframe to show changes
-    if (vscodeUrl) {
-      // Force reload the iframe
-      const iframe = document.querySelector('iframe') as HTMLIFrameElement;
-      if (iframe) {
-        iframe.src = iframe.src;
-      }
-    }
   };
 
   if (!projectId) {
@@ -183,65 +161,43 @@ export const VSCodePage: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card px-4 py-3">
+      <header className="border-b border-border bg-card px-3 py-1.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={handleBackToProject}
-              className="gap-2"
+              className="gap-1 h-7 px-2"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Project
+              <ArrowLeft className="w-3 h-3" />
+              Back
             </Button>
             
-            <div className="h-6 w-px bg-border" />
+            <div className="h-4 w-px bg-border" />
             
-            <div className="flex items-center gap-2">
-              <Monitor className="w-5 h-5 text-blue-500" />
+            <div className="flex items-center gap-1.5">
+              <Monitor className="w-4 h-4 text-blue-500" />
               <div>
-                <h1 className="font-semibold">VS Code IDE</h1>
+                <h1 className="text-sm font-medium">Development Environment</h1>
                 {project && (
-                  <p className="text-sm text-muted-foreground">{project.name}</p>
+                  <p className="text-xs text-muted-foreground">{project.name}</p>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {status === 'ready' && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCustomizer(!showCustomizer)}
-                  className="gap-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  Customize
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenInNewTab}
-                  className="gap-2"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Open in New Tab
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleStop}
-                  className="gap-2 text-red-600 hover:text-red-700"
-                >
-                  <Power className="w-4 h-4" />
-                  Stop Server
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStop}
+                className="gap-1 h-7 px-2 text-red-600 hover:text-red-700"
+              >
+                <Power className="w-3 h-3" />
+                Stop
+              </Button>
             )}
             
             {(status === 'error' || status === 'idle') && (
@@ -249,9 +205,9 @@ export const VSCodePage: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleRetry}
-                className="gap-2"
+                className="gap-1 h-7 px-2"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className="w-3 h-3" />
                 Retry
               </Button>
             )}
@@ -262,29 +218,17 @@ export const VSCodePage: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-hidden flex">
         {status === 'ready' && vscodeUrl ? (
-          <>
-            <div className="flex-1">
-              <iframe
-                src={vscodeUrl}
-                className="w-full h-full border-0"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-modals allow-popups"
-                allow="clipboard-read; clipboard-write; microphone; camera"
-                title="VS Code IDE"
-              />
-            </div>
-            
-            {/* Customizer Panel */}
-            {showCustomizer && (
-              <div className="w-80 border-l border-border bg-card p-4 overflow-y-auto">
-                <VSCodeCustomizer 
-                  projectId={projectId}
-                  onCustomizationApplied={handleCustomizationApplied}
-                />
-              </div>
-            )}
-          </>
+          <div className="flex-1">
+            <iframe
+              src={vscodeUrl}
+              className="w-full h-full border-0"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-modals allow-popups"
+              allow="clipboard-read; clipboard-write; microphone; camera"
+              title="VS Code IDE"
+            />
+          </div>
         ) : (
-          <div className="h-full flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-md">
               {status === 'checking' && (
                 <>
