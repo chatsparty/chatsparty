@@ -1,0 +1,9 @@
+# Dead code detection tools
+vulture>=2.10
+deptry>=0.12.0
+pyflakes>=3.1.0
+
+# Optional: Additional code quality tools
+pylint>=3.0.0
+flake8>=6.0.0
+mypy>=1.7.0

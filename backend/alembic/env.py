@@ -6,7 +6,6 @@ from logging.config import fileConfig
 from alembic import context
 from app.core.config import settings
 from app.core.database import Base
-from app.models.database import Agent, Conversation, Message
 from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection

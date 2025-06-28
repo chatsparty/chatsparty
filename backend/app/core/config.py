@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     vm_provider: str = "docker"
     docker_image: str = "wisty-dev-capsule"
     docker_mode: str = "local"
+    vm_workspace_enabled: bool = False  # Feature flag for VM workspace functionality
 
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
     access_token_expire_minutes: int = 30

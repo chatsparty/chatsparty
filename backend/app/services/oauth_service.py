@@ -82,13 +82,11 @@ class OAuthService:
         )
 
         try:
-            # Exchange code for token
             token = await client.fetch_token(
                 "https://oauth2.googleapis.com/token",
                 code=code
             )
 
-            # Get user info from Google
             async with httpx.AsyncClient() as http_client:
                 response = await http_client.get(
                     "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -108,12 +106,10 @@ class OAuthService:
             )
 
         except Exception as e:
-            # Enhanced error logging for debugging
             error_details = str(e)
             if "invalid_grant" in error_details.lower():
                 error_details += f" | Redirect URI used: {redirect_uri} | Check Google Cloud Console configuration"
 
-            # Server-side logging
             print(f"Google OAuth Error Details: {error_details}")
 
             raise HTTPException(
@@ -138,15 +134,12 @@ class OAuthService:
         )
 
         try:
-            # Exchange code for token
             token = await client.fetch_token(
                 "https://github.com/login/oauth/access_token",
                 code=code
             )
 
-            # Get user info from GitHub
             async with httpx.AsyncClient() as http_client:
-                # Get user profile
                 user_response = await http_client.get(
                     "https://api.github.com/user",
                     headers={
@@ -155,7 +148,6 @@ class OAuthService:
                 user_response.raise_for_status()
                 user_info = user_response.json()
 
-                # Get user emails (GitHub might not return email in profile)
                 email_response = await http_client.get(
                     "https://api.github.com/user/emails",
                     headers={
@@ -164,7 +156,6 @@ class OAuthService:
                 email_response.raise_for_status()
                 emails = email_response.json()
 
-                # Find primary email
                 primary_email = None
                 for email_obj in emails:
                     if email_obj.get("primary", False):
@@ -201,18 +192,20 @@ class OAuthService:
         email: str,
         first_name: Optional[str],
         last_name: Optional[str],
-        provider: str,
-        provider_id: str
+        provider: Optional[str] = None,
+        provider_id: Optional[str] = None,
     ) -> User:
-        """Create or get user from OAuth provider info"""
-        # Check if user already exists
+        """Create or get user from OAuth provider info
+        
+        Note: provider and provider_id are currently not stored in the database.
+        The User model would need to be updated with OAuth provider fields
+        to track which provider was used for authentication.
+        """
         existing_user = await auth_service.get_user_by_email(db, email)
 
         if existing_user:
             return existing_user
 
-        # Create new user with OAuth info
-        # Generate a random password since OAuth users don't need it
         random_password = str(uuid.uuid4())
         hashed_password = auth_service.get_password_hash(random_password)
 
@@ -222,7 +215,7 @@ class OAuthService:
             hashed_password=hashed_password,
             first_name=first_name,
             last_name=last_name,
-            is_verified=True,  # OAuth users are considered verified
+            is_verified=True,
         )
 
         db.add(db_user)

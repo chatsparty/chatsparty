@@ -4,7 +4,6 @@ Development server script with proper environment loading
 """
 
 import os
-import sys
 from dotenv import load_dotenv
 
 load_dotenv()

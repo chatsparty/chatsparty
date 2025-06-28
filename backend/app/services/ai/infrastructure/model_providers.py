@@ -1,7 +1,7 @@
 from typing import List, Optional
 from ..domain.entities import Message, ModelConfiguration
 from ..domain.interfaces import ModelProviderInterface
-from .unified_model_service import get_unified_model_service, get_initialized_unified_model_service
+from .unified_model_service import get_initialized_unified_model_service
 
 
 class UnifiedModelProvider(ModelProviderInterface):

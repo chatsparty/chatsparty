@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ....models.database import ProjectFile as ProjectFileModel
 from ...ai.infrastructure.base_repository import BaseRepository
-from ..domain.entities import ProjectFile, ProjectFileCreate, ProjectFileUpdate
+from ..domain.entities import ProjectFile
 from ..domain.interfaces import ProjectFileRepositoryInterface
 
 

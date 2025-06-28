@@ -1,7 +1,6 @@
 import uuid
 import time
 from typing import Dict, List, Optional
-from datetime import datetime
 from app.models.chat import (
     ConnectionCreateRequest, 
     ConnectionUpdateRequest, 
@@ -101,7 +100,7 @@ class ConnectionService:
                 )
             
             try:
-                model_config = ModelConfig(
+                ModelConfig(
                     provider=connection["provider"],
                     model_name=connection["model_name"],
                     api_key=connection.get("api_key"),

@@ -195,14 +195,25 @@ async def oauth_callback(
     db: AsyncSession = Depends(get_db_session)
 ):
     """Handle OAuth callback and return JWT tokens"""
-    if provider == "google":
-        user = await oauth_service.handle_google_callback(db, request.code)
-    elif provider == "github":
-        user = await oauth_service.handle_github_callback(db, request.code)
-    else:
+    try:
+        print(f"OAuth callback received - Provider: {provider}, Code: {request.code[:10]}..., State: {request.state}")
+        
+        if provider == "google":
+            user = await oauth_service.handle_google_callback(db, request.code)
+        elif provider == "github":
+            user = await oauth_service.handle_github_callback(db, request.code)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported OAuth provider"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"OAuth callback error - Provider: {provider}, Error: {str(e)}, Type: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported OAuth provider"
+            detail=f"OAuth callback failed: {str(e)}"
         )
     
     if not user.is_active:

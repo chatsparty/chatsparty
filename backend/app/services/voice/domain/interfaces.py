@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, AsyncGenerator
-from .entities import VoiceConnection, VoiceGenerationRequest, VoiceGenerationResult
+from .entities import VoiceConnection, VoiceGenerationResult
 
 
 class VoiceProviderInterface(ABC):

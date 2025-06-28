@@ -7,6 +7,7 @@ from typing import Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from ...core.config import settings
 from ...models.database import User
 from ...services.project.application.services import ProjectService
 from ..auth import get_current_user_dependency
@@ -23,6 +24,13 @@ async def setup_vm_workspace(
     project_service: ProjectService = Depends(get_project_service)
 ) -> Dict:
     """Set up VM workspace for a project"""
+    # Check if VM workspace feature is enabled
+    if not settings.vm_workspace_enabled:
+        raise HTTPException(
+            status_code=403, 
+            detail="VM workspace feature is currently disabled"
+        )
+    
     try:
         project = project_service.get_project(project_id, current_user.id)
         if not project:

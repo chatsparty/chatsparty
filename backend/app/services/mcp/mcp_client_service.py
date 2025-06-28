@@ -4,8 +4,6 @@ import logging
 from mcp.client.session import ClientSession
 from mcp.client.stdio import stdio_client, StdioServerParameters
 from mcp.client.sse import sse_client
-from mcp import types
-import json
 
 logger = logging.getLogger(__name__)
 

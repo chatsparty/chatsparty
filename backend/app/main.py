@@ -6,6 +6,7 @@ from .routers import (
     health,
     mcp,
     podcast,
+    system,
     voice_connections,
 )
 from .routers.projects import router as projects_router
@@ -64,6 +65,7 @@ app = create_app(lifespan=lifespan)
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(system.router)
 app.include_router(projects_router)
 app.include_router(chat.router)
 app.include_router(connections.router)
@@ -73,7 +75,7 @@ app.include_router(files.router)
 app.include_router(mcp.router)
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum):
     print(f"\n🔌 Received signal {signum}, shutting down gracefully...")
     sys.exit(0)
 

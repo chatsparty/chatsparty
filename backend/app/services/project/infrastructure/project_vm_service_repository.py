@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...ai.infrastructure.base_repository import BaseRepository
-from ..domain.entities import ProjectVMService, VMServiceCreate, VMServiceUpdate
+from ..domain.entities import ProjectVMService
 from ..domain.interfaces import ProjectVMServiceRepositoryInterface
 
 

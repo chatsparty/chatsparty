@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from .....core.config import settings
 from ....vm_factory import get_vm_service
 from ...domain.entities import (
     Project,
@@ -68,13 +69,19 @@ class ProjectOrchestratorService:
         
         This automatically:
         1. Creates the project in database
-        2. Sets up VM workspace (Docker container) if auto_setup_vm is enabled
+        2. Sets up VM workspace (Docker container) if auto_setup_vm is enabled and feature is enabled
         3. Initializes storage mount
         4. Prepares MCP tools for agents
         """
+        # Check if VM workspace feature is disabled
+        if hasattr(project_data, 'auto_setup_vm') and project_data.auto_setup_vm and not settings.vm_workspace_enabled:
+            # Override auto_setup_vm if feature is disabled
+            project_data.auto_setup_vm = False
+            logger.warning("VM workspace creation requested but feature is disabled")
+        
         project = await self.crud_service.create_project(project_data, user_id)
         
-        if hasattr(project_data, 'auto_setup_vm') and project_data.auto_setup_vm:
+        if hasattr(project_data, 'auto_setup_vm') and project_data.auto_setup_vm and settings.vm_workspace_enabled:
             await self.vm_service.setup_vm_workspace(project.id)
         
         return project

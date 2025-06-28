@@ -1,9 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from ..services.connection_service import connection_service
 from ..services.mcp.mcp_client_service import MCPClientService
-import uuid
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,7 +38,6 @@ class MCPTestConnectionRequest(BaseModel):
 async def list_mcp_servers():
     """Get all MCP servers"""
     try:
-        # Get all MCP connections (servers)
         connections = connection_service.get_mcp_connections()
         
         servers = []
@@ -65,7 +63,6 @@ async def create_mcp_server(request: MCPServerCreateRequest):
     try:
         mcp_client_service = MCPClientService()
         
-        # Test the connection first
         try:
             test_result = await mcp_client_service.test_connection(
                 request.server_url, 
@@ -86,24 +83,21 @@ async def create_mcp_server(request: MCPServerCreateRequest):
             available_tools = []
             status = "error"
         
-        # Create a ConnectionCreateRequest for the MCP server
         from ..models.chat import ConnectionCreateRequest
         connection_request = ConnectionCreateRequest(
             name=request.name,
             description=request.description,
             provider="mcp",
-            model_name="mcp-server",  # Placeholder
+            model_name="mcp-server",
             api_key=None,
             base_url=None
         )
         
-        # Add MCP-specific fields
         setattr(connection_request, 'mcp_server_url', request.server_url)
         setattr(connection_request, 'mcp_server_config', request.server_config)
         setattr(connection_request, 'available_tools', available_tools)
         setattr(connection_request, 'mcp_capabilities', capabilities)
         
-        # For now, create without user_id (we'll need to add auth later)
         connection = connection_service.create_connection(connection_request, "system")
         
         return MCPServerResponse(
@@ -126,12 +120,10 @@ async def update_mcp_server(
 ):
     """Update an existing MCP server"""
     try:
-        # Get existing connection
         connection = connection_service.get_connection(server_id)
         if not connection:
             raise HTTPException(status_code=404, detail="MCP server not found")
         
-        # Update fields
         update_data = {}
         if request.name is not None:
             update_data["name"] = request.name
@@ -142,7 +134,6 @@ async def update_mcp_server(
         if request.server_config is not None:
             update_data["mcp_server_config"] = request.server_config
         
-        # If URL or config changed, re-discover capabilities
         if request.server_url is not None or request.server_config is not None:
             try:
                 mcp_client_service = MCPClientService()
@@ -159,7 +150,6 @@ async def update_mcp_server(
             except Exception as e:
                 logger.warning(f"Failed to re-discover capabilities: {e}")
         
-        # Update connection
         updated_connection = connection_service.update_connection(server_id, update_data)
         
         return MCPServerResponse(
@@ -181,12 +171,10 @@ async def update_mcp_server(
 async def delete_mcp_server(server_id: str):
     """Delete an MCP server"""
     try:
-        # Check if connection exists
         connection = connection_service.get_connection(server_id)
         if not connection:
             raise HTTPException(status_code=404, detail="MCP server not found")
         
-        # Delete the connection
         success = connection_service.delete_connection(server_id)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete MCP server")
@@ -206,7 +194,6 @@ async def test_mcp_connection(request: MCPTestConnectionRequest):
     try:
         mcp_client_service = MCPClientService()
         
-        # Add overall timeout to prevent hanging requests
         logger.info(f"Starting MCP connection test with 30s timeout: {request.server_url}")
         
         test_result = await asyncio.wait_for(
@@ -214,7 +201,7 @@ async def test_mcp_connection(request: MCPTestConnectionRequest):
                 request.server_url, 
                 request.server_config
             ),
-            timeout=30.0  # 30 second overall timeout for the entire test
+            timeout=30.0
         )
         
         if test_result.get('success'):
