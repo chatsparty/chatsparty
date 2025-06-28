@@ -204,7 +204,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         throw new Error("Invalid OAuth state");
       }
 
-      const response = await axios.post(`/auth/oauth/callback/${provider}`, {
+      const response = await authAxios.post(`/auth/oauth/callback/${provider}`, {
         code,
         state,
       });
@@ -217,10 +217,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       sessionStorage.removeItem("oauth_state");
 
-      const userResponse = await axios.get("/auth/me");
+      const userResponse = await axios.get("/auth/me", {
+        headers: {
+          Authorization: `Bearer ${access_token}`
+        }
+      });
       setUser(userResponse.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("OAuth callback failed:", error);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       sessionStorage.removeItem("oauth_state");
       throw error;
     }

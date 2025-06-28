@@ -5,11 +5,16 @@ import { useAuth } from "../../contexts/AuthContext";
 export const OAuthCallback: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [success, setSuccess] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { handleOAuthCallback } = useAuth();
+  const { handleOAuthCallback, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     const handleCallback = async () => {
       try {
         const code = searchParams.get("code");
@@ -25,10 +30,16 @@ export const OAuthCallback: React.FC = () => {
         }
 
         await handleOAuthCallback(provider as "google" | "github", code, state);
+        console.log("OAuth callback successful, navigating to /agents");
+        setSuccess(true);
         navigate("/agents");
       } catch (error: any) {
         console.error("OAuth callback failed:", error);
-        setError(error.message || "Authentication failed");
+        if (error.response) {
+          setError(error.response.data?.detail || error.message || "Authentication failed");
+        } else {
+          setError(error.message || "Authentication failed");
+        }
         setTimeout(() => navigate("/auth"), 3000);
       } finally {
         setLoading(false);
@@ -36,14 +47,30 @@ export const OAuthCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [searchParams, navigate, handleOAuthCallback]);
+  }, [searchParams, navigate, handleOAuthCallback, authLoading]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-lg">Completing authentication...</p>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          
+          <p className="text-sm text-muted-foreground">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
+            <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-sm text-muted-foreground">Success! Redirecting...</p>
         </div>
       </div>
     );
@@ -52,19 +79,30 @@ export const OAuthCallback: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">✗</div>
-          <h1 className="text-2xl font-bold text-red-600 mb-2">
-            Authentication Failed
-          </h1>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <p className="text-sm text-gray-500">
-            Redirecting you back to login...
-          </p>
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-12 h-12 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+            <svg className="w-6 h-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Authentication failed</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+          </div>
+          
+          <p className="text-xs text-muted-foreground">Redirecting...</p>
         </div>
       </div>
     );
   }
 
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="flex flex-col items-center space-y-4">
+        <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-sm text-muted-foreground">Processing...</p>
+      </div>
+    </div>
+  );
 };

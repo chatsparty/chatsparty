@@ -5,6 +5,7 @@ import { Checkbox } from "../../../components/ui/checkbox";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Textarea } from "../../../components/ui/textarea";
+import { systemApi } from "../../../services/systemApi";
 import type {
   Project,
   ProjectCreate,
@@ -32,18 +33,32 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [vmWorkspaceEnabled, setVmWorkspaceEnabled] = useState(false);
 
-  // Initialize form with project data if editing
   useEffect(() => {
     if (project) {
       setFormData({
         name: project.name,
         description: project.description || "",
         auto_sync_files: project.auto_sync_files,
-        auto_setup_vm: false, // Don't auto-setup VM when editing
+        auto_setup_vm: false,
       });
     }
   }, [project]);
+
+  useEffect(() => {
+    const fetchSystemConfig = async () => {
+      try {
+        const config = await systemApi.getConfig();
+        setVmWorkspaceEnabled(config.vm_workspace_enabled);
+      } catch (error) {
+        console.error("Failed to fetch system config:", error);
+        setVmWorkspaceEnabled(false);
+      }
+    };
+    
+    fetchSystemConfig();
+  }, []);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -84,7 +99,6 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Clear error for this field when user starts typing
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -96,7 +110,6 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Project Name */}
       <div className="space-y-2">
         <Label
           htmlFor="name"
@@ -122,7 +135,6 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         )}
       </div>
 
-      {/* Project Description */}
       <div className="space-y-2">
         <Label
           htmlFor="description"
@@ -151,14 +163,12 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         </p>
       </div>
 
-      {/* Settings */}
       <div className="space-y-4">
         <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Project Settings
         </Label>
 
         <div className="space-y-3">
-          {/* Auto Sync Files */}
           <div className="flex items-center space-x-3">
             <Checkbox
               id="auto_sync_files"
@@ -182,8 +192,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
             </div>
           </div>
 
-          {/* Auto Setup VM (only for new projects) */}
-          {!project && (
+          {!project && vmWorkspaceEnabled && (
             <div className="flex items-center space-x-3">
               <Checkbox
                 id="auto_setup_vm"
@@ -210,7 +219,6 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center justify-end gap-3 pt-6">
         <Button
           type="button"
