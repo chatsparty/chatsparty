@@ -111,7 +111,9 @@ sudo apt-get install -y \
 
 # Install Docker and Docker Compose
 echo "🐳 Installing Docker..."
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /tmp/docker.gpg > /dev/null
+sudo gpg --dearmor --batch --yes -o /usr/share/keyrings/docker-archive-keyring.gpg /tmp/docker.gpg
+sudo rm /tmp/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
@@ -127,6 +129,7 @@ source $HOME/.cargo/env
 # Install uv for Python package management
 echo "📦 Installing uv..."
 curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.cargo/env
 export PATH="$HOME/.cargo/bin:$PATH"
 
 # Install additional Python tools
@@ -151,7 +154,6 @@ pip3 install --user \
 # Install global Node.js tools
 echo "⚛️ Installing global Node.js tools..."
 npm install -g \
-    @types/node \
     typescript \
     ts-node \
     nodemon \
@@ -162,8 +164,6 @@ npm install -g \
     pnpm \
     eslint \
     prettier \
-    @vue/cli \
-    @angular/cli \
     create-react-app \
     create-next-app \
     create-vite
@@ -312,7 +312,7 @@ alias lint='flake8 . && mypy .'
 alias test='pytest'
 
 # Environment
-export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.cargo/bin:/usr/local/bin:$PATH"
 export PYTHONPATH="/workspaces/chatsparty/backend:$PYTHONPATH"
 export NODE_ENV=development
 

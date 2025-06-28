@@ -1,0 +1,116 @@
+/* React Arborist custom styles */
+
+/* Container */
+.react-arborist {
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+}
+
+/* Focus outline */
+.react-arborist:focus {
+  outline: none;
+}
+
+/* Node container */
+.react-arborist-node {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Selected node */
+.react-arborist-node[aria-selected='true'] {
+  background-color: var(--accent);
+}
+
+/* Hover state */
+.react-arborist-node:hover {
+  background-color: var(--accent);
+}
+
+/* Drop target */
+.react-arborist-node.drop-target {
+  background-color: var(--primary);
+  opacity: 0.2;
+}
+
+/* Drag preview */
+.react-arborist-drag-preview {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Scrollbar styling */
+.react-arborist-list::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.react-arborist-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.react-arborist-list::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 4px;
+  opacity: 0.3;
+}
+
+.react-arborist-list::-webkit-scrollbar-thumb:hover {
+  opacity: 0.5;
+}
+
+/* Search match highlight */
+.react-arborist-node[aria-selected='false'] mark {
+  background-color: var(--warning);
+  color: inherit;
+  padding: 0;
+}
+
+/* Editing input */
+.react-arborist input[type='text'] {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: inherit;
+  font-family: inherit;
+  color: inherit;
+  outline: none;
+}
+
+.react-arborist input[type='text']:focus {
+  border-color: var(--ring);
+}
+
+/* Context menu adjustments */
+[role="menu"] {
+  min-width: 150px;
+}
+
+/* Loading state */
+.file-explorer-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted-foreground);
+}
+
+/* Error state */
+.file-explorer-error {
+  padding: 1rem;
+  text-align: center;
+}
+
+.file-explorer-error p {
+  color: var(--destructive);
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}

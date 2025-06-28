@@ -1,7 +1,10 @@
+import logging
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from ..core.database import get_db_session
 from ..core.config import settings
@@ -19,11 +22,18 @@ security = HTTPBearer()
 @router.get("/config", response_model=AuthConfigResponse)
 async def get_auth_config():
     """Get authentication configuration"""
-    return AuthConfigResponse(
-        social_auth_only=settings.social_auth_only,
-        google_enabled=bool(settings.google_client_id and settings.google_client_secret),
-        github_enabled=bool(settings.github_client_id and settings.github_client_secret)
-    )
+    try:
+        logger.info("Getting auth config...")
+        config = AuthConfigResponse(
+            social_auth_only=settings.social_auth_only,
+            google_enabled=bool(settings.google_client_id and settings.google_client_secret),
+            github_enabled=bool(settings.github_client_id and settings.github_client_secret)
+        )
+        logger.info("Auth config retrieved successfully")
+        return config
+    except Exception as e:
+        logger.error(f"Failed to get auth config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get authentication configuration")
 
 
 @router.post("/register", response_model=UserResponse)
@@ -185,14 +195,25 @@ async def oauth_callback(
     db: AsyncSession = Depends(get_db_session)
 ):
     """Handle OAuth callback and return JWT tokens"""
-    if provider == "google":
-        user = await oauth_service.handle_google_callback(db, request.code)
-    elif provider == "github":
-        user = await oauth_service.handle_github_callback(db, request.code)
-    else:
+    try:
+        print(f"OAuth callback received - Provider: {provider}, Code: {request.code[:10]}..., State: {request.state}")
+        
+        if provider == "google":
+            user = await oauth_service.handle_google_callback(db, request.code)
+        elif provider == "github":
+            user = await oauth_service.handle_github_callback(db, request.code)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported OAuth provider"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"OAuth callback error - Provider: {provider}, Error: {str(e)}, Type: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported OAuth provider"
+            detail=f"OAuth callback failed: {str(e)}"
         )
     
     if not user.is_active:

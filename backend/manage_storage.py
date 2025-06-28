@@ -7,10 +7,9 @@ import os
 import sys
 from pathlib import Path
 
-# Add the project root to Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from app.services.storage.storage_factory import StorageFactory, get_storage_provider
+from app.services.storage.storage_factory import get_storage_provider
 
 
 async def test_storage_connection():
@@ -19,7 +18,6 @@ async def test_storage_connection():
         provider = get_storage_provider()
         print(f"✅ Successfully connected to {provider.get_provider_name()} storage provider")
         
-        # Test a simple operation (this will depend on the provider)
         print(f"Provider: {provider.get_provider_name()}")
         return True
     except Exception as e:
@@ -44,11 +42,9 @@ async def test_upload():
         
         provider = get_storage_provider()
         
-        # Create a test file
         test_content = b"This is a test file for storage provider validation."
         test_file = BytesIO(test_content)
         
-        # Upload test file
         print("Uploading test file...")
         file_path = await provider.upload_file(
             file_content=test_file,
@@ -59,15 +55,12 @@ async def test_upload():
         
         print(f"✅ Test file uploaded successfully: {file_path}")
         
-        # Get file URL
         file_url = await provider.get_file_url(file_path)
         print(f"📎 File URL: {file_url}")
         
-        # Check if file exists
         exists = await provider.file_exists(file_path)
         print(f"📁 File exists: {exists}")
         
-        # Clean up test file
         deleted = await provider.delete_file(file_path)
         print(f"🗑️ Test file deleted: {deleted}")
         
@@ -98,7 +91,6 @@ async def main():
         if await test_storage_connection():
             await test_upload()
     elif command == "setup-local":
-        # Create local storage directory
         storage_path = os.getenv('LOCAL_STORAGE_PATH', './storage/uploads')
         Path(storage_path).mkdir(parents=True, exist_ok=True)
         print(f"✅ Local storage directory created: {storage_path}")

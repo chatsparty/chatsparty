@@ -1,10 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { ModelConnection, CreateConnectionRequest } from '@/types/connection';
-import axios from 'axios';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import type {
+  CreateConnectionRequest,
+  ModelConnection,
+} from "@/types/connection";
+import axios from "axios";
+import React, { useEffect, useState } from "react";
 
 interface ConnectionFormProps {
   connection?: ModelConnection;
@@ -17,28 +28,55 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   connection,
   onSubmit,
   onCancel,
-  isLoading = false
+  isLoading = false,
 }) => {
   const [formData, setFormData] = useState<CreateConnectionRequest>({
-    name: connection?.name || '',
-    description: connection?.description || '',
-    provider: connection?.provider || '',
-    model_name: connection?.model_name || '',
-    api_key: connection?.api_key || '',
-    base_url: connection?.base_url || ''
+    name: connection?.name || "",
+    description: connection?.description || "",
+    provider: connection?.provider || "",
+    model_name: connection?.model_name || "",
+    api_key: connection?.api_key || "",
+    base_url: connection?.base_url || "",
+    // MCP-specific fields
+    mcp_server_url: connection?.mcp_server_url || "",
+    mcp_server_config: connection?.mcp_server_config || {},
+    available_tools: connection?.available_tools || [],
+    mcp_capabilities: connection?.mcp_capabilities || undefined,
   });
 
-  const [providers, setProviders] = useState<Record<string, { models: string[]; requires_api_key?: boolean; base_url_required?: boolean }>>({});
+  const [providers, setProviders] = useState<
+    Record<
+      string,
+      {
+        models: string[];
+        requires_api_key?: boolean;
+        base_url_required?: boolean;
+        supports_tools?: boolean;
+        connection_type?: string;
+      }
+    >
+  >({});
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(true);
+
+  // MCP-specific state
+  const [testingMcp, setTestingMcp] = useState(false);
+  const [mcpTestResult, setMcpTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchProviders = async () => {
       try {
-        const response = await axios.get('/chat/providers');
+        const response = await axios.get("/chat/providers");
         setProviders(response.data.providers || {});
-      } catch (error) {
-        console.error('Failed to fetch providers:', error);
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          console.error("Failed to fetch providers:", error.message);
+        } else {
+          console.error("Failed to fetch providers:", error);
+        }
       } finally {
         setLoadingProviders(false);
       }
@@ -53,147 +91,274 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
     }
   }, [formData.provider, providers]);
 
-  const handleChange = (field: keyof CreateConnectionRequest, value: string) => {
-    setFormData(prev => ({
+  const handleChange = (
+    field: keyof CreateConnectionRequest,
+    value: string
+  ) => {
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit(formData);
+
+    // For MCP provider, set model_name to 'mcp-server' if not provided
+    const submitData = { ...formData };
+    if (isMcpProvider && !submitData.model_name) {
+      submitData.model_name = "mcp-server";
+    }
+
+    await onSubmit(submitData);
   };
 
-  const selectedProvider = formData.provider ? providers[formData.provider] : null;
+  const selectedProvider = formData.provider
+    ? providers[formData.provider]
+    : null;
   const requiresApiKey = selectedProvider?.requires_api_key || false;
   const requiresBaseUrl = selectedProvider?.base_url_required || false;
+  const isMcpProvider = formData.provider === "mcp";
+
+  const handleMcpTest = async () => {
+    if (!formData.mcp_server_url) {
+      setMcpTestResult({
+        success: false,
+        message: "Please enter an MCP server URL",
+      });
+      return;
+    }
+
+    setTestingMcp(true);
+    setMcpTestResult(null);
+
+    try {
+      const response = await axios.post("/connections/mcp/test", {
+        server_url: formData.mcp_server_url,
+        server_config: formData.mcp_server_config,
+      });
+
+      setMcpTestResult({
+        success: response.data.success,
+        message: response.data.message,
+      });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        setMcpTestResult({
+          success: false,
+          message:
+            error.response?.data?.detail || "Failed to test MCP connection",
+        });
+      } else {
+        setMcpTestResult({
+          success: false,
+          message: "Failed to test MCP connection",
+        });
+      }
+    } finally {
+      setTestingMcp(false);
+    }
+  };
 
   return (
-    <div className="bg-card rounded-lg border border-border p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-card-foreground">
-          {connection ? 'Edit Connection' : 'Create New Connection'}
-        </h2>
-        <Button
-          onClick={onCancel}
-          variant="outline"
-          size="sm"
-        >
-          Cancel
-        </Button>
-      </div>
+    <div className="h-[calc(100vh-12rem)] overflow-y-auto overflow-x-hidden scrollbar-hide">
+      <form onSubmit={handleSubmit} className="space-y-6 pb-6 max-w-full">
+        {/* Basic Information Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="name" className="text-sm font-medium">
+                Connection Name *
+              </Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                placeholder="e.g., OpenAI GPT-4 Production"
+                required
+              />
+            </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block mb-2 font-medium text-card-foreground">
-            Connection Name *
-          </label>
-          <Input
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            placeholder="e.g., OpenAI GPT-4 Production"
-            required
-          />
-        </div>
+            <div>
+              <Label htmlFor="description" className="text-sm font-medium">
+                Description
+              </Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleChange("description", e.target.value)}
+                placeholder="Optional description of this connection..."
+                rows={2}
+                className="resize-y"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-        <div>
-          <label className="block mb-2 font-medium text-card-foreground">
-            Description
-          </label>
-          <Textarea
-            value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
-            placeholder="Optional description of this connection..."
-            rows={2}
-          />
-        </div>
+        {/* Provider Configuration Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Provider Configuration</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="provider" className="text-sm font-medium">
+                AI Provider *
+              </Label>
+              <Select
+                value={formData.provider}
+                onValueChange={(value) => handleChange("provider", value)}
+                disabled={loadingProviders}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue
+                    placeholder={
+                      loadingProviders
+                        ? "Loading providers..."
+                        : "Select a provider"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(providers).map((provider) => (
+                    <SelectItem key={provider} value={provider}>
+                      {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div>
-          <label className="block mb-2 font-medium text-card-foreground">
-            AI Provider *
-          </label>
-          <Select
-            value={formData.provider}
-            onValueChange={(value) => handleChange('provider', value)}
-            disabled={loadingProviders}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={loadingProviders ? "Loading providers..." : "Select a provider"} />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(providers).map((provider) => (
-                <SelectItem key={provider} value={provider}>
-                  {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            {!isMcpProvider && (
+              <div>
+                <Label htmlFor="model" className="text-sm font-medium">
+                  Model *
+                </Label>
+                <Select
+                  value={formData.model_name}
+                  onValueChange={(value) => handleChange("model_name", value)}
+                  disabled={!formData.provider || availableModels.length === 0}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <div>
-          <label className="block mb-2 font-medium text-card-foreground">
-            Model *
-          </label>
-          <Select
-            value={formData.model_name}
-            onValueChange={(value) => handleChange('model_name', value)}
-            disabled={!formData.provider || availableModels.length === 0}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableModels.map((model) => (
-                <SelectItem key={model} value={model}>
-                  {model}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Authentication Section - Only show if needed */}
+        {(requiresApiKey || requiresBaseUrl) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Authentication</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {requiresApiKey && (
+                <div>
+                  <Label htmlFor="api_key" className="text-sm font-medium">
+                    API Key *
+                  </Label>
+                  <Input
+                    id="api_key"
+                    type="password"
+                    value={formData.api_key}
+                    onChange={(e) => handleChange("api_key", e.target.value)}
+                    placeholder="Enter your API key"
+                    required
+                  />
+                </div>
+              )}
 
-        {requiresApiKey && (
-          <div>
-            <label className="block mb-2 font-medium text-card-foreground">
-              API Key *
-            </label>
-            <Input
-              type="password"
-              value={formData.api_key}
-              onChange={(e) => handleChange('api_key', e.target.value)}
-              placeholder={`Enter your ${formData.provider} API key`}
-              required
-            />
-            <p className="text-sm text-muted-foreground mt-1">
-              Your API key will be stored securely
-            </p>
-          </div>
+              {requiresBaseUrl && (
+                <div>
+                  <Label htmlFor="base_url" className="text-sm font-medium">
+                    Base URL *
+                  </Label>
+                  <Input
+                    id="base_url"
+                    value={formData.base_url}
+                    onChange={(e) => handleChange("base_url", e.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    required
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
-        {requiresBaseUrl && (
-          <div>
-            <label className="block mb-2 font-medium text-card-foreground">
-              Base URL
-            </label>
-            <Input
-              value={formData.base_url}
-              onChange={(e) => handleChange('base_url', e.target.value)}
-              placeholder="http://localhost:11434"
-            />
-            <p className="text-sm text-muted-foreground mt-1">
-              Leave empty to use default URL
-            </p>
-          </div>
+        {/* MCP Configuration Section - Only show for MCP provider */}
+        {isMcpProvider && (
+          <Card>
+            <CardHeader>
+              <CardTitle>MCP Server Configuration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="mcp_server_url" className="text-sm font-medium">
+                  MCP Server URL *
+                </Label>
+                <Input
+                  id="mcp_server_url"
+                  value={formData.mcp_server_url}
+                  onChange={(e) =>
+                    handleChange("mcp_server_url", e.target.value)
+                  }
+                  placeholder="ws://localhost:3000 or https://your-mcp-server.com"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMcpTest}
+                  disabled={testingMcp || !formData.mcp_server_url}
+                  className="flex-1"
+                >
+                  {testingMcp ? "Testing..." : "Test MCP Connection"}
+                </Button>
+              </div>
+
+              {mcpTestResult && (
+                <div
+                  className={`p-3 rounded-lg text-sm ${
+                    mcpTestResult.success
+                      ? "bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200"
+                      : "bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200"
+                  }`}
+                >
+                  {mcpTestResult.message}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
-        <div className="flex gap-2 pt-4">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="flex-1"
-          >
-            {isLoading ? 'Saving...' : connection ? 'Update Connection' : 'Create Connection'}
+        {/* Actions Section */}
+        <div className="flex justify-end space-x-3 pt-6">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading
+              ? "Saving..."
+              : connection
+              ? "Update Connection"
+              : "Create Connection"}
           </Button>
         </div>
       </form>

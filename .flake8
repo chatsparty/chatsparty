@@ -1,0 +1,14 @@
+[flake8]
+ignore = E501
+max-line-length = 88
+exclude = 
+    .git,
+    __pycache__,
+    .venv,
+    .env,
+    venv,
+    env,
+    .pytest_cache,
+    migrations,
+    alembic/versions,
+    frontend/node_modules

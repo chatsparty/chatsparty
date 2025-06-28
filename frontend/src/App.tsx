@@ -15,7 +15,15 @@ import { AuthPage } from "./components/auth/AuthPage";
 import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { useTracking } from "./hooks/useTracking";
-import { AgentManagerPage, LandingPage, MultiAgentChatPage } from "./pages";
+import {
+  AgentManagerPage,
+  LandingPage,
+  MultiAgentChatPage,
+  ProjectsPage,
+  CreateProjectPage,
+  ProjectDetailsPage,
+  VSCodePage,
+} from "./pages";
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
 import SharedConversationPage from "./pages/SharedConversation/SharedConversationPage";
@@ -32,8 +40,9 @@ const Layout = () => {
     const currentPath = location.pathname;
     const previousPath = previousLocationRef.current;
 
-    // Track page view
     const getPageName = (path: string) => {
+      if (path === "/projects") return "projects";
+      if (path.includes("/vscode")) return "vscode_ide";
       if (path === "/agents") return "agents";
       if (path === "/chat") return "multi_agent_chat";
       if (path === "/settings") return "settings";
@@ -46,7 +55,6 @@ const Layout = () => {
 
     trackPageView(getPageName(currentPath));
 
-    // Track navigation if not the first load
     if (previousPath && previousPath !== currentPath) {
       trackNavigation(getPageName(previousPath), getPageName(currentPath));
     }
@@ -75,12 +83,12 @@ const Layout = () => {
     logout();
   };
 
-  // If user is not authenticated, render AuthPage without layout
   if (!user) {
     return <AuthPage />;
   }
 
   const tabs = [
+    { path: "/projects", label: "Projects" },
     { path: "/agents", label: "Agents" },
     { path: "/chat", label: "Chat" },
     { path: "/settings", label: "Settings" },
@@ -168,11 +176,23 @@ const Layout = () => {
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/new" element={<CreateProjectPage />} />
             <Route path="/agents" element={<AgentManagerPage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/agents" replace />} />
+            <Route
+              path="/settings"
+              element={<Navigate to="/settings/general" replace />}
+            />
+            <Route path="/settings/general" element={<SettingsPage />} />
+            <Route path="/settings/connections" element={<SettingsPage />} />
+            <Route
+              path="/settings/voice-connections"
+              element={<SettingsPage />}
+            />
+            <Route path="/settings/mcp-servers" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/projects" replace />} />
           </Routes>
         </div>
       </div>
@@ -191,6 +211,28 @@ const MainApp = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (location.pathname === "/projects/new") {
+    return (
+      <div className="h-screen w-screen bg-background">
+        <CreateProjectPage />
+      </div>
+    );
+  }
+
+  if (
+    location.pathname.startsWith("/projects/") &&
+    location.pathname !== "/projects"
+  ) {
+    return (
+      <div className="h-screen w-screen bg-background">
+        <Routes>
+          <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
+          <Route path="/projects/:id/vscode" element={<VSCodePage />} />
+        </Routes>
       </div>
     );
   }

@@ -20,6 +20,9 @@ interface Agent {
   connection_id?: string;
   chat_style?: ChatStyle;
   voice_config?: AgentVoiceConfig;
+  mcp_server_id?: string;
+  selected_mcp_tools?: string[];
+  mcp_tool_config?: Record<string, any>;
 }
 
 interface FormData {
@@ -29,6 +32,9 @@ interface FormData {
   connection_id: string;
   chat_style: ChatStyle;
   voice_config: AgentVoiceConfig;
+  mcp_server_id: string;
+  selected_mcp_tools: string[];
+  mcp_tool_config: Record<string, any>;
 }
 
 interface PresetAgent {
@@ -63,7 +69,10 @@ export const useAgentManager = () => {
         outro_enabled: true,
         background_music: false
       }
-    }
+    },
+    mcp_server_id: '',
+    selected_mcp_tools: [],
+    mcp_tool_config: {}
   });
 
   const presetAgents: PresetAgent[] = [
@@ -115,7 +124,10 @@ export const useAgentManager = () => {
           characteristics: formData.characteristics,
           connection_id: formData.connection_id,
           chat_style: formData.chat_style,
-          voice_config: formData.voice_config
+          voice_config: formData.voice_config,
+          mcp_server_id: formData.mcp_server_id,
+          mcp_tools: formData.selected_mcp_tools,
+          mcp_tool_config: formData.mcp_tool_config
         });
       } else {
         // Create new agent
@@ -125,7 +137,10 @@ export const useAgentManager = () => {
           characteristics: formData.characteristics,
           connection_id: formData.connection_id,
           chat_style: formData.chat_style,
-          voice_config: formData.voice_config
+          voice_config: formData.voice_config,
+          mcp_server_id: formData.mcp_server_id,
+          mcp_tools: formData.selected_mcp_tools,
+          mcp_tool_config: formData.mcp_tool_config
         });
       }
       
@@ -179,7 +194,10 @@ export const useAgentManager = () => {
           outro_enabled: true,
           background_music: false
         }
-      }
+      },
+      mcp_server_id: agent.mcp_server_id || '',
+      selected_mcp_tools: agent.selected_mcp_tools || [],
+      mcp_tool_config: agent.mcp_tool_config || {}
     });
     setShowCreateForm(true);
   };
@@ -231,6 +249,16 @@ export const useAgentManager = () => {
           }
         });
       }
+    } else if (name === 'selected_mcp_tools') {
+      setFormData({
+        ...formData,
+        selected_mcp_tools: Array.isArray(actualValue) ? actualValue : []
+      });
+    } else if (name === 'mcp_server_id') {
+      setFormData({
+        ...formData,
+        mcp_server_id: actualValue as string
+      });
     } else {
       setFormData({
         ...formData,
@@ -261,7 +289,10 @@ export const useAgentManager = () => {
           outro_enabled: true,
           background_music: false
         }
-      }
+      },
+      mcp_server_id: '',
+      selected_mcp_tools: [],
+      mcp_tool_config: {}
     });
   };
 
@@ -287,7 +318,10 @@ export const useAgentManager = () => {
           outro_enabled: true,
           background_music: false
         }
-      }
+      },
+      mcp_server_id: '',
+      selected_mcp_tools: [],
+      mcp_tool_config: {}
     });
     setShowCreateForm(true);
   };

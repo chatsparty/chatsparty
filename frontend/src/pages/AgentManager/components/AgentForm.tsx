@@ -1,3 +1,4 @@
+import MCPServerSelector from "@/components/mcp/MCPServerSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,9 @@ interface Agent {
   connection_id?: string;
   chat_style?: ChatStyle;
   voice_config?: AgentVoiceConfig;
+  mcp_server_id?: string;
+  selected_mcp_tools?: string[];
+  mcp_tool_config?: Record<string, unknown>;
 }
 
 interface FormData {
@@ -44,6 +48,9 @@ interface FormData {
   connection_id: string;
   chat_style: ChatStyle;
   voice_config: AgentVoiceConfig;
+  mcp_server_id: string;
+  selected_mcp_tools: string[];
+  mcp_tool_config: Record<string, unknown>;
 }
 
 interface AgentFormProps {
@@ -68,7 +75,8 @@ const AgentForm: React.FC<AgentFormProps> = ({
   onCancel,
 }) => {
   const navigate = useNavigate();
-  const { getActiveConnections } = useConnections();
+  const { loading: connectionsLoading, getActiveConnections } =
+    useConnections();
   const { getTTSConnections } = useVoiceConnections();
 
   const activeConnections = getActiveConnections();
@@ -112,7 +120,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
   const handleConnectionChange = (connectionId: string) => {
     if (connectionId === "add-new") {
-      navigate("/connections");
+      navigate("/settings/connections");
       return;
     }
 
@@ -124,7 +132,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
   const handleVoiceConnectionChange = (connectionId: string) => {
     if (connectionId === "add-new") {
-      navigate("/settings", { state: { activeTab: "voice-connections" } });
+      navigate("/settings/voice-connections");
       return;
     }
 
@@ -147,6 +155,20 @@ const AgentForm: React.FC<AgentFormProps> = ({
         name: `voice_config.podcast_settings.${setting}`,
         value: checked,
       },
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    onInputChange(event);
+  };
+
+  const handleMCPServerChange = (serverId: string) => {
+    const event = {
+      target: { name: "mcp_server_id", value: serverId },
+    } as React.ChangeEvent<HTMLInputElement>;
+    onInputChange(event);
+  };
+
+  const handleMCPToolsChange = (selectedTools: string[]) => {
+    const event = {
+      target: { name: "selected_mcp_tools", value: selectedTools },
     } as unknown as React.ChangeEvent<HTMLInputElement>;
     onInputChange(event);
   };
@@ -213,7 +235,6 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 onChange={onInputChange}
                 placeholder="e.g., Business Analyst"
                 required
-                className="mt-1 w-full"
               />
             </div>
 
@@ -228,7 +249,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 onChange={onInputChange}
                 rows={3}
                 placeholder="Describe the agent's personality, expertise, and behavioral traits..."
-                className="mt-1 resize-y w-full"
+                className="resize-y"
                 required
               />
             </div>
@@ -244,7 +265,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 onChange={onInputChange}
                 rows={6}
                 placeholder="Detailed instructions for how the agent should behave and respond..."
-                className="mt-1 resize-y w-full"
+                className="resize-y"
                 required
               />
             </div>
@@ -258,20 +279,20 @@ const AgentForm: React.FC<AgentFormProps> = ({
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="connection" className="text-sm font-medium">
-                Connection *
+                AI Model Connection *
               </Label>
               <Select
                 value={formData.connection_id || ""}
                 onValueChange={handleConnectionChange}
+                disabled={connectionsLoading}
               >
-                <SelectTrigger className="mt-1 w-full">
-                  <SelectValue placeholder="Select a connection" />
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a model connection" />
                 </SelectTrigger>
                 <SelectContent>
                   {activeConnections.map((connection) => (
                     <SelectItem key={connection.id} value={connection.id}>
-                      {connection.name} ({connection.provider}:{" "}
-                      {connection.model_name})
+                      {connection.name} ({connection.provider})
                     </SelectItem>
                   ))}
                   <SelectItem value="add-new">+ Add New Connection</SelectItem>
@@ -283,120 +304,126 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
         <Card>
           <CardHeader>
-            <CardTitle>Chat Style Configuration</CardTitle>
+            <CardTitle>MCP Server Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="friendliness" className="text-sm font-medium">
-                  Friendliness
-                </Label>
-                <Select
-                  value={formData.chat_style.friendliness}
-                  onValueChange={(value) =>
-                    handleSelectChange("chat_style.friendliness", value)
-                  }
-                >
-                  <SelectTrigger className="mt-1 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="friendly">Friendly</SelectItem>
-                    <SelectItem value="neutral">Neutral</SelectItem>
-                    <SelectItem value="formal">Formal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <MCPServerSelector
+              selectedServerId={formData.mcp_server_id}
+              onServerChange={handleMCPServerChange}
+              onToolsChange={handleMCPToolsChange}
+              selectedTools={formData.selected_mcp_tools}
+            />
+          </CardContent>
+        </Card>
 
-              <div>
-                <Label
-                  htmlFor="response_length"
-                  className="text-sm font-medium"
-                >
-                  Response Length
-                </Label>
-                <Select
-                  value={formData.chat_style.response_length}
-                  onValueChange={(value) =>
-                    handleSelectChange("chat_style.response_length", value)
-                  }
-                >
-                  <SelectTrigger className="mt-1 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="short">Short</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="long">Long</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Chat Style</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="friendliness" className="text-sm font-medium">
+                Friendliness
+              </Label>
+              <Select
+                value={formData.chat_style.friendliness}
+                onValueChange={(value) =>
+                  handleSelectChange("chat_style.friendliness", value)
+                }
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="friendly">Friendly</SelectItem>
+                  <SelectItem value="neutral">Neutral</SelectItem>
+                  <SelectItem value="formal">Formal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div>
-                <Label htmlFor="personality" className="text-sm font-medium">
-                  Personality
-                </Label>
-                <Select
-                  value={formData.chat_style.personality}
-                  onValueChange={(value) =>
-                    handleSelectChange("chat_style.personality", value)
-                  }
-                >
-                  <SelectTrigger className="mt-1 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="enthusiastic">Enthusiastic</SelectItem>
-                    <SelectItem value="balanced">Balanced</SelectItem>
-                    <SelectItem value="reserved">Reserved</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="response_length" className="text-sm font-medium">
+                Response Length
+              </Label>
+              <Select
+                value={formData.chat_style.response_length}
+                onValueChange={(value) =>
+                  handleSelectChange("chat_style.response_length", value)
+                }
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="short">Short</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="long">Long</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div>
-                <Label htmlFor="humor" className="text-sm font-medium">
-                  Humor Level
-                </Label>
-                <Select
-                  value={formData.chat_style.humor}
-                  onValueChange={(value) =>
-                    handleSelectChange("chat_style.humor", value)
-                  }
-                >
-                  <SelectTrigger className="mt-1 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="witty">Witty</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="personality" className="text-sm font-medium">
+                Personality
+              </Label>
+              <Select
+                value={formData.chat_style.personality}
+                onValueChange={(value) =>
+                  handleSelectChange("chat_style.personality", value)
+                }
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="enthusiastic">Enthusiastic</SelectItem>
+                  <SelectItem value="balanced">Balanced</SelectItem>
+                  <SelectItem value="reserved">Reserved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div>
-                <Label
-                  htmlFor="expertise_level"
-                  className="text-sm font-medium"
-                >
-                  Expertise Level
-                </Label>
-                <Select
-                  value={formData.chat_style.expertise_level}
-                  onValueChange={(value) =>
-                    handleSelectChange("chat_style.expertise_level", value)
-                  }
-                >
-                  <SelectTrigger className="mt-1 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="humor" className="text-sm font-medium">
+                Humor Level
+              </Label>
+              <Select
+                value={formData.chat_style.humor}
+                onValueChange={(value) =>
+                  handleSelectChange("chat_style.humor", value)
+                }
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="light">Light</SelectItem>
+                  <SelectItem value="witty">Witty</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="expertise_level" className="text-sm font-medium">
+                Expertise Level
+              </Label>
+              <Select
+                value={formData.chat_style.expertise_level}
+                onValueChange={(value) =>
+                  handleSelectChange("chat_style.expertise_level", value)
+                }
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="beginner">Beginner</SelectItem>
+                  <SelectItem value="intermediate">Intermediate</SelectItem>
+                  <SelectItem value="expert">Expert</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>

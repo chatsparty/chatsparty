@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
-from typing import Optional
 import os
 import logging
 
@@ -8,7 +7,6 @@ from ..models.chat import (
     PodcastGenerationRequest,
     PodcastGenerationResponse,
     PodcastJobStatus,
-    PodcastDownloadResponse
 )
 from ..models.database import User
 from ..services.podcast_service import podcast_service
@@ -29,11 +27,9 @@ async def generate_podcast(
     """Generate a podcast from a conversation using BackgroundTasks"""
     logger.info(f"Podcast generation request - User: {current_user.id}, Conversation: {request.conversation_id}")
     try:
-        # Create podcast job
         job_id = podcast_service.create_podcast_job(request, current_user.id)
         logger.info(f"Created podcast job {job_id} for conversation {request.conversation_id}")
         
-        # Add background task for podcast generation
         background_tasks.add_task(
             podcast_service.generate_podcast_background,
             job_id,
@@ -45,7 +41,7 @@ async def generate_podcast(
             success=True,
             message="Podcast generation started",
             job_id=job_id,
-            estimated_duration_minutes=2.0  # Rough estimate
+            estimated_duration_minutes=2.0
         )
         
     except Exception as e:
@@ -135,7 +131,6 @@ async def delete_podcast_job(
     try:
         download_info = podcast_service.get_job_download_info(job_id, current_user.id)
         
-        # Delete the audio file if it exists
         if download_info and download_info["file_path"]:
             try:
                 if os.path.exists(download_info["file_path"]):
@@ -143,7 +138,6 @@ async def delete_podcast_job(
             except Exception as e:
                 logger.warning(f"Failed to delete audio file: {e}")
         
-        # Delete the job record
         from ..core.database import db_manager
         with db_manager.get_sync_session() as session:
             from ..models.database import PodcastJob
