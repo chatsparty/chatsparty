@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './PreviewPane.css';
+import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 interface PreviewPaneProps {
   projectId: string;
@@ -32,12 +34,8 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
     setError(null);
     
     try {
-      const response = await fetch(`/api/containers/${projectId}/info`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch container info: ${response.statusText}`);
-      }
-      
-      const info: ContainerInfo = await response.json();
+      const response = await axios.get(`${API_BASE_URL}/api/containers/${projectId}/info`);
+      const info: ContainerInfo = response.data;
       setContainerInfo(info);
       
       if (info.preview_url) {

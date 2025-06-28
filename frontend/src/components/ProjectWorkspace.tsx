@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PreviewPane from './PreviewPane';
+import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 interface ProjectWorkspaceProps {
   projectId: string;
@@ -24,14 +26,9 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
         setIsLoading(true);
         setError(null);
 
-        // Replace with your actual API endpoint
-        const response = await fetch(`/api/containers/${projectId}/info`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch container data: ${response.statusText}`);
-        }
-
-        const data: ContainerData = await response.json();
+        // Fetch container data using axios with proper base URL
+        const response = await axios.get(`${API_BASE_URL}/api/containers/${projectId}/info`);
+        const data: ContainerData = response.data;
         setContainerData(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch container data');
