@@ -13,6 +13,9 @@ from .routers.projects import router as projects_router
 from .core.database import db_manager
 from .core.config import create_app
 from contextlib import asynccontextmanager
+from .services.websocket_service import websocket_service
+# Import chat_socketio to register Socket.IO events
+from .routers import chat_socketio
 
 from dotenv import load_dotenv
 import logging
@@ -62,6 +65,8 @@ async def lifespan(app):
 
 app = create_app(lifespan=lifespan)
 
+# Mount Socket.IO app
+app.mount("/socket.io", websocket_service.get_socketio_app())
 
 app.include_router(health.router)
 app.include_router(auth.router)

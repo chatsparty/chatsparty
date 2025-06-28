@@ -19,6 +19,7 @@ from ..models.database import User
 from ..services.ai import AIServiceFacade, get_ai_service
 from ..services.ai.infrastructure.unified_model_service import get_initialized_unified_model_service
 from ..services.connection_service import connection_service
+from ..services.websocket_service import websocket_service
 from .auth import get_current_user_dependency
 
 router = APIRouter(prefix="/chat", tags=["chat"])

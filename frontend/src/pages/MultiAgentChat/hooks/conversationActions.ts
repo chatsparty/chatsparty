@@ -3,6 +3,7 @@ import type { ActiveConversation, Agent } from '../types';
 import { handleStreamConversation, createStreamMessageHandlers } from './streamHandlers';
 import { createAgentHelpers } from './helpers';
 import { useTracking } from '../../../hooks/useTracking';
+import { useSocketConversation } from './useSocketConversation';
 
 export const useConversationActions = (
   agents: Agent[],
@@ -21,6 +22,14 @@ export const useConversationActions = (
   const { getAgentName } = createAgentHelpers(agents);
   const { handleStreamMessage } = createStreamMessageHandlers(setConversations);
   const { trackConversationStarted, trackMessageSent, trackError } = useTracking();
+  
+  // Use Socket.IO for real-time communication
+  const { startSocketConversation, stopSocketConversation } = useSocketConversation({
+    setConversations,
+    onError: (error) => {
+      trackError('socket_error', error, 'multi_agent_chat');
+    }
+  });
 
   const startConversation = useCallback(async (): Promise<void> => {
     if (selectedAgents.length < 2 || !initialMessage.trim()) return;
@@ -31,12 +40,16 @@ export const useConversationActions = (
     abortControllersRef.current.set(conversationId, abortController);
     
     try {
-      // Create new conversation in local state
+      // Create new conversation in local state with initial user message
       const newConversation: ActiveConversation = {
         id: conversationId,
         name: selectedAgents.map(id => getAgentName(id)).join(' & '),
         agents: selectedAgents,
-        messages: [],
+        messages: [{
+          speaker: 'user',
+          message: initialMessage,
+          timestamp: Date.now() / 1000
+        }],
         isActive: true
       };
 
@@ -72,15 +85,14 @@ export const useConversationActions = (
           file_type: file.file.type || 'application/octet-stream'
         }));
 
-      // Start streaming conversation
-      await handleStreamConversation(
+      // Start Socket.IO conversation instead of HTTP streaming
+      await startSocketConversation(
         conversationId,
         selectedAgents,
         initialMessage,
         maxTurns,
-        abortController,
-        handleStreamMessage,
-        fileAttachments
+        fileAttachments,
+        undefined // project_id if needed
       );
       
     } catch (error) {
@@ -111,19 +123,24 @@ export const useConversationActions = (
   ]);
 
   const stopConversation = useCallback((conversationId: string): void => {
+    // Stop Socket.IO conversation
+    stopSocketConversation(conversationId);
+    
+    // Also handle any HTTP aborts if they exist
     const abortController = abortControllersRef.current.get(conversationId);
     if (abortController) {
       abortController.abort();
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === conversationId 
-            ? { ...conv, isActive: false }
-            : conv
-        )
-      );
       abortControllersRef.current.delete(conversationId);
     }
-  }, [setConversations]);
+    
+    setConversations(prev => 
+      prev.map(conv => 
+        conv.id === conversationId 
+          ? { ...conv, isActive: false }
+          : conv
+      )
+    );
+  }, [setConversations, stopSocketConversation]);
 
   const handleSelectAgent = useCallback((agentId: string, checked: boolean): void => {
     if (checked) {
