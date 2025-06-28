@@ -4,9 +4,8 @@ export interface Project {
   description?: string;
   user_id: string;
 
-  // E2B VM Integration
-  e2b_sandbox_id?: string;
-  e2b_template_id?: string;
+  // VM Integration
+  vm_container_id?: string;
   vm_status: "inactive" | "starting" | "active" | "error" | "stopped";
   vm_config?: Record<string, unknown>;
   vm_url?: string;
@@ -18,6 +17,7 @@ export interface Project {
   // Project settings
   is_active: boolean;
   auto_sync_files: boolean;
+  instructions?: string;
 
   // Timestamps
   created_at: string;

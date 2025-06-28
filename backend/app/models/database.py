@@ -283,6 +283,7 @@ class Project(Base):
     # Project settings
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     auto_sync_files: Mapped[bool] = mapped_column(Boolean, default=True)
+    instructions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # User relationship
     user_id: Mapped[str] = mapped_column(

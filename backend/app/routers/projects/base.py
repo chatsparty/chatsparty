@@ -32,6 +32,7 @@ def project_to_dict(project) -> Dict:
         "storage_config": project.storage_config,
         "is_active": project.is_active,
         "auto_sync_files": project.auto_sync_files,
+        "instructions": getattr(project, 'instructions', None),
         "created_at": project.created_at.isoformat() if project.created_at else None,
         "updated_at": project.updated_at.isoformat() if project.updated_at else None,
         "last_vm_activity": project.last_vm_activity.isoformat() if project.last_vm_activity else None

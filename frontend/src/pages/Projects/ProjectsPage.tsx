@@ -16,7 +16,7 @@ export const ProjectsPage: React.FC = () => {
   } = useProjects();
 
   const handleProjectClick = (project: Project) => {
-    navigate(`/projects/${project.id}/vscode`);
+    navigate(`/projects/${project.id}`);
   };
 
   const handleDeleteProject = async (projectId: string) => {

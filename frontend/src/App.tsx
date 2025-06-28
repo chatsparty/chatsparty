@@ -21,6 +21,7 @@ import {
   MultiAgentChatPage,
   ProjectsPage,
   CreateProjectPage,
+  ProjectDetailsPage,
   VSCodePage,
 } from "./pages";
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
@@ -229,6 +230,7 @@ const MainApp = () => {
     return (
       <div className="h-screen w-screen bg-background">
         <Routes>
+          <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
           <Route path="/projects/:id/vscode" element={<VSCodePage />} />
         </Routes>
       </div>

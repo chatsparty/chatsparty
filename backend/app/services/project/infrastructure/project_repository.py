@@ -238,6 +238,7 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
             storage_config=db_project.storage_config,
             is_active=db_project.is_active,
             auto_sync_files=db_project.auto_sync_files,
+            instructions=getattr(db_project, 'instructions', None),
             created_at=db_project.created_at,
             updated_at=db_project.updated_at,
             last_vm_activity=db_project.last_vm_activity

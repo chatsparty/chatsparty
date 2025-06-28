@@ -26,6 +26,7 @@ class Project:
     # Project settings
     is_active: bool = True
     auto_sync_files: bool = True
+    instructions: Optional[str] = None
 
     # Timestamps
     created_at: Optional[datetime] = None
