@@ -3,8 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
-import type { MCPTool, MCPCapabilities, ModelConnection } from '@/types/connection';
+import type { MCPCapabilities, ModelConnection } from '@/types/connection';
 import axios from 'axios';
 
 interface MCPToolManagerProps {
@@ -19,7 +18,6 @@ export const MCPToolManager: React.FC<MCPToolManagerProps> = ({
   selectedTools = []
 }) => {
   const [capabilities, setCapabilities] = useState<MCPCapabilities | null>(null);
-  const [loading, setLoading] = useState(false);
   const [discovering, setDiscovering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localSelectedTools, setLocalSelectedTools] = useState<string[]>(selectedTools);

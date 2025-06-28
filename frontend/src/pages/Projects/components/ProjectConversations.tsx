@@ -24,7 +24,6 @@ export const ProjectConversations: React.FC<ProjectConversationsProps> = ({ proj
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [chatInput, setChatInput] = useState("");
 
   useEffect(() => {
     fetchConversations();
@@ -46,8 +45,6 @@ export const ProjectConversations: React.FC<ProjectConversationsProps> = ({ proj
   };
 
   const handleNewChat = async () => {
-    if (!chatInput.trim()) return;
-
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/projects/${projectId}/conversations`
