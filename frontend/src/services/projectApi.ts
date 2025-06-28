@@ -1,4 +1,5 @@
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 import type {
   Project,
   ProjectCreate,
@@ -9,8 +10,6 @@ import type {
   VMCommand,
   VMCommandResult,
 } from "../types/project";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // Create axios instance with auth
 const api = axios.create({
