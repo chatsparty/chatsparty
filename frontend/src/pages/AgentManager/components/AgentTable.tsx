@@ -98,10 +98,10 @@ const AgentTable: React.FC<AgentTableProps> = ({
           </Button>
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+        <div className="border border-border rounded-lg overflow-hidden bg-card shadow-sm">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-800">
+              <TableRow className="bg-muted/50">
                 <TableHead className="w-[200px] font-medium">Name</TableHead>
                 <TableHead className="font-medium">Characteristics</TableHead>
                 <TableHead className="w-[150px] font-medium">Model</TableHead>
@@ -117,7 +117,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
                 return (
                   <TableRow
                     key={agent.agent_id}
-                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => onEditAgent(agent)}
                   >
                     <TableCell className="font-medium py-3">

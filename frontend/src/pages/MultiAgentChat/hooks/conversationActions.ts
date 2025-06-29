@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import type { ActiveConversation, Agent } from '../types';
-import { handleStreamConversation, createStreamMessageHandlers } from './streamHandlers';
+import { createStreamMessageHandlers } from './streamHandlers';
 import { createAgentHelpers } from './helpers';
 import { useTracking } from '../../../hooks/useTracking';
 import { useSocketConversation } from './useSocketConversation';
@@ -23,7 +23,6 @@ export const useConversationActions = (
   const { handleStreamMessage } = createStreamMessageHandlers(setConversations);
   const { trackConversationStarted, trackMessageSent, trackError } = useTracking();
   
-  // Use Socket.IO for real-time communication
   const { startSocketConversation, stopSocketConversation } = useSocketConversation({
     setConversations,
     onError: (error) => {
@@ -40,7 +39,6 @@ export const useConversationActions = (
     abortControllersRef.current.set(conversationId, abortController);
     
     try {
-      // Create new conversation in local state with initial user message
       const newConversation: ActiveConversation = {
         id: conversationId,
         name: selectedAgents.map(id => getAgentName(id)).join(' & '),
@@ -56,14 +54,12 @@ export const useConversationActions = (
       setConversations(prev => [...prev, newConversation]);
       setActiveConversation(conversationId);
       
-      // Track conversation started
       trackConversationStarted({
         conversation_id: conversationId,
         agent_count: selectedAgents.length,
         agent_names: selectedAgents.map(id => getAgentName(id)).join(', ')
       });
       
-      // Track initial message
       trackMessageSent({
         message_length: initialMessage.length,
         conversation_type: 'multi_agent',
@@ -71,12 +67,10 @@ export const useConversationActions = (
         conversation_id: conversationId
       });
       
-      // Reset form
       setShowNewConversationForm(false);
       setSelectedAgents([]);
       setInitialMessage('');
 
-      // Prepare file attachments for API
       const fileAttachments = attachedFiles
         ?.filter(file => file.extractedContent)
         .map(file => ({
@@ -85,14 +79,13 @@ export const useConversationActions = (
           file_type: file.file.type || 'application/octet-stream'
         }));
 
-      // Start Socket.IO conversation instead of HTTP streaming
       await startSocketConversation(
         conversationId,
         selectedAgents,
         initialMessage,
         maxTurns,
         fileAttachments,
-        undefined // project_id if needed
+        undefined
       );
       
     } catch (error) {
@@ -123,10 +116,8 @@ export const useConversationActions = (
   ]);
 
   const stopConversation = useCallback((conversationId: string): void => {
-    // Stop Socket.IO conversation
     stopSocketConversation(conversationId);
     
-    // Also handle any HTTP aborts if they exist
     const abortController = abortControllersRef.current.get(conversationId);
     if (abortController) {
       abortController.abort();
@@ -150,7 +141,6 @@ export const useConversationActions = (
     }
   }, [setSelectedAgents]);
 
-  // Cleanup function for useEffect
   const cleanup = useCallback(() => {
     abortControllersRef.current.forEach(controller => controller.abort());
     abortControllersRef.current.clear();
