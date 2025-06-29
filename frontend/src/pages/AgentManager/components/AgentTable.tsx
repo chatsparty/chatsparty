@@ -50,9 +50,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
 
   const handleDeleteClick = (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this agent?")) {
-      onDeleteAgent(agentId);
-    }
+    onDeleteAgent(agentId);
   };
 
   const getModelInfo = (connectionId?: string) => {

@@ -48,6 +48,8 @@ export const useAgentManager = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
   const { trackAgentCreated, trackAgentUpdated, trackAgentDeleted, trackError, trackFeatureUsed } = useTracking();
   const { connections } = useConnections();
   const [formData, setFormData] = useState<FormData>({
@@ -117,7 +119,6 @@ export const useAgentManager = () => {
     
     try {
       if (editingAgent) {
-        // Update existing agent
         await axios.put(`/chat/agents/${editingAgent.agent_id}`, {
           name: formData.name,
           prompt: formData.prompt,
@@ -130,7 +131,6 @@ export const useAgentManager = () => {
           mcp_tool_config: formData.mcp_tool_config
         });
       } else {
-        // Create new agent
         await axios.post('/chat/agents', {
           name: formData.name,
           prompt: formData.prompt,
@@ -206,7 +206,6 @@ export const useAgentManager = () => {
     const target = e.target;
     const { name, value, type } = target;
     
-    // For checkboxes, use the checked property instead of value
     const actualValue = type === 'checkbox' ? (target as HTMLInputElement).checked : value;
     
     if (name.startsWith('chat_style.')) {
@@ -326,19 +325,24 @@ export const useAgentManager = () => {
     setShowCreateForm(true);
   };
 
-  const handleDeleteAgent = async (agentId: string) => {
+  const handleDeleteAgent = (agentId: string) => {
     const agent = agents.find(a => a.agent_id === agentId);
-    const agentName = agent?.name || 'Unknown';
-    
-    if (!window.confirm('Are you sure you want to delete this agent?')) {
-      return;
+    if (agent) {
+      setAgentToDelete(agent);
+      setDeleteModalOpen(true);
     }
+  };
+
+  const confirmDeleteAgent = async () => {
+    if (!agentToDelete) return;
     
     setIsLoading(true);
     try {
-      await axios.delete(`/chat/agents/${agentId}`);
-      trackAgentDeleted(agentId, agentName);
+      await axios.delete(`/chat/agents/${agentToDelete.agent_id}`);
+      trackAgentDeleted(agentToDelete.agent_id, agentToDelete.name);
       await fetchAgents();
+      setDeleteModalOpen(false);
+      setAgentToDelete(null);
     } catch (error) {
       console.error('Failed to delete agent:', error);
       trackError('agent_deletion_error', error instanceof Error ? error.message : 'Unknown error', 'agent_manager');
@@ -348,6 +352,11 @@ export const useAgentManager = () => {
     }
   };
 
+  const cancelDeleteAgent = () => {
+    setDeleteModalOpen(false);
+    setAgentToDelete(null);
+  };
+
   return {
     agents,
     isLoading,
@@ -355,12 +364,16 @@ export const useAgentManager = () => {
     editingAgent,
     formData,
     presetAgents,
+    deleteModalOpen,
+    agentToDelete,
     setShowCreateForm,
     handleCreateAgent,
     handleEditAgent,
     handleInputChange,
     resetForm,
     createPresetAgent,
-    handleDeleteAgent
+    handleDeleteAgent,
+    confirmDeleteAgent,
+    cancelDeleteAgent
   };
 };
