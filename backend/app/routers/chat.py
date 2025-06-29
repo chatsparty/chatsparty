@@ -49,10 +49,13 @@ async def create_agent(
         if agent_request.voice_config:
             voice_config_dict = agent_request.voice_config.model_dump()
 
+        prompt = agent_request.prompt or f"You are {agent_request.name}, a helpful AI assistant."
+        characteristics = agent_request.characteristics or "Friendly, helpful, and knowledgeable assistant."
+        
         agent = ai_service.create_agent(
             agent_request.name,
-            agent_request.prompt,
-            agent_request.characteristics,
+            prompt,
+            characteristics,
             current_user.id,
             model_config_dict,
             chat_style_dict,

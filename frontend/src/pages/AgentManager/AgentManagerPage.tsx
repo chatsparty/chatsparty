@@ -1,8 +1,7 @@
 import React, { useEffect } from "react";
-import AgentForm from "./components/AgentForm";
+import AgentModal from "./components/AgentModal";
 import AgentTable from "./components/AgentTable";
 import { useAgentManager } from "./hooks/useAgentManager";
-import { Button } from "@/components/ui/button";
 
 const AgentManagerPage: React.FC = () => {
   const {
@@ -42,37 +41,26 @@ const AgentManagerPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background p-4 overflow-x-hidden">
       <div className="max-w-7xl mx-auto space-y-4">
-        {showCreateForm ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold text-foreground">
-                {editingAgent ? "Edit Agent" : "Create New Agent"}
-              </h1>
-              <button
-                onClick={resetForm}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                ← Back to Agents
-              </button>
-            </div>
-            <AgentForm
-              formData={formData}
-              editingAgent={editingAgent}
-              isLoading={isLoading}
-              onInputChange={handleInputChange}
-              onSubmit={handleCreateAgent}
-              onCancel={resetForm}
-            />
-          </div>
-        ) : (
-          <AgentTable
-            agents={agents}
-            isLoading={isLoading}
-            onCreateAgent={() => setShowCreateForm(true)}
-            onEditAgent={handleEditAgent}
-            onDeleteAgent={handleDeleteAgent}
-          />
-        )}
+        <AgentTable
+          agents={agents}
+          isLoading={isLoading}
+          onCreateAgent={() => setShowCreateForm(true)}
+          onEditAgent={handleEditAgent}
+          onDeleteAgent={handleDeleteAgent}
+        />
+        
+        {/* Agent Create/Edit Modal */}
+        <AgentModal
+          open={showCreateForm}
+          onOpenChange={(open) => {
+            if (!open) resetForm();
+          }}
+          formData={formData}
+          editingAgent={editingAgent}
+          isLoading={isLoading}
+          onInputChange={handleInputChange}
+          onSubmit={handleCreateAgent}
+        />
         
         {/* Delete Confirmation Modal */}
         {deleteModalOpen && (
@@ -99,22 +87,20 @@ const AgentManagerPage: React.FC = () => {
                 </p>
               </div>
               <div className="flex justify-end gap-2 p-4 pt-0">
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  className="px-3 py-1 text-sm border border-border rounded hover:bg-muted transition-colors"
                   onClick={cancelDeleteAgent}
                   disabled={isLoading}
                 >
                   Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
+                </button>
+                <button
+                  className="px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 transition-colors"
                   onClick={confirmDeleteAgent}
                   disabled={isLoading}
                 >
                   {isLoading ? "Deleting..." : "Delete"}
-                </Button>
+                </button>
               </div>
             </div>
           </div>

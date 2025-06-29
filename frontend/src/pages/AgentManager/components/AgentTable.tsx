@@ -9,26 +9,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useConnections } from "@/hooks/useConnections";
-import type { AgentVoiceConfig } from "@/types/voice";
 import { Bot, Edit, Plus, Trash2, User } from "lucide-react";
 import React from "react";
-
-interface ChatStyle {
-  friendliness: "friendly" | "neutral" | "formal";
-  response_length: "short" | "medium" | "long";
-  personality: "enthusiastic" | "balanced" | "reserved";
-  humor: "none" | "light" | "witty";
-  expertise_level: "beginner" | "intermediate" | "expert";
-}
 
 interface Agent {
   agent_id: string;
   name: string;
-  prompt: string;
-  characteristics: string;
+  characteristics?: string;
   connection_id?: string;
-  chat_style?: ChatStyle;
-  voice_config?: AgentVoiceConfig;
 }
 
 interface AgentTableProps {

@@ -37,8 +37,8 @@ class ModelConfig(BaseModel):
 class AgentCreateRequest(BaseModel):
     agent_id: Optional[str] = None
     name: str
-    prompt: str
-    characteristics: str
+    prompt: Optional[str] = None
+    characteristics: Optional[str] = None
     connection_id: str
     chat_style: Optional[ChatStyle] = None
     voice_config: Optional[AgentVoiceConfig] = None
