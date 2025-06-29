@@ -23,15 +23,21 @@ export const useConversationActions = (
   const { handleStreamMessage } = createStreamMessageHandlers(setConversations);
   const { trackConversationStarted, trackMessageSent, trackError } = useTracking();
   
-  const { startSocketConversation, stopSocketConversation } = useSocketConversation({
+  const { startSocketConversation, stopSocketConversation, sendSocketMessage } = useSocketConversation({
     setConversations,
     onError: (error) => {
       trackError('socket_error', error, 'multi_agent_chat');
     }
   });
 
-  const startConversation = useCallback(async (): Promise<void> => {
-    if (selectedAgents.length < 2 || !initialMessage.trim()) return;
+  const startConversation = useCallback(async (
+    agentsToUse?: string[], 
+    messageToUse?: string
+  ): Promise<void> => {
+    const finalAgents = agentsToUse || selectedAgents;
+    const finalMessage = messageToUse || initialMessage;
+    
+    if (finalAgents.length < 2 || !finalMessage.trim()) return;
 
     setIsLoading(true);
     const conversationId = `conv_${Date.now()}`;
@@ -41,11 +47,11 @@ export const useConversationActions = (
     try {
       const newConversation: ActiveConversation = {
         id: conversationId,
-        name: selectedAgents.map(id => getAgentName(id)).join(' & '),
-        agents: selectedAgents,
+        name: finalAgents.map(id => getAgentName(id)).join(' & '),
+        agents: finalAgents,
         messages: [{
           speaker: 'user',
-          message: initialMessage,
+          message: finalMessage,
           timestamp: Date.now() / 1000
         }],
         isActive: true
@@ -56,14 +62,14 @@ export const useConversationActions = (
       
       trackConversationStarted({
         conversation_id: conversationId,
-        agent_count: selectedAgents.length,
-        agent_names: selectedAgents.map(id => getAgentName(id)).join(', ')
+        agent_count: finalAgents.length,
+        agent_names: finalAgents.map(id => getAgentName(id)).join(', ')
       });
       
       trackMessageSent({
-        message_length: initialMessage.length,
+        message_length: finalMessage.length,
         conversation_type: 'multi_agent',
-        agent_count: selectedAgents.length,
+        agent_count: finalAgents.length,
         conversation_id: conversationId
       });
       
@@ -81,8 +87,8 @@ export const useConversationActions = (
 
       await startSocketConversation(
         conversationId,
-        selectedAgents,
-        initialMessage,
+        finalAgents,
+        finalMessage,
         maxTurns,
         fileAttachments,
         undefined
@@ -141,6 +147,29 @@ export const useConversationActions = (
     }
   }, [setSelectedAgents]);
 
+  const sendMessage = useCallback(async (
+    conversationId: string,
+    message: string,
+    agentIds: string[]
+  ): Promise<void> => {
+    if (!message.trim() || agentIds.length < 2) return;
+
+    try {
+      trackMessageSent({
+        message_length: message.length,
+        conversation_type: 'multi_agent',
+        agent_count: agentIds.length,
+        conversation_id: conversationId
+      });
+
+      await sendSocketMessage(conversationId, message, agentIds);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      trackError('message_send_error', error instanceof Error ? error.message : 'Unknown error', 'multi_agent_chat');
+      throw error;
+    }
+  }, [sendSocketMessage, trackMessageSent, trackError]);
+
   const cleanup = useCallback(() => {
     abortControllersRef.current.forEach(controller => controller.abort());
     abortControllersRef.current.clear();
@@ -149,6 +178,7 @@ export const useConversationActions = (
   return {
     startConversation,
     stopConversation,
+    sendMessage,
     handleSelectAgent,
     cleanup
   };

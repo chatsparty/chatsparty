@@ -14,7 +14,6 @@ export const useSocketConversation = ({
 }: UseSocketConversationParams) => {
   const isConnectedRef = useRef(false);
 
-  // Connect to Socket.IO on mount
   useEffect(() => {
     const connectSocket = async () => {
       try {
@@ -33,12 +32,9 @@ export const useSocketConversation = ({
     }
 
     return () => {
-      // Don't disconnect on unmount as other components might use it
-      // socketService.disconnect();
     };
   }, [onError]);
 
-  // Set up event listeners
   useEffect(() => {
     const handleConversationStarted = (data: any) => {
       console.log('Conversation started:', data);
@@ -117,14 +113,12 @@ export const useSocketConversation = ({
       );
     };
 
-    // Register event listeners
     socketService.on('conversation_started', handleConversationStarted);
     socketService.on('conversation_complete', handleConversationComplete);
     socketService.on('conversation_error', handleConversationError);
     socketService.on('agent_typing', handleAgentTyping);
     socketService.on('agent_message', handleAgentMessage);
 
-    // Cleanup
     return () => {
       socketService.off('conversation_started', handleConversationStarted);
       socketService.off('conversation_complete', handleConversationComplete);
@@ -165,9 +159,45 @@ export const useSocketConversation = ({
     socketService.stopConversation(conversationId);
   }, []);
 
+  const sendSocketMessage = useCallback(async (
+    conversationId: string,
+    message: string,
+    agentIds: string[]
+  ) => {
+    if (!socketService.isConnected()) {
+      try {
+        await socketService.connect();
+      } catch (error) {
+        console.error('Failed to connect before sending message:', error);
+        throw new Error('Failed to connect to server');
+      }
+    }
+
+    setConversations(prev => 
+      prev.map(conv => {
+        if (conv.id === conversationId) {
+          const userMessage: ConversationMessage = {
+            speaker: 'user',
+            message: message,
+            timestamp: Date.now() / 1000
+          };
+          return {
+            ...conv,
+            messages: [...conv.messages, userMessage],
+            isActive: true
+          };
+        }
+        return conv;
+      })
+    );
+
+    socketService.sendMessage(conversationId, message, agentIds);
+  }, [setConversations]);
+
   return {
     startSocketConversation,
     stopSocketConversation,
+    sendSocketMessage,
     isConnected: () => socketService.isConnected()
   };
 };

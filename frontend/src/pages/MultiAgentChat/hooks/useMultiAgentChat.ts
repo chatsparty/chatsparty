@@ -31,7 +31,7 @@ export const useMultiAgentChat = (
 
   const { getAgentName, getAgentColor } = createAgentHelpers(agents);
 
-  const { startConversation, stopConversation, handleSelectAgent, cleanup } =
+  const { startConversation, stopConversation, sendMessage, handleSelectAgent, cleanup } =
     useConversationActions(
       agents,
       selectedAgents,
@@ -108,6 +108,7 @@ export const useMultiAgentChat = (
     setShowNewConversationForm,
     startConversation,
     stopConversation,
+    sendMessage,
     deleteConversation,
     handleSelectAgent,
     loadConversations,

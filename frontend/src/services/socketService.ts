@@ -134,6 +134,21 @@ class SocketService {
     this.socket.emit('stop_conversation', { conversation_id: conversationId });
   }
 
+  sendMessage(conversationId: string, message: string, agentIds: string[]): void {
+    if (!this.socket) {
+      console.error('Socket not connected');
+      return;
+    }
+
+    const token = localStorage.getItem('access_token');
+    this.socket.emit('send_message', {
+      conversation_id: conversationId,
+      message: message,
+      agent_ids: agentIds,
+      token: token || undefined
+    });
+  }
+
   joinConversation(conversationId: string): void {
     if (!this.socket) return;
     this.socket.emit('join_conversation', { conversation_id: conversationId });

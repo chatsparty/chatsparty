@@ -2,10 +2,13 @@ import React, { useRef, useEffect, useState } from "react";
 import type { ActiveConversation, Agent } from "../types";
 import MessageBubble from "./MessageBubble";
 import { Button } from "../../../components/ui/button";
-import { ShareModal } from "../../../components/ui/modal";
+import { ShareModal, Modal } from "../../../components/ui/modal";
 import { ToastContainer } from "../../../components/ui/toast";
 import { useToast } from "../../../hooks/useToast";
 import { useTracking } from "../../../hooks/useTracking";
+import { Textarea } from "../../../components/ui/textarea";
+import { Label } from "../../../components/ui/label";
+import { Badge } from "../../../components/ui/badge";
 import {
   Users,
   AlertTriangle,
@@ -13,8 +16,13 @@ import {
   Mic,
   Download,
   Loader2,
+  Send,
+  Plus,
+  X,
+  Search,
 } from "lucide-react";
 import axios from "axios";
+import { API_BASE_URL } from "../../../config/api";
 
 interface ChatAreaProps {
   activeConversation: ActiveConversation | undefined;
@@ -22,14 +30,17 @@ interface ChatAreaProps {
   getAgentName: (agentId: string) => string;
   getAgentColor: (agentId: string) => string;
   onConversationUpdated: () => Promise<void>;
+  onStartNewConversation: (selectedAgents: string[], initialMessage: string) => Promise<void>;
+  onSendMessage?: (conversationId: string, message: string, selectedAgents: string[]) => Promise<void>;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
   activeConversation,
   agents,
-  getAgentName,
   getAgentColor,
   onConversationUpdated,
+  onStartNewConversation,
+  onSendMessage,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
@@ -46,6 +57,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     "idle" | "generating" | "completed" | "failed"
   >("idle");
   const [podcastProgress, setPodcastProgress] = useState<number>(0);
+  
+  const [messageInput, setMessageInput] = useState("");
+  const [selectedAgentsForMessage, setSelectedAgentsForMessage] = useState<string[]>([]);
+  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [agentSearchQuery, setAgentSearchQuery] = useState("");
 
   const { toasts, showToast, removeToast } = useToast();
   const {
@@ -197,7 +214,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       return;
     }
 
-    // Check if agents have voice configuration
     const agentMessagesCount = activeConversation.messages.filter(
       (msg) => msg.agent_id && msg.agent_id.trim() !== ""
     ).length;
@@ -233,7 +249,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           "success"
         );
 
-        // Start polling for status
         pollPodcastStatus(response.data.job_id);
       } else {
         throw new Error(
@@ -288,7 +303,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           "error"
         );
       } else if (status.status === "processing" || status.status === "queued") {
-        // Continue polling
         setTimeout(() => pollPodcastStatus(jobId), 2000);
       }
     } catch (error) {
@@ -318,7 +332,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         responseType: "blob",
       });
 
-      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -349,7 +362,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
   };
 
-  // Reset podcast state when conversation changes
   useEffect(() => {
     if (activeConversation?.id !== lastUpdatedConversationId) {
       setPodcastStatus("idle");
@@ -359,19 +371,106 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
   }, [activeConversation?.id, lastUpdatedConversationId]);
 
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || selectedAgentsForMessage.length < 2) return;
+
+    if (!activeConversation) {
+      setIsSendingMessage(true);
+      try {
+        await onStartNewConversation(selectedAgentsForMessage, messageInput);
+        setMessageInput("");
+      } catch (error) {
+        console.error("Failed to start conversation:", error);
+        showToast("Failed to start conversation", "error");
+      } finally {
+        setIsSendingMessage(false);
+      }
+    } else if (onSendMessage) {
+      setIsSendingMessage(true);
+      try {
+        await onSendMessage(activeConversation.id, messageInput, selectedAgentsForMessage);
+        setMessageInput("");
+      } catch (error) {
+        console.error("Failed to send message:", error);
+        showToast("Failed to send message", "error");
+      } finally {
+        setIsSendingMessage(false);
+      }
+    }
+  };
+
+  const toggleAgentSelection = (agentId: string) => {
+    setSelectedAgentsForMessage(prev => {
+      if (prev.includes(agentId)) {
+        return prev.filter(id => id !== agentId);
+      }
+      return [...prev, agentId];
+    });
+  };
+
+  useEffect(() => {
+    if (activeConversation) {
+      setSelectedAgentsForMessage(activeConversation.agents);
+    } else {
+      setSelectedAgentsForMessage(agents.slice(0, 2).map(a => a.agent_id));
+    }
+  }, [activeConversation, agents]);
+
   if (!activeConversation) {
     return (
-      <div className="flex-1 flex flex-col justify-center items-center p-10 text-center">
-        <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-          <Users className="w-10 h-10 text-primary" />
+      <div className="flex-1 flex flex-col">
+        <div className="p-6 border-b border-border bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <Label className="text-sm font-medium text-foreground">To:</Label>
+            <div className="flex-1 flex flex-wrap items-center gap-2">
+              {selectedAgentsForMessage.map(agentId => {
+                const agent = agents.find(a => a.agent_id === agentId);
+                if (!agent) return null;
+                return (
+                  <Badge
+                    key={agentId}
+                    variant="secondary"
+                    className="px-3 py-1 text-xs font-medium cursor-pointer hover:bg-destructive/10"
+                    style={{
+                      backgroundColor: `${getAgentColor(agentId)}15`,
+                      borderColor: `${getAgentColor(agentId)}30`,
+                      color: getAgentColor(agentId),
+                    }}
+                    onClick={() => toggleAgentSelection(agentId)}
+                  >
+                    {agent.name}
+                    <X className="w-3 h-3 ml-1" />
+                  </Badge>
+                );
+              })}
+              {selectedAgentsForMessage.length < 2 && (
+                <span className="text-xs text-muted-foreground">
+                  Select at least 2 agents to start chatting
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAgentModal(true)}
+                className="h-7 px-2 text-xs ml-auto"
+              >
+                <Plus className="w-3 h-3 mr-1" /> Select Agents
+              </Button>
+            </div>
+          </div>
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-4">
-          Multi-Agent Conversations
-        </h2>
-        <p className="text-muted-foreground text-base mb-8 max-w-lg leading-relaxed">
-          Create engaging conversations between multiple AI agents. Each agent
-          will respond according to their unique characteristics and prompts.
-        </p>
+        
+        <div className="flex-1 flex flex-col justify-center items-center p-10 text-center">
+          <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+            <Users className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-4">
+            Multi-Agent Conversations
+          </h2>
+          <p className="text-muted-foreground text-base mb-8 max-w-lg leading-relaxed">
+            Create engaging conversations between multiple AI agents. Each agent
+            will respond according to their unique characteristics and prompts.
+          </p>
 
         {agents.length < 2 ? (
           <div className="p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-xl max-w-md">
@@ -400,6 +499,160 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             </p>
           </div>
         )}
+        </div>
+        
+        <div className="border-t border-border bg-card p-4">
+          <div className="max-w-4xl mx-auto flex gap-3">
+            <Textarea
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder={selectedAgentsForMessage.length >= 2 
+                ? "Type your message to start the conversation..."
+                : "Select at least 2 agents above to start chatting..."
+              }
+              rows={2}
+              disabled={selectedAgentsForMessage.length < 2 || isSendingMessage}
+              className="flex-1 resize-none"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!messageInput.trim() || selectedAgentsForMessage.length < 2 || isSendingMessage}
+              className="h-auto px-6"
+            >
+              {isSendingMessage ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+        
+        <Modal
+          isOpen={showAgentModal}
+          onClose={() => {
+          setShowAgentModal(false);
+          setAgentSearchQuery("");
+        }}
+          title="Select Agents"
+          size="md"
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setShowAgentModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => setShowAgentModal(false)}
+                disabled={selectedAgentsForMessage.length < 2}
+              >
+                Done ({selectedAgentsForMessage.length} selected)
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Select at least 2 agents to participate in the conversation.
+            </p>
+            
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search agents..."
+                value={agentSearchQuery}
+                onChange={(e) => setAgentSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            
+            {selectedAgentsForMessage.length > 0 && (
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg">
+                <Label className="text-xs font-medium text-muted-foreground w-full mb-2">Selected ({selectedAgentsForMessage.length}):</Label>
+                {selectedAgentsForMessage.map(agentId => {
+                  const agent = agents.find(a => a.agent_id === agentId);
+                  if (!agent) return null;
+                  return (
+                    <Badge
+                      key={agentId}
+                      variant="secondary"
+                      className="px-3 py-1 text-xs font-medium cursor-pointer hover:bg-destructive/10"
+                      style={{
+                        backgroundColor: `${getAgentColor(agentId)}15`,
+                        borderColor: `${getAgentColor(agentId)}30`,
+                        color: getAgentColor(agentId),
+                      }}
+                      onClick={() => toggleAgentSelection(agentId)}
+                    >
+                      {agent.name}
+                      <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
+            
+            <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
+              {agents
+                .filter(agent => 
+                  agent.name.toLowerCase().includes(agentSearchQuery.toLowerCase()) ||
+                  (agent.prompt && agent.prompt.toLowerCase().includes(agentSearchQuery.toLowerCase()))
+                )
+                .map(agent => (
+                  <div
+                    key={agent.agent_id}
+                    className={`flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                      selectedAgentsForMessage.includes(agent.agent_id)
+                        ? 'bg-primary/10 border-primary/30 shadow-sm'
+                        : 'bg-background border-border hover:bg-accent/30 hover:border-accent-foreground/20'
+                    }`}
+                    onClick={() => toggleAgentSelection(agent.agent_id)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedAgentsForMessage.includes(agent.agent_id)}
+                      onChange={() => {}}
+                      className="w-4 h-4 mt-0.5 text-primary bg-background border-gray-300 rounded focus:ring-primary flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm font-medium cursor-pointer">
+                          {agent.name}
+                        </Label>
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: getAgentColor(agent.agent_id) }}
+                        />
+                      </div>
+                      {agent.prompt && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {agent.prompt}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              }
+              {agents.filter(agent => 
+                agent.name.toLowerCase().includes(agentSearchQuery.toLowerCase()) ||
+                (agent.prompt && agent.prompt.toLowerCase().includes(agentSearchQuery.toLowerCase()))
+              ).length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-sm">No agents found matching "{agentSearchQuery}"</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Modal>
       </div>
     );
   }
@@ -407,7 +660,43 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   return (
     <>
       <div className="p-6 border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
+          <div className="flex items-center gap-3">
+            <Label className="text-sm font-medium text-foreground">To:</Label>
+            <div className="flex-1 flex flex-wrap items-center gap-2">
+              {selectedAgentsForMessage.map(agentId => {
+                const agent = agents.find(a => a.agent_id === agentId);
+                if (!agent) return null;
+                return (
+                  <Badge
+                    key={agentId}
+                    variant="secondary"
+                    className="px-3 py-1 text-xs font-medium cursor-pointer hover:bg-destructive/10"
+                    style={{
+                      backgroundColor: `${getAgentColor(agentId)}15`,
+                      borderColor: `${getAgentColor(agentId)}30`,
+                      color: getAgentColor(agentId),
+                    }}
+                    onClick={() => toggleAgentSelection(agentId)}
+                  >
+                    {agent.name}
+                    <X className="w-3 h-3 ml-1" />
+                  </Badge>
+                );
+              })}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAgentModal(true)}
+                className="h-7 px-2 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" /> Add Agents
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">
             {activeConversation.name}
           </h3>
@@ -436,7 +725,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               </Button>
             )}
 
-            {/* Podcast Generation Button */}
             {activeConversation.messages.length > 0 && (
               <>
                 {podcastStatus === "idle" && (
@@ -496,25 +784,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             </div>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {activeConversation.agents.map((agentId) => (
-            <div
-              key={agentId}
-              className="px-4 py-2 rounded-full text-xs font-medium shadow-sm border transition-all hover:scale-105"
-              style={{
-                backgroundColor: `${getAgentColor(agentId)}15`,
-                borderColor: `${getAgentColor(agentId)}30`,
-                color: getAgentColor(agentId),
-              }}
-            >
-              <span
-                className="w-2 h-2 rounded-full mr-2 inline-block"
-                style={{ backgroundColor: getAgentColor(agentId) }}
-              ></span>
-              {getAgentName(agentId)}
-            </div>
-          ))}
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-background/50">
@@ -538,6 +807,165 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      <div className="border-t border-border bg-card p-4">
+        <div className="max-w-4xl mx-auto flex gap-3">
+          <Textarea
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder={selectedAgentsForMessage.length >= 2 
+              ? "Type your message..."
+              : "Select at least 2 agents in the header to continue..."
+            }
+            rows={2}
+            disabled={selectedAgentsForMessage.length < 2 || isSendingMessage}
+            className="flex-1 resize-none"
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={!messageInput.trim() || selectedAgentsForMessage.length < 2 || isSendingMessage}
+            className="h-auto px-6"
+          >
+            {isSendingMessage ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <Modal
+        isOpen={showAgentModal}
+        onClose={() => {
+          setShowAgentModal(false);
+          setAgentSearchQuery("");
+        }}
+        title="Select Agents"
+        size="lg"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAgentModal(false);
+                setAgentSearchQuery("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowAgentModal(false);
+                setAgentSearchQuery("");
+              }}
+              disabled={selectedAgentsForMessage.length < 2}
+            >
+              Done ({selectedAgentsForMessage.length} selected)
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Select at least 2 agents to participate in the conversation.
+          </p>
+          
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
+            <input
+              type="text"
+              placeholder="Search agents..."
+              value={agentSearchQuery}
+              onChange={(e) => setAgentSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 bg-background border border-input rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+          
+          {selectedAgentsForMessage.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 p-2 bg-muted/30 rounded-md">
+              <Label className="text-xs font-medium text-muted-foreground w-full mb-1">Selected ({selectedAgentsForMessage.length}):</Label>
+              {selectedAgentsForMessage.map(agentId => {
+                const agent = agents.find(a => a.agent_id === agentId);
+                if (!agent) return null;
+                return (
+                  <Badge
+                    key={agentId}
+                    variant="secondary"
+                    className="px-2 py-0.5 text-xs font-medium cursor-pointer hover:bg-destructive/10"
+                    style={{
+                      backgroundColor: `${getAgentColor(agentId)}15`,
+                      borderColor: `${getAgentColor(agentId)}30`,
+                      color: getAgentColor(agentId),
+                    }}
+                    onClick={() => toggleAgentSelection(agentId)}
+                  >
+                    {agent.name}
+                    <X className="w-2.5 h-2.5 ml-1" />
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
+          
+          <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+            {agents
+              .filter(agent => 
+                agent.name.toLowerCase().includes(agentSearchQuery.toLowerCase()) ||
+                (agent.prompt && agent.prompt.toLowerCase().includes(agentSearchQuery.toLowerCase()))
+              )
+              .map(agent => (
+                <div
+                  key={agent.agent_id}
+                  className={`flex items-start space-x-2 p-2 rounded-md border transition-all cursor-pointer ${
+                    selectedAgentsForMessage.includes(agent.agent_id)
+                      ? 'bg-primary/10 border-primary/30 shadow-sm'
+                      : 'bg-background border-border hover:bg-accent/30 hover:border-accent-foreground/20'
+                  }`}
+                  onClick={() => toggleAgentSelection(agent.agent_id)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAgentsForMessage.includes(agent.agent_id)}
+                    onChange={() => {}}
+                    className="w-3.5 h-3.5 mt-0.5 text-primary bg-background border-gray-300 rounded focus:ring-primary flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs font-medium cursor-pointer">
+                        {agent.name}
+                      </Label>
+                      <div
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getAgentColor(agent.agent_id) }}
+                      />
+                    </div>
+                    {agent.prompt && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 leading-4">
+                        {agent.prompt}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))
+            }
+            {agents.filter(agent => 
+              agent.name.toLowerCase().includes(agentSearchQuery.toLowerCase()) ||
+              (agent.prompt && agent.prompt.toLowerCase().includes(agentSearchQuery.toLowerCase()))
+            ).length === 0 && (
+              <div className="text-center py-6 text-muted-foreground">
+                <p className="text-xs">No agents found matching "{agentSearchQuery}"</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
 
       <ShareModal
         isOpen={showShareModal}

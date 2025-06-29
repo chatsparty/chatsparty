@@ -14,21 +14,13 @@ const MultiAgentChatPage: React.FC = () => {
     agents,
     conversations,
     activeConversation,
-    selectedAgents,
-    initialMessage,
-    maxTurns,
-    isLoading,
-    showNewConversationForm,
     setActiveConversation,
-    setInitialMessage,
-    setMaxTurns,
-    setShowNewConversationForm,
     startConversation,
     stopConversation,
+    sendMessage,
     deleteConversation,
     getAgentName,
     getAgentColor,
-    handleSelectAgent,
     loadConversations,
   } = useMultiAgentChat(attachedFiles);
   const [isExtractingContent, setIsExtractingContent] = useState(false);
@@ -82,16 +74,6 @@ const MultiAgentChatPage: React.FC = () => {
         agents={agents}
         conversations={conversations}
         activeConversation={activeConversation}
-        showNewConversationForm={showNewConversationForm}
-        selectedAgents={selectedAgents}
-        initialMessage={initialMessage}
-        maxTurns={maxTurns}
-        isLoading={isLoading}
-        onShowNewConversationForm={setShowNewConversationForm}
-        onSelectAgent={handleSelectAgent}
-        onInitialMessageChange={setInitialMessage}
-        onMaxTurnsChange={setMaxTurns}
-        onStartConversation={startConversation}
         onStopConversation={stopConversation}
         onSelectConversation={setActiveConversation}
         onDeleteConversation={deleteConversation}
@@ -104,6 +86,8 @@ const MultiAgentChatPage: React.FC = () => {
           getAgentName={getAgentName}
           getAgentColor={getAgentColor}
           onConversationUpdated={loadConversations}
+          onStartNewConversation={startConversation}
+          onSendMessage={sendMessage}
         />
       </div>
 
