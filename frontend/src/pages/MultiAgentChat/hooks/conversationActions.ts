@@ -16,24 +16,54 @@ export const useConversationActions = (
   setSelectedAgents: React.Dispatch<React.SetStateAction<string[]>>,
   setInitialMessage: (message: string) => void,
   setIsLoading: (loading: boolean) => void,
-  attachedFiles?: Array<{id: string, name: string, extractedContent?: string, file: File}>
+  attachedFiles?: Array<{id: string, name: string, extractedContent?: string, file: File}>,
+  navigate?: (path: string, options?: { replace?: boolean }) => void
 ) => {
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const conversationErrorCallbackRef = useRef<((error: string) => void) | null>(null);
   const { getAgentName } = createAgentHelpers(agents);
   const { handleStreamMessage } = createStreamMessageHandlers(setConversations);
   const { trackConversationStarted, trackMessageSent, trackError } = useTracking();
   
+  const activeConversationIdRef = useRef<string | null>(null);
+  
   const { startSocketConversation, stopSocketConversation, sendSocketMessage } = useSocketConversation({
     setConversations,
-    onError: (error) => {
+    onError: (error, conversationId) => {
       trackError('socket_error', error, 'multi_agent_chat');
+      
+      // Clean up the failed conversation
+      if (conversationId || activeConversationIdRef.current) {
+        const convId = conversationId || activeConversationIdRef.current;
+        setConversations(prev => prev.filter(conv => conv.id !== convId));
+        activeConversationIdRef.current = null;
+      }
+      
+      // Check if it's an insufficient credits error
+      if (error.includes('Insufficient credits')) {
+        // Parse the error to extract the numbers
+        const match = error.match(/Required: (\d+), Available: (\d+)/);
+        if (match) {
+          const required = match[1];
+          const available = match[2];
+          // Call the error callback if it exists
+          if (conversationErrorCallbackRef.current) {
+            conversationErrorCallbackRef.current(`insufficient_credits:${required}:${available}`);
+          }
+        }
+      } else if (conversationErrorCallbackRef.current) {
+        conversationErrorCallbackRef.current(error);
+      }
     }
   });
 
   const startConversation = useCallback(async (
     agentsToUse?: string[], 
-    messageToUse?: string
+    messageToUse?: string,
+    onError?: (error: string) => void
   ): Promise<void> => {
+    // Set the error callback for socket errors
+    conversationErrorCallbackRef.current = onError || null;
     const finalAgents = agentsToUse || selectedAgents;
     const finalMessage = messageToUse || initialMessage;
     
@@ -55,6 +85,12 @@ export const useConversationActions = (
 
       setConversations(prev => [...prev, newConversation]);
       setActiveConversation(conversationId);
+      activeConversationIdRef.current = conversationId;
+      
+      // Navigate to the conversation URL
+      if (navigate) {
+        navigate(`/chat/${conversationId}`);
+      }
       
       trackConversationStarted({
         conversation_id: conversationId,
@@ -93,8 +129,9 @@ export const useConversationActions = (
     } catch (error) {
       console.error('Failed to start conversation:', error instanceof Error ? error.message : String(error));
       trackError('conversation_start_error', error instanceof Error ? error.message : 'Unknown error', 'multi_agent_chat');
-      alert('Failed to start conversation. Make sure all selected agents exist.');
-      setConversations(prev => prev.filter(conv => conv.id !== conversationId));
+      // Don't remove conversation here - let socket error handler handle it
+      // Re-throw the error to be handled by the UI
+      throw error;
     } finally {
       abortControllersRef.current.delete(conversationId);
       setIsLoading(false);
@@ -114,7 +151,8 @@ export const useConversationActions = (
     attachedFiles,
     trackConversationStarted,
     trackMessageSent,
-    trackError
+    trackError,
+    startSocketConversation
   ]);
 
   const stopConversation = useCallback((conversationId: string): void => {

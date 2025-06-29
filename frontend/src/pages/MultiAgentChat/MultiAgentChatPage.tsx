@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../../config/api";
 import { useMultiAgentChat } from "./hooks/useMultiAgentChat";
@@ -7,17 +7,24 @@ import ChatArea from "./components/ChatArea";
 import FileAttachmentSidebar from "./components/FileAttachmentSidebar";
 import type { AttachedFile } from "./types";
 import { Button } from "../../components/ui/button";
+import { Modal } from "../../components/ui/modal";
 import { X, Paperclip, MessageCircle, Files, ChevronRight } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
 
 const MultiAgentChatPage: React.FC = () => {
+  const { conversationId } = useParams<{ conversationId?: string }>();
+  const navigate = useNavigate();
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFileSidebarOpen, setIsFileSidebarOpen] = useState(false);
   const [isDesktopFileSidebarOpen, setIsDesktopFileSidebarOpen] = useState(true);
   const [activeView, setActiveView] = useState<'chat' | 'conversations' | 'files'>('chat');
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [creditsError, setCreditsError] = useState<{ required: number; available: number } | null>(null);
 
   const handleCreateNewConversation = () => {
     setActiveConversation(null);
+    navigate('/chat');
   };
 
   const {
@@ -32,8 +39,30 @@ const MultiAgentChatPage: React.FC = () => {
     getAgentName,
     getAgentColor,
     loadConversations,
-  } = useMultiAgentChat(attachedFiles);
+  } = useMultiAgentChat(attachedFiles, navigate);
   const [isExtractingContent, setIsExtractingContent] = useState(false);
+
+  const handleStartConversation = useCallback(async (
+    selectedAgents: string[], 
+    initialMessage: string,
+    onError?: (error: string) => void
+  ) => {
+    await startConversation(selectedAgents, initialMessage, (error: string) => {
+      console.log('Error in wrapped startConversation:', error);
+      
+      if (error.startsWith('insufficient_credits:')) {
+        const parts = error.split(':');
+        const required = parseInt(parts[1]);
+        const available = parseInt(parts[2]);
+        
+        console.log('Setting credits error in parent:', { required, available });
+        setCreditsError({ required, available });
+        setShowCreditsModal(true);
+      }
+      
+      onError?.(error);
+    });
+  }, [startConversation]);
 
   const handleFilesAttached = (files: AttachedFile[]) => {
     setAttachedFiles(files);
@@ -76,6 +105,20 @@ const MultiAgentChatPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (conversationId && conversationId !== activeConversation) {
+      setActiveConversation(conversationId);
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (activeConversation && activeConversation !== conversationId) {
+      navigate(`/chat/${activeConversation}`, { replace: true });
+    } else if (!activeConversation && conversationId) {
+      navigate('/chat', { replace: true });
+    }
+  }, [activeConversation, conversationId, navigate]);
+
   const activeConv = conversations.find((c) => c.id === activeConversation);
 
   return (
@@ -117,20 +160,20 @@ const MultiAgentChatPage: React.FC = () => {
       </div>
 
       <div className="hidden lg:flex h-full w-full relative">
-        {/* Hover trigger and sidebar */}
         <div className="fixed left-0 top-0 bottom-0 z-30">
-          {/* Very narrow hover trigger area - only first 8px */}
           <div className="group w-2 h-full absolute left-0 top-0">
             <div className="w-2 h-full bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             
-            {/* Enhanced sidebar that slides in on hover */}
             <div className="transform -translate-x-full group-hover:translate-x-0 transition-all duration-300 ease-out h-full shadow-2xl border-r border-border/20 backdrop-blur-sm absolute left-0 top-0">
               <ConversationSidebar
                 agents={agents}
                 conversations={conversations}
                 activeConversation={activeConversation}
                 onStopConversation={stopConversation}
-                onSelectConversation={setActiveConversation}
+                onSelectConversation={(conversationId) => {
+                  setActiveConversation(conversationId);
+                  navigate(`/chat/${conversationId}`);
+                }}
                 onDeleteConversation={deleteConversation}
                 onCreateNewConversation={handleCreateNewConversation}
               />
@@ -145,8 +188,11 @@ const MultiAgentChatPage: React.FC = () => {
             getAgentName={getAgentName}
             getAgentColor={getAgentColor}
             onConversationUpdated={loadConversations}
-            onStartNewConversation={startConversation}
+            onStartNewConversation={handleStartConversation}
             onSendMessage={sendMessage}
+            showCreditsModal={showCreditsModal}
+            setShowCreditsModal={setShowCreditsModal}
+            creditsError={creditsError}
           />
         </div>
 
@@ -161,7 +207,6 @@ const MultiAgentChatPage: React.FC = () => {
           />
         )}
 
-        {/* Desktop File Sidebar Toggle Button */}
         <div className="fixed top-1/2 -translate-y-1/2 z-40" style={{ right: isDesktopFileSidebarOpen ? '288px' : '16px' }}>
           <Button
             variant="ghost"
@@ -211,6 +256,7 @@ const MultiAgentChatPage: React.FC = () => {
                 onStopConversation={stopConversation}
                 onSelectConversation={(conversationId) => {
                   setActiveConversation(conversationId);
+                  navigate(`/chat/${conversationId}`);
                   setActiveView('chat');
                 }}
                 onDeleteConversation={deleteConversation}
@@ -260,12 +306,79 @@ const MultiAgentChatPage: React.FC = () => {
             getAgentName={getAgentName}
             getAgentColor={getAgentColor}
             onConversationUpdated={loadConversations}
-            onStartNewConversation={startConversation}
+            onStartNewConversation={handleStartConversation}
             onSendMessage={sendMessage}
             isMobile={true}
+            showCreditsModal={showCreditsModal}
+            setShowCreditsModal={setShowCreditsModal}
+            creditsError={creditsError}
           />
         </div>
       </div>
+      
+      <Modal
+        isOpen={showCreditsModal}
+        onClose={() => setShowCreditsModal(false)}
+        title="Insufficient Credits"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <div className="text-destructive mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-destructive mb-1">Not enough credits</h4>
+                <p className="text-sm text-muted-foreground">
+                  You need <span className="font-bold text-foreground">{creditsError?.required} credits</span> to start this multi-agent conversation, 
+                  but you only have <span className="font-bold text-foreground">{creditsError?.available} credits</span> available.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Multi-agent conversations consume credits based on:
+            </p>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start">
+                <span className="text-primary mr-2">•</span>
+                <span className="text-muted-foreground">Number of agents in the conversation</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-primary mr-2">•</span>
+                <span className="text-muted-foreground">Maximum number of conversation turns</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-primary mr-2">•</span>
+                <span className="text-muted-foreground">Model complexity of each agent</span>
+              </li>
+            </ul>
+          </div>
+          
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowCreditsModal(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                window.location.href = '/settings/credits';
+              }}
+              className="flex-1"
+            >
+              Get More Credits
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

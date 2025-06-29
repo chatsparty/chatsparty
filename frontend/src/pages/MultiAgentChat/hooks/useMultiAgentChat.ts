@@ -16,7 +16,8 @@ export const useMultiAgentChat = (
     name: string;
     extractedContent?: string;
     file: File;
-  }>
+  }>,
+  navigate?: (path: string, options?: { replace?: boolean }) => void
 ): UseMultiAgentChatReturn => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [conversations, setConversations] = useState<ActiveConversation[]>([]);
@@ -43,7 +44,8 @@ export const useMultiAgentChat = (
       setSelectedAgents,
       setInitialMessage,
       setIsLoading,
-      attachedFiles
+      attachedFiles,
+      navigate
     );
 
   const loadAgents = useCallback(async (): Promise<void> => {

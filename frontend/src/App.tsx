@@ -181,6 +181,7 @@ const Layout = () => {
             <Route path="/agents" element={<AgentManagerPage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
+            <Route path="/chat/:conversationId" element={<MultiAgentChatPage />} />
             <Route
               path="/settings"
               element={<Navigate to="/settings/general" replace />}

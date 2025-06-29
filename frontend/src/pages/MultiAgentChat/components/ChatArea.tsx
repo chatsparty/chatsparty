@@ -26,9 +26,12 @@ interface ChatAreaProps {
   getAgentName: (agentId: string) => string;
   getAgentColor: (agentId: string) => string;
   onConversationUpdated: () => Promise<void>;
-  onStartNewConversation: (selectedAgents: string[], initialMessage: string) => Promise<void>;
+  onStartNewConversation: (selectedAgents: string[], initialMessage: string, onError?: (error: string) => void) => Promise<void>;
   onSendMessage?: (conversationId: string, message: string, selectedAgents: string[]) => Promise<void>;
   isMobile?: boolean;
+  showCreditsModal?: boolean;
+  setShowCreditsModal?: (show: boolean) => void;
+  creditsError?: { required: number; available: number } | null;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
@@ -40,6 +43,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   onStartNewConversation,
   onSendMessage,
   isMobile = false,
+  showCreditsModal = false,
+  setShowCreditsModal = () => {}, // eslint-disable-line @typescript-eslint/no-unused-vars
+  creditsError = null,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
@@ -62,6 +68,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [agentSearchQuery, setAgentSearchQuery] = useState("");
+  
+  // Debug effect to track modal state
+  useEffect(() => {
+    console.log('Credits modal state changed (from props):', { showCreditsModal, creditsError });
+  }, [showCreditsModal, creditsError]);
 
   const { toasts, showToast, removeToast } = useToast();
   const {
@@ -375,14 +386,32 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
     if (!activeConversation) {
       setIsSendingMessage(true);
+      
+      // Store whether we got an error to avoid double handling
+      let errorHandled = false;
+      
       try {
-        await onStartNewConversation(selectedAgentsForMessage, messageInput);
+        await onStartNewConversation(selectedAgentsForMessage, messageInput, (error: string) => {
+          errorHandled = true;
+          console.error("Socket error during conversation start:", error);
+          
+          // The parent component will handle showing the credits modal
+          if (!error.startsWith('insufficient_credits:')) {
+            showToast("Failed to start conversation. Please try again.", "error");
+          }
+          
+          setIsSendingMessage(false);
+        });
+        
+        // Only clear message and reset state if no error occurred
         setMessageInput("");
+        setIsSendingMessage(false);
       } catch (error) {
         console.error("Failed to start conversation:", error);
-        showToast("Failed to start conversation", "error");
-      } finally {
-        setIsSendingMessage(false);
+        if (!errorHandled) {
+          showToast("Failed to start conversation. Please try again.", "error");
+          setIsSendingMessage(false);
+        }
       }
     } else if (onSendMessage) {
       setIsSendingMessage(true);

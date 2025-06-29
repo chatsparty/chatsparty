@@ -5,7 +5,7 @@ import type { ActiveConversation, ConversationMessage } from '../types';
 
 interface UseSocketConversationParams {
   setConversations: React.Dispatch<React.SetStateAction<ActiveConversation[]>>;
-  onError?: (error: string) => void;
+  onError?: (error: string, conversationId?: string) => void;
 }
 
 export const useSocketConversation = ({ 
@@ -53,7 +53,7 @@ export const useSocketConversation = ({
 
     const handleConversationError = (data: any) => {
       console.error('Conversation error:', data);
-      onError?.(data.error || 'Conversation error occurred');
+      onError?.(data.error || 'Conversation error occurred', data.conversation_id);
       
       if (data.conversation_id) {
         setConversations(prev => 
