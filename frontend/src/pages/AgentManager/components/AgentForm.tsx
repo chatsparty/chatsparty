@@ -119,6 +119,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                   {activeConnections.map((connection) => (
                     <SelectItem key={connection.id} value={connection.id}>
                       {connection.name} ({connection.provider})
+                      {connection.is_default && " • Default"}
                     </SelectItem>
                   ))}
                   <SelectItem value="add-new">+ Add New Connection</SelectItem>

@@ -2,7 +2,7 @@ import type { SettingsItem } from "@/components/settings";
 import { SettingsContent, SettingsSidebar } from "@/components/settings";
 import { Server } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { FaCog, FaLock, FaMicrophone, FaPlug, FaUser } from "react-icons/fa";
+import { FaCog, FaLock, FaMicrophone, FaPlug, FaUser, FaCoins } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export const SettingsPage: React.FC = () => {
@@ -63,6 +63,13 @@ export const SettingsPage: React.FC = () => {
       description:
         "Manage Model Context Protocol servers that provide tools for your agents",
       icon: Server,
+    },
+    {
+      id: "credits",
+      path: "/settings/credits",
+      label: "Credits",
+      description: "Manage your credits and billing information",
+      icon: FaCoins,
     },
     {
       id: "profile",

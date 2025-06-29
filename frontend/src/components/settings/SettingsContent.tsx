@@ -1,5 +1,6 @@
 import React from "react";
 import { ConnectionsManagement } from "./ConnectionsManagement";
+import { CreditsManagement } from "./CreditsManagement";
 import { VoiceConnectionList } from "../voice/VoiceConnectionList";
 import MCPServersPage from "../../pages/MCPServers";
 
@@ -35,6 +36,8 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
         return <VoiceConnectionList />;
       case "mcp-servers":
         return <MCPServersPage />;
+      case "credits":
+        return <CreditsManagement />;
       default:
         return (
           <div className="space-y-6">

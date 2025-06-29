@@ -69,6 +69,11 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             <Badge variant={connection.is_active ? "default" : "secondary"}>
               {connection.is_active ? "Active" : "Inactive"}
             </Badge>
+            {connection.is_default && (
+              <Badge variant="outline" className="border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400">
+                Default
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -121,32 +126,54 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             </div>
           )}
 
+          {connection.is_default && (
+            <div className="p-3 rounded-md text-sm bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/50 dark:border-blue-900/50 dark:text-blue-300">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">ℹ️ Platform Default:</span>
+                <span>This connection is provided by the ChatsParty platform and cannot be modified.</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-2">
             <Button
               variant="outline"
               size="sm"
               onClick={handleTest}
-              disabled={testing}
+              disabled={testing || connection.is_default}
             >
-              {testing ? "Testing..." : "Test Connection"}
+              {testing ? "Testing..." : connection.is_default ? "Test Unavailable" : "Test Connection"}
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => onEdit(connection)}
+              disabled={connection.is_default}
             >
               Edit
             </Button>
-            <Button variant="outline" size="sm" onClick={handleToggleActive}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleToggleActive}
+              disabled={connection.is_default}
+            >
               {connection.is_active ? "Deactivate" : "Activate"}
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => onDelete(connection.id)}
-            >
-              Delete
-            </Button>
+            {!connection.is_default && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => onDelete(connection.id)}
+              >
+                Delete
+              </Button>
+            )}
+            {process.env.NODE_ENV === 'development' && (
+              <span className="text-xs text-gray-500">
+                is_default: {String(connection.is_default)}
+              </span>
+            )}
           </div>
         </div>
       </CardContent>

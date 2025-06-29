@@ -192,6 +192,7 @@ const Layout = () => {
               element={<SettingsPage />}
             />
             <Route path="/settings/mcp-servers" element={<SettingsPage />} />
+            <Route path="/settings/credits" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/projects" replace />} />
           </Routes>
         </div>
