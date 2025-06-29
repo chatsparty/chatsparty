@@ -13,7 +13,6 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
     
     def create_agent(self, agent: Agent, user_id: str) -> Agent:
         def _create():
-            # Validate voice connection exists if specified
             voice_connection_id = None
             if (agent.voice_config and 
                 agent.voice_config.voice_enabled and 
@@ -27,7 +26,6 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
                 
                 if voice_conn:
                     voice_connection_id = agent.voice_config.voice_connection_id
-                # If voice connection doesn't exist, we'll set it to None (voice disabled)
             
             db_agent = AgentModel(
                 id=agent.agent_id,
@@ -82,42 +80,55 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
     def update_agent(self, agent: Agent) -> Agent:
         db_agent = self.db_session.query(AgentModel).filter(AgentModel.id == agent.agent_id).first()
         
-        if db_agent:
-            db_agent.name = agent.name
-            db_agent.prompt = agent.prompt
-            db_agent.characteristics = agent.characteristics
-            db_agent.connection_id = agent.connection_id
-            db_agent.model_config = {
-                "provider": agent.model_config.provider,
-                "model_name": agent.model_config.model_name,
-                "api_key": agent.model_config.api_key,
-                "base_url": agent.model_config.base_url,
-            }
-            db_agent.chat_style = {
-                "friendliness": agent.chat_style.friendliness,
-                "response_length": agent.chat_style.response_length,
-                "personality": agent.chat_style.personality,
-                "humor": agent.chat_style.humor,
-                "expertise_level": agent.chat_style.expertise_level,
-            }
-            # Validate voice connection exists if specified  
-            voice_connection_id = None
-            if (agent.voice_config and 
-                agent.voice_config.voice_enabled and 
-                agent.voice_config.voice_connection_id):
-                
-                voice_conn = self.db_session.query(VoiceConnectionModel).filter(
-                    VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
-                    VoiceConnectionModel.user_id == db_agent.user_id,
-                    VoiceConnectionModel.is_active == True
-                ).first()
-                
-                if voice_conn:
-                    voice_connection_id = agent.voice_config.voice_connection_id
+        if not db_agent:
+            raise ValueError(f"Agent with id {agent.agent_id} not found")
+        
+        db_agent.name = agent.name
+        db_agent.prompt = agent.prompt
+        db_agent.characteristics = agent.characteristics
+        db_agent.connection_id = agent.connection_id
+        db_agent.model_config = {
+            "provider": agent.model_config.provider,
+            "model_name": agent.model_config.model_name,
+            "api_key": agent.model_config.api_key,
+            "base_url": agent.model_config.base_url,
+        }
+        db_agent.chat_style = {
+            "friendliness": agent.chat_style.friendliness,
+            "response_length": agent.chat_style.response_length,
+            "personality": agent.chat_style.personality,
+            "humor": agent.chat_style.humor,
+            "expertise_level": agent.chat_style.expertise_level,
+        }
+        
+        # Validate voice connection exists if specified  
+        voice_connection_id = None
+        if (agent.voice_config and 
+            agent.voice_config.voice_enabled and 
+            agent.voice_config.voice_connection_id):
             
-            db_agent.voice_enabled = bool(voice_connection_id)
-            db_agent.voice_connection_id = voice_connection_id
-            db_agent.podcast_settings = agent.voice_config.podcast_settings if agent.voice_config else None
+            voice_conn = self.db_session.query(VoiceConnectionModel).filter(
+                VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
+                VoiceConnectionModel.user_id == db_agent.user_id,
+                VoiceConnectionModel.is_active == True
+            ).first()
+            
+            if voice_conn:
+                voice_connection_id = agent.voice_config.voice_connection_id
+        
+        db_agent.voice_enabled = bool(voice_connection_id)
+        db_agent.voice_connection_id = voice_connection_id
+        db_agent.podcast_settings = agent.voice_config.podcast_settings if agent.voice_config else None
+        
+        # Add MCP fields update
+        if hasattr(agent, 'selected_mcp_tools'):
+            db_agent.selected_mcp_tools = agent.selected_mcp_tools
+        if hasattr(agent, 'mcp_tool_config'):
+            db_agent.mcp_tool_config = agent.mcp_tool_config
+        
+        # Commit the changes to the database
+        self.db_session.commit()
+        self.db_session.refresh(db_agent)
         
         return agent
     

@@ -4,6 +4,9 @@ from ..services.ai import get_ai_service
 from ..services.websocket_service import websocket_service
 from ..models.database import User
 from .auth import get_current_user_from_token
+from ..middleware.credit_middleware import get_credit_service
+from ..models.credit import CreditConsumptionReason, CreditConsumptionRequest
+from ..services.credit.application.credit_service import InsufficientCreditsError
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -60,6 +63,37 @@ async def start_multi_agent_conversation(sid, data):
         
         # Get AI service
         ai_service = get_ai_service()
+        
+        # Consume credits for multi-agent conversation
+        if user_id:
+            try:
+                credit_service = get_credit_service()
+                estimated_cost = await credit_service.calculate_conversation_cost(
+                    agent_count=len(agent_ids),
+                    max_turns=max_turns
+                )
+                
+                # Consume credits upfront for multi-agent conversation
+                consumption_request = CreditConsumptionRequest(
+                    amount=estimated_cost,
+                    reason=CreditConsumptionReason.MULTI_AGENT_CONVERSATION,
+                    description=f"Multi-agent conversation with {len(agent_ids)} agents, {max_turns} max turns",
+                    metadata={
+                        "agent_count": len(agent_ids),
+                        "max_turns": max_turns,
+                        "conversation_id": conversation_id
+                    }
+                )
+                await credit_service.consume_credits(user_id, consumption_request)
+            except InsufficientCreditsError as e:
+                await sio.emit('conversation_error', {
+                    'conversation_id': conversation_id,
+                    'error': f'Insufficient credits: {str(e)}'
+                }, room=sid)
+                return
+            except Exception as e:
+                # Continue with conversation even if credit consumption fails
+                logger.error(f"Credit consumption failed: {e}")
         
         # Start the conversation stream
         try:

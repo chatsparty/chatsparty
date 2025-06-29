@@ -95,6 +95,7 @@ class ConnectionCreateRequest(BaseModel):
     model_name: str
     api_key: Optional[str] = None
     base_url: Optional[str] = None
+    is_default: Optional[bool] = False
 
 
 class ConnectionUpdateRequest(BaseModel):
@@ -105,6 +106,7 @@ class ConnectionUpdateRequest(BaseModel):
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
 
 
 class ConnectionResponse(BaseModel):
@@ -118,6 +120,7 @@ class ConnectionResponse(BaseModel):
     created_at: str
     updated_at: str
     is_active: bool = True
+    is_default: bool = False
 
 
 class ConnectionTestResult(BaseModel):

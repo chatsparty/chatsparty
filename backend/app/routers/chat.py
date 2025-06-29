@@ -20,9 +20,40 @@ from ..services.ai import AIServiceFacade, get_ai_service
 from ..services.ai.infrastructure.unified_model_service import get_initialized_unified_model_service
 from ..services.connection_service import connection_service
 from ..services.websocket_service import websocket_service
+from ..middleware.credit_middleware import require_credits, get_credit_service, CreditCheckDependency
+from ..models.credit import CreditConsumptionReason, CreditConsumptionRequest
+from ..services.credit.application.credit_service import CreditService, InsufficientCreditsError
 from .auth import get_current_user_dependency
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+async def consume_credits_for_connection(connection_id: str, user_id: str, reason: CreditConsumptionReason = CreditConsumptionReason.CHAT_MESSAGE):
+    """Consume credits based on the connection/provider used"""
+    try:
+        connection = connection_service.get_connection(connection_id, user_id)
+        if not connection:
+            return  # No connection found, skip credit consumption
+        
+        # Get cost for this provider/model
+        credit_service = get_credit_service()
+        model_cost = await credit_service.get_model_cost(connection.provider, connection.model_name)
+        
+        if model_cost.cost_per_message > 0:  # Only consume if there's a cost
+            consumption_request = CreditConsumptionRequest(
+                amount=model_cost.cost_per_message,
+                reason=reason,
+                description=f"Chat with {connection.provider}:{connection.model_name}",
+                metadata={
+                    "connection_id": connection_id,
+                    "provider": connection.provider,
+                    "model_name": connection.model_name
+                }
+            )
+            await credit_service.consume_credits(user_id, consumption_request)
+    except Exception as e:
+        # Log error but don't fail the request - credits are not critical for basic functionality
+        pass
 
 
 @router.post("/agents", response_model=AgentResponse)
@@ -183,6 +214,18 @@ async def chat_with_agent(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
+        # Get agent to find its connection_id
+        agent = ai_service.get_agent(chat_request.agent_id, current_user.id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        # Consume credits before processing
+        await consume_credits_for_connection(
+            agent.connection_id, 
+            current_user.id, 
+            CreditConsumptionReason.CHAT_MESSAGE
+        )
+        
         response = await ai_service.agent_chat(
             chat_request.agent_id,
             chat_request.message,
@@ -190,6 +233,8 @@ async def chat_with_agent(
             current_user.id
         )
         return ChatResponse(response=response, type="agent_response")
+    except InsufficientCreditsError as e:
+        raise e  # Let the error handler deal with it
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Agent chat error: {str(e)}")
@@ -202,6 +247,27 @@ async def start_multi_agent_conversation(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
+        # Calculate credits needed for multi-agent conversation
+        # Each agent * max_turns * average cost
+        credit_service = get_credit_service()
+        estimated_cost = await credit_service.calculate_conversation_cost(
+            agent_count=len(conversation_request.agent_ids),
+            max_turns=conversation_request.max_turns
+        )
+        
+        # Consume credits upfront for multi-agent conversation
+        consumption_request = CreditConsumptionRequest(
+            amount=estimated_cost,
+            reason=CreditConsumptionReason.MULTI_AGENT_CONVERSATION,
+            description=f"Multi-agent conversation with {len(conversation_request.agent_ids)} agents, {conversation_request.max_turns} max turns",
+            metadata={
+                "agent_count": len(conversation_request.agent_ids),
+                "max_turns": conversation_request.max_turns,
+                "conversation_id": conversation_request.conversation_id
+            }
+        )
+        await credit_service.consume_credits(current_user.id, consumption_request)
+        
         file_attachments = None
         if conversation_request.file_attachments:
             file_attachments = [
@@ -223,6 +289,8 @@ async def start_multi_agent_conversation(
             conversation_request.project_id
         )
         return [ConversationMessage(**msg) for msg in conversation_log]
+    except InsufficientCreditsError as e:
+        raise e  # Let the error handler deal with it
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Multi-agent conversation error: {str(e)}")

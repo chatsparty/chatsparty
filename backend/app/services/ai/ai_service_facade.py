@@ -91,9 +91,9 @@ class AIServiceFacade(AIServiceInterface):
 
             updated_agent = Agent(
                 agent_id=agent_id,
-                name=name,
-                prompt=prompt,
-                characteristics=characteristics,
+                name=name or existing_agent.name,
+                prompt=prompt or existing_agent.prompt,
+                characteristics=characteristics or existing_agent.characteristics,
                 model_config=model_configuration,
                 chat_style=chat_style_obj,
                 connection_id=connection_id or existing_agent.connection_id,

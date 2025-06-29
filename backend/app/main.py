@@ -2,6 +2,7 @@ from .routers import (
     auth,
     chat,
     connections,
+    credit,
     files,
     health,
     mcp,
@@ -78,6 +79,13 @@ app.include_router(voice_connections.router)
 app.include_router(podcast.router)
 app.include_router(files.router)
 app.include_router(mcp.router)
+app.include_router(credit.router)
+
+# Add credit exception handler
+from .services.credit.application.credit_service import InsufficientCreditsError
+from .middleware.credit_middleware import credit_exception_handler
+
+app.add_exception_handler(InsufficientCreditsError, credit_exception_handler)
 
 
 def signal_handler(signum):

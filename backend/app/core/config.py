@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    
+    # Default ChatsParty Connection Configuration
+    chatsparty_default_enabled: bool = True
+    chatsparty_default_model: str = "gemini-2.5-flash"
+    chatsparty_default_api_key: Optional[str] = None
+    chatsparty_default_base_url: Optional[str] = None
+    
     vm_provider: str = "docker"
     docker_image: str = "wisty-dev-capsule"
     docker_mode: str = "local"

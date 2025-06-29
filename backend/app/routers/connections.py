@@ -108,11 +108,22 @@ async def update_connection(connection_id: str, request: ConnectionUpdateRequest
 @router.delete("/connections/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_connection(connection_id: str, current_user: User = Depends(get_current_user_dependency)):
     """Delete a model connection"""
-    success = connection_service.delete_connection(connection_id, current_user.id)
-    if not success:
+    try:
+        success = connection_service.delete_connection(connection_id, current_user.id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Connection not found"
+            )
+    except ValueError as e:
+        if "Cannot delete the default" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot delete the default ChatsParty connection"
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Connection not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
 
 
@@ -128,7 +139,7 @@ async def test_connection(connection_id: str, current_user: User = Depends(get_c
 @router.post("/connections/mcp/test", response_model=ConnectionTestResult)
 async def test_mcp_connection(
     request: MCPTestRequest,
-    current_user: User = Depends(get_current_user_dependency)
+    _current_user: User = Depends(get_current_user_dependency)
 ):
     """Test MCP server connection without storing it"""
     try:
