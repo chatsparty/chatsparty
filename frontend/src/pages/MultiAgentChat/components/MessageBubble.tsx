@@ -5,11 +5,13 @@ import type { ConversationMessage } from "../types";
 interface MessageBubbleProps {
   message: ConversationMessage;
   getAgentColor: (agentId: string) => string;
+  isMobile?: boolean;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   getAgentColor,
+  isMobile = false,
 }) => {
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], {
@@ -81,10 +83,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         </div>
         <div
-          className={`max-w-[85%] px-5 py-4 rounded-2xl shadow-sm whitespace-pre-wrap leading-relaxed relative transition-all hover:shadow-md ${
+          className={`${isMobile ? 'max-w-[90%] px-4 py-3' : 'max-w-[85%] px-5 py-4'} rounded-2xl shadow-md whitespace-pre-wrap leading-relaxed relative transition-all hover:shadow-lg ${
             message.speaker === "user"
-              ? "bg-primary text-primary-foreground ml-8"
-              : "bg-card border border-border text-card-foreground"
+              ? `bg-primary text-primary-foreground ${isMobile ? 'ml-4' : 'ml-8'}`
+              : "bg-card border border-border/60 text-card-foreground"
           }`}
           style={{
             backgroundColor:
@@ -126,7 +128,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             </div>
           ) : (
-            <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
+            <div className={`${isMobile ? 'text-xs' : 'text-sm'} prose prose-sm max-w-none dark:prose-invert`}>
               <ReactMarkdown
                 components={{
                   p: ({ children }) => (

@@ -10,9 +10,6 @@ import { Textarea } from "../../../components/ui/textarea";
 import { Label } from "../../../components/ui/label";
 import { Badge } from "../../../components/ui/badge";
 import {
-  Users,
-  AlertTriangle,
-  CheckCircle,
   Mic,
   Download,
   Loader2,
@@ -22,7 +19,6 @@ import {
   Search,
 } from "lucide-react";
 import axios from "axios";
-import { API_BASE_URL } from "../../../config/api";
 
 interface ChatAreaProps {
   activeConversation: ActiveConversation | undefined;
@@ -32,15 +28,18 @@ interface ChatAreaProps {
   onConversationUpdated: () => Promise<void>;
   onStartNewConversation: (selectedAgents: string[], initialMessage: string) => Promise<void>;
   onSendMessage?: (conversationId: string, message: string, selectedAgents: string[]) => Promise<void>;
+  isMobile?: boolean;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
   activeConversation,
   agents,
+  getAgentName,
   getAgentColor,
   onConversationUpdated,
   onStartNewConversation,
   onSendMessage,
+  isMobile = false,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
@@ -419,9 +418,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   if (!activeConversation) {
     return (
       <div className="flex-1 flex flex-col">
-        <div className="p-6 border-b border-border bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <Label className="text-sm font-medium text-foreground">To:</Label>
+        <div className={`border-b border-border bg-card/50 backdrop-blur-sm ${isMobile ? 'p-3' : 'p-4'}`}>
+          <div className={`${isMobile ? '' : 'max-w-4xl mx-auto'}`}>
+            <div className="flex items-center gap-3">
+              <Label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-foreground`}>To:</Label>
             <div className="flex-1 flex flex-wrap items-center gap-2">
               {selectedAgentsForMessage.map(agentId => {
                 const agent = agents.find(a => a.agent_id === agentId);
@@ -452,85 +452,69 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAgentModal(true)}
-                className="h-7 px-2 text-xs ml-auto"
+                className={`h-7 px-2 text-xs ${isMobile ? '' : 'ml-auto'}`}
               >
                 <Plus className="w-3 h-3 mr-1" /> Select Agents
               </Button>
             </div>
           </div>
         </div>
-        
-        <div className="flex-1 flex flex-col justify-center items-center p-10 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-            <Users className="w-10 h-10 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-4">
-            Multi-Agent Conversations
-          </h2>
-          <p className="text-muted-foreground text-base mb-8 max-w-lg leading-relaxed">
-            Create engaging conversations between multiple AI agents. Each agent
-            will respond according to their unique characteristics and prompts.
-          </p>
-
-        {agents.length < 2 ? (
-          <div className="p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-xl max-w-md">
-            <div className="flex items-center gap-3 mb-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-600" />
-              <strong className="text-yellow-800 dark:text-yellow-200 font-semibold">
-                Getting Started
-              </strong>
-            </div>
-            <p className="text-yellow-700 dark:text-yellow-300 text-sm">
-              Create at least 2 agents in the Agent Manager tab before starting
-              conversations.
-            </p>
-          </div>
-        ) : (
-          <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl max-w-md">
-            <div className="flex items-center gap-3 mb-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <strong className="text-green-800 dark:text-green-200 font-semibold">
-                Ready to go!
-              </strong>
-            </div>
-            <p className="text-green-700 dark:text-green-300 text-sm">
-              You have {agents.length} agents available. Click "Start New
-              Conversation" to begin.
-            </p>
-          </div>
-        )}
         </div>
         
-        <div className="border-t border-border bg-card p-4">
-          <div className="max-w-4xl mx-auto flex gap-3">
-            <Textarea
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
+        <div className={`flex-1 flex flex-col justify-center items-center ${isMobile ? 'p-6' : 'p-10'}`}>
+          <div className="mb-6 text-center">
+            <div className="flex -space-x-2 mb-3 justify-center">
+              <div className="w-8 h-8 rounded-full bg-muted-foreground/30 border-2 border-background"></div>
+              <div className="w-8 h-8 rounded-full bg-muted-foreground/30 border-2 border-background"></div>
+              <div className="w-8 h-8 rounded-full bg-muted-foreground/30 border-2 border-background flex items-center justify-center">
+                <Plus className="w-4 h-4 text-muted-foreground/70" />
+              </div>
+            </div>
+            <div>
+              <p className={`text-foreground/90 font-medium ${isMobile ? 'text-sm' : 'text-base'} mb-1`}>
+                Multi-Agent Chat
+              </p>
+              <p className={`text-muted-foreground/80 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                {agents.length < 2 ? 'Add agents to start' : 'Select agents and type to begin'}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className={`border-t border-border/50 bg-background/50 backdrop-blur-sm ${isMobile ? 'p-3' : 'p-4'}`}>
+          <div className={`${isMobile ? '' : 'max-w-4xl mx-auto'} relative`}>
+            <div className="relative">
+              <Textarea
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={selectedAgentsForMessage.length >= 2 
+                  ? "Message..."
+                  : "Select agents to start..."
                 }
-              }}
-              placeholder={selectedAgentsForMessage.length >= 2 
-                ? "Type your message to start the conversation..."
-                : "Select at least 2 agents above to start chatting..."
-              }
-              rows={2}
-              disabled={selectedAgentsForMessage.length < 2 || isSendingMessage}
-              className="flex-1 resize-none"
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!messageInput.trim() || selectedAgentsForMessage.length < 2 || isSendingMessage}
-              className="h-auto px-6"
-            >
-              {isSendingMessage ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
+                rows={1}
+                disabled={selectedAgentsForMessage.length < 2 || isSendingMessage}
+                className="w-full resize-none border border-border bg-background rounded-full px-4 py-3 pr-12 focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-muted-foreground shadow-sm"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!messageInput.trim() || selectedAgentsForMessage.length < 2 || isSendingMessage}
+                size="sm"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full p-0 bg-primary hover:bg-primary/90 text-primary-foreground border-0 disabled:opacity-50 shadow-sm"
+                variant="ghost"
+              >
+                {isSendingMessage ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
         
@@ -659,10 +643,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   return (
     <>
-      <div className="p-6 border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="mb-4">
-          <div className="flex items-center gap-3">
-            <Label className="text-sm font-medium text-foreground">To:</Label>
+      <div className={`border-b border-border bg-card/50 backdrop-blur-sm ${isMobile ? 'p-3' : 'p-4'}`}>
+        <div className={`${isMobile ? '' : 'max-w-4xl mx-auto'}`}>
+          <div className={`${isMobile ? 'mb-2' : 'mb-4'}`}>
+            <div className="flex items-center gap-3">
+              <Label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-foreground`}>To:</Label>
             <div className="flex-1 flex flex-wrap items-center gap-2">
               {selectedAgentsForMessage.map(agentId => {
                 const agent = agents.find(a => a.agent_id === agentId);
@@ -696,11 +681,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">
+        <div className={`flex items-center ${isMobile ? 'flex-col gap-2' : 'justify-between'}`}>
+          <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-foreground`}>
             {activeConversation.name}
           </h3>
-          <div className="flex items-center gap-4">
+          <div className={`flex items-center ${isMobile ? 'flex-wrap gap-2 justify-center' : 'gap-4'}`}>
             {activeConversation.messages.length > 0 && (
               <Button
                 onClick={handleOpenShareModal}
@@ -784,16 +769,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             </div>
           </div>
         </div>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-background/50">
+      <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-4' : 'p-6'} flex flex-col ${isMobile ? 'gap-4' : 'gap-6'} bg-background/50`}>
         {activeConversation.messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl opacity-50">💬</span>
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-2 mb-3">
+                <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
               </div>
-              <p className="text-sm">Conversation starting...</p>
+              <p className="text-xs text-muted-foreground/80">Starting conversation</p>
             </div>
           </div>
         ) : (
@@ -802,42 +790,47 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               key={index}
               message={message}
               getAgentColor={getAgentColor}
+              isMobile={isMobile}
             />
           ))
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t border-border bg-card p-4">
-        <div className="max-w-4xl mx-auto flex gap-3">
-          <Textarea
-            value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
+      <div className={`border-t border-border/50 bg-background/50 backdrop-blur-sm ${isMobile ? 'p-3' : 'p-4'}`}>
+        <div className={`${isMobile ? '' : 'max-w-4xl mx-auto'} relative`}>
+          <div className="relative">
+            <Textarea
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder={selectedAgentsForMessage.length >= 2 
+                ? "Message..."
+                : "Select agents to continue..."
               }
-            }}
-            placeholder={selectedAgentsForMessage.length >= 2 
-              ? "Type your message..."
-              : "Select at least 2 agents in the header to continue..."
-            }
-            rows={2}
-            disabled={selectedAgentsForMessage.length < 2 || isSendingMessage}
-            className="flex-1 resize-none"
-          />
-          <Button
-            onClick={handleSendMessage}
-            disabled={!messageInput.trim() || selectedAgentsForMessage.length < 2 || isSendingMessage}
-            className="h-auto px-6"
-          >
-            {isSendingMessage ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
+              rows={1}
+              disabled={selectedAgentsForMessage.length < 2 || isSendingMessage}
+              className="w-full resize-none border border-border bg-background rounded-full px-4 py-3 pr-12 focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-muted-foreground shadow-sm"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!messageInput.trim() || selectedAgentsForMessage.length < 2 || isSendingMessage}
+              size="sm"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full p-0 bg-primary hover:bg-primary/90 text-primary-foreground border-0 disabled:opacity-50 shadow-sm"
+              variant="ghost"
+            >
+              {isSendingMessage ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
