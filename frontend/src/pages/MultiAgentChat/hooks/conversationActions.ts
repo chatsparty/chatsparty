@@ -49,11 +49,7 @@ export const useConversationActions = (
         id: conversationId,
         name: finalAgents.map(id => getAgentName(id)).join(' & '),
         agents: finalAgents,
-        messages: [{
-          speaker: 'user',
-          message: finalMessage,
-          timestamp: Date.now() / 1000
-        }],
+        messages: [],
         isActive: true
       };
 

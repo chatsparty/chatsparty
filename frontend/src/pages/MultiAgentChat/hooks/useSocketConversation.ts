@@ -173,26 +173,8 @@ export const useSocketConversation = ({
       }
     }
 
-    setConversations(prev => 
-      prev.map(conv => {
-        if (conv.id === conversationId) {
-          const userMessage: ConversationMessage = {
-            speaker: 'user',
-            message: message,
-            timestamp: Date.now() / 1000
-          };
-          return {
-            ...conv,
-            messages: [...conv.messages, userMessage],
-            isActive: true
-          };
-        }
-        return conv;
-      })
-    );
-
     socketService.sendMessage(conversationId, message, agentIds);
-  }, [setConversations]);
+  }, []);
 
   return {
     startSocketConversation,

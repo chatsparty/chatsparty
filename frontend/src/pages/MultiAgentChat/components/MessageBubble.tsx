@@ -49,14 +49,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         }
       `}</style>
       <div
-        className={`flex flex-col message-bubble ${
-          message.speaker === "user" ? "items-end" : "items-start"
-        }`}
+        className={`flex items-end message-bubble ${
+          message.speaker === "user" ? "justify-end" : "justify-start"
+        } group`}
       >
-        <div className="flex items-center gap-3 mb-2">
-          {message.speaker !== "user" && (
+        {message.speaker !== "user" && (
+          <div className="flex items-end mr-2 mb-1">
             <div
-              className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
               style={{
                 backgroundColor: message.agent_id
                   ? getAgentColor(message.agent_id)
@@ -65,62 +65,54 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             >
               {message.speaker ? message.speaker.charAt(0).toUpperCase() : "A"}
             </div>
-          )}
-          <div className="flex flex-col">
-            <span
-              className="text-xs font-semibold"
-              style={{
-                color: message.agent_id
-                  ? getAgentColor(message.agent_id)
-                  : "hsl(var(--foreground))",
-              }}
-            >
+          </div>
+        )}
+        <div className="flex flex-col max-w-[70%]">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-muted-foreground mb-1 px-3">
+            <span className="font-medium">
               {message.speaker === "user" ? "You" : message.speaker}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {formatTime(message.timestamp)}
-            </span>
+            <span className="ml-2">{formatTime(message.timestamp)}</span>
           </div>
-        </div>
-        <div
-          className={`${isMobile ? 'max-w-[90%] px-4 py-3' : 'max-w-[85%] px-5 py-4'} rounded-2xl shadow-md whitespace-pre-wrap leading-relaxed relative transition-all hover:shadow-lg ${
-            message.speaker === "user"
-              ? `bg-primary text-primary-foreground ${isMobile ? 'ml-4' : 'ml-8'}`
-              : "bg-card border border-border/60 text-card-foreground"
-          }`}
-          style={{
-            backgroundColor:
+          <div
+            className={`px-3 py-2 rounded-2xl relative ${
               message.speaker === "user"
-                ? undefined
-                : message.agent_id
-                ? `${getAgentColor(message.agent_id)}08`
-                : undefined,
-            borderColor: message.agent_id
-              ? `${getAgentColor(message.agent_id)}20`
-              : undefined,
-          }}
-        >
+                ? "bg-blue-500 text-white rounded-br-md"
+                : "bg-gray-100 text-gray-900 rounded-bl-md"
+            }`}
+            style={{
+              backgroundColor:
+                message.speaker === "user"
+                  ? "#0084ff"
+                  : message.agent_id
+                  ? `${getAgentColor(message.agent_id)}15`
+                  : "#f1f3f4",
+            }}
+          >
           {message.message === "..." ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="text-sm">typing</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm opacity-70">typing</span>
               <div className="flex gap-1">
                 <div
-                  className="w-1.5 h-1.5 rounded-full bg-current opacity-60"
+                  className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
+                    backgroundColor: message.speaker === "user" ? "#ffffff" : "#666666",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0s",
                   }}
                 />
                 <div
-                  className="w-1.5 h-1.5 rounded-full bg-current opacity-60"
+                  className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
+                    backgroundColor: message.speaker === "user" ? "#ffffff" : "#666666",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0.2s",
                   }}
                 />
                 <div
-                  className="w-1.5 h-1.5 rounded-full bg-current opacity-60"
+                  className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
+                    backgroundColor: message.speaker === "user" ? "#ffffff" : "#666666",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0.4s",
                   }}
@@ -128,7 +120,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             </div>
           ) : (
-            <div className={`${isMobile ? 'text-xs' : 'text-sm'} prose prose-sm max-w-none dark:prose-invert`}>
+            <div className={`${isMobile ? 'text-sm' : 'text-sm'} leading-relaxed`}>
               <ReactMarkdown
                 components={{
                   p: ({ children }) => (
@@ -183,6 +175,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               </ReactMarkdown>
             </div>
           )}
+          </div>
         </div>
       </div>
     </>

@@ -481,7 +481,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         </div>
         
-        <div className={`border-t border-border/50 bg-background/50 backdrop-blur-sm ${isMobile ? 'p-3' : 'p-4'}`}>
+        <div className={`border-t border-border/50 bg-background/50 backdrop-blur-sm ${isMobile ? 'px-6 py-3' : 'px-8 py-4'}`}>
           <div className={`${isMobile ? '' : 'max-w-4xl mx-auto'} relative`}>
             <div className="relative">
               <Textarea
@@ -772,7 +772,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
       </div>
 
-      <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-4' : 'p-6'} flex flex-col ${isMobile ? 'gap-4' : 'gap-6'} bg-background/50`}>
+      <div className={`flex-1 overflow-y-auto ${isMobile ? 'px-6 py-3' : 'px-8 py-4'} flex flex-col ${isMobile ? 'gap-3' : 'gap-4'} bg-background/50`}>
+        <div className={`${isMobile ? '' : 'max-w-4xl mx-auto w-full'} flex flex-col ${isMobile ? 'gap-3' : 'gap-4'}`}>
         {activeConversation.messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -795,9 +796,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           ))
         )}
         <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      <div className={`border-t border-border/50 bg-background/50 backdrop-blur-sm ${isMobile ? 'p-3' : 'p-4'}`}>
+      <div className={`border-t border-border/50 bg-background/50 backdrop-blur-sm ${isMobile ? 'px-6 py-3' : 'px-8 py-4'}`}>
         <div className={`${isMobile ? '' : 'max-w-4xl mx-auto'} relative`}>
           <div className="relative">
             <Textarea
