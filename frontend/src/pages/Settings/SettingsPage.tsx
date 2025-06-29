@@ -1,8 +1,7 @@
 import type { SettingsItem } from "@/components/settings";
 import { SettingsContent, SettingsSidebar } from "@/components/settings";
-import { Server } from "lucide-react";
+import { Server, Settings, Shield, Mic, Plug, User, Coins } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { FaCog, FaLock, FaMicrophone, FaPlug, FaUser, FaCoins } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CREDITS_ENABLED } from "@/config/features";
 
@@ -10,6 +9,7 @@ export const SettingsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedItem, setSelectedItem] = useState("general");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Extract the settings section from the URL path
   const getSettingsSectionFromPath = (pathname: string) => {
@@ -27,6 +27,7 @@ export const SettingsPage: React.FC = () => {
 
   const handleItemSelect = (itemId: string) => {
     setSelectedItem(itemId);
+    setIsMobileMenuOpen(false); // Close mobile menu when item is selected
     if (itemId === "general") {
       navigate("/settings/general");
     } else {
@@ -40,14 +41,14 @@ export const SettingsPage: React.FC = () => {
       path: "/settings/general",
       label: "General",
       description: "General application settings",
-      icon: FaCog,
+      icon: Settings,
     },
     {
       id: "connections",
       path: "/settings/connections",
       label: "Model Connections",
       description: "Manage your AI model connections and configurations",
-      icon: FaPlug,
+      icon: Plug,
     },
     {
       id: "voice-connections",
@@ -55,7 +56,7 @@ export const SettingsPage: React.FC = () => {
       label: "Voice Connections",
       description:
         "Manage your voice synthesis and speech recognition connections",
-      icon: FaMicrophone,
+      icon: Mic,
     },
     {
       id: "mcp-servers",
@@ -70,14 +71,14 @@ export const SettingsPage: React.FC = () => {
       path: "/settings/credits",
       label: "Credits",
       description: "Manage your credits and billing information",
-      icon: FaCoins,
+      icon: Coins,
     }] : []),
     {
       id: "profile",
       path: "#",
       label: "Profile",
       description: "Update your profile information and preferences",
-      icon: FaUser,
+      icon: User,
       disabled: true,
     },
     {
@@ -85,18 +86,25 @@ export const SettingsPage: React.FC = () => {
       path: "#",
       label: "Security",
       description: "Manage your account security and privacy settings",
-      icon: FaLock,
+      icon: Shield,
       disabled: true,
     },
   ];
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
       <SettingsSidebar
         settingsItems={settingsItems}
         onItemSelect={handleItemSelect}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onMobileMenuClose={() => setIsMobileMenuOpen(false)}
       />
-      <SettingsContent selectedItem={selectedItem} />
+      <div className="flex-1 md:ml-0 min-w-0">
+        <SettingsContent 
+          selectedItem={selectedItem} 
+          onMobileMenuOpen={() => setIsMobileMenuOpen(true)}
+        />
+      </div>
     </div>
   );
 };

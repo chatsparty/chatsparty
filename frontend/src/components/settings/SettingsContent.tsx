@@ -1,4 +1,5 @@
 import React from "react";
+import { Menu } from "lucide-react";
 import { ConnectionsManagement } from "./ConnectionsManagement";
 import { CreditsManagement } from "./CreditsManagement";
 import { VoiceConnectionList } from "../voice/VoiceConnectionList";
@@ -7,10 +8,12 @@ import { CREDITS_ENABLED } from "@/config/features";
 
 interface SettingsContentProps {
   selectedItem: string;
+  onMobileMenuOpen?: () => void;
 }
 
 export const SettingsContent: React.FC<SettingsContentProps> = ({
   selectedItem,
+  onMobileMenuOpen,
 }) => {
   const renderContent = () => {
     switch (selectedItem) {
@@ -54,8 +57,22 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
   };
 
   return (
-    <div className="flex-1 p-6 overflow-auto">
-      {renderContent()}
+    <div className="flex-1 flex flex-col overflow-auto">
+      {/* Mobile Header */}
+      <div className="md:hidden flex items-center gap-3 p-4 border-b border-border/50 bg-card/50">
+        <button
+          onClick={onMobileMenuOpen}
+          className="p-2 hover:bg-accent rounded-lg transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <h1 className="text-lg font-medium">Settings</h1>
+      </div>
+      
+      {/* Content */}
+      <div className="flex-1 p-6">
+        {renderContent()}
+      </div>
     </div>
   );
 };
