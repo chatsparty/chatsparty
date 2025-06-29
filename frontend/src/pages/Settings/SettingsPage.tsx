@@ -4,6 +4,7 @@ import { Server } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { FaCog, FaLock, FaMicrophone, FaPlug, FaUser, FaCoins } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
+import { CREDITS_ENABLED } from "@/config/features";
 
 export const SettingsPage: React.FC = () => {
   const location = useLocation();
@@ -64,13 +65,13 @@ export const SettingsPage: React.FC = () => {
         "Manage Model Context Protocol servers that provide tools for your agents",
       icon: Server,
     },
-    {
+    ...(CREDITS_ENABLED ? [{
       id: "credits",
       path: "/settings/credits",
       label: "Credits",
       description: "Manage your credits and billing information",
       icon: FaCoins,
-    },
+    }] : []),
     {
       id: "profile",
       path: "#",

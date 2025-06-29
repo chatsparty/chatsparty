@@ -28,7 +28,7 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Credit system fields
-    credits_balance: Mapped[int] = mapped_column(Integer, default=100)
+    credits_balance: Mapped[int] = mapped_column(Integer, default=10000)
     credits_used: Mapped[int] = mapped_column(Integer, default=0)
     credits_purchased: Mapped[int] = mapped_column(Integer, default=0)
     credit_plan: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

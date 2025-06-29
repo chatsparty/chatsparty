@@ -36,8 +36,8 @@ class CreditService(CreditServiceInterface):
         balance = await self.repository.get_user_balance(user_id)
         
         if not balance:
-            # Get initial credits from settings or use default
-            initial_credits = getattr(settings, 'INITIAL_FREE_CREDITS', 100)
+            # Get initial credits from settings or use default (10,000 = $100 worth)
+            initial_credits = getattr(settings, 'INITIAL_FREE_CREDITS', 10000)
             balance = CreditBalance(
                 user_id=user_id,
                 balance=initial_credits,

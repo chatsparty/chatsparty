@@ -3,6 +3,7 @@ import { ConnectionsManagement } from "./ConnectionsManagement";
 import { CreditsManagement } from "./CreditsManagement";
 import { VoiceConnectionList } from "../voice/VoiceConnectionList";
 import MCPServersPage from "../../pages/MCPServers";
+import { CREDITS_ENABLED } from "@/config/features";
 
 interface SettingsContentProps {
   selectedItem: string;
@@ -37,7 +38,7 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
       case "mcp-servers":
         return <MCPServersPage />;
       case "credits":
-        return <CreditsManagement />;
+        return CREDITS_ENABLED ? <CreditsManagement /> : null;
       default:
         return (
           <div className="space-y-6">

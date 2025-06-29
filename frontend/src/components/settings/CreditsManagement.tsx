@@ -31,11 +31,6 @@ export const CreditsManagement: React.FC = () => {
     fetchData();
   }, [showToast]);
 
-  const formatCurrency = (amount: number) => {
-    // Convert credits to currency - this could be made configurable
-    const CREDIT_TO_DOLLAR_RATE = 0.01; // 1 credit = $0.01
-    return (amount * CREDIT_TO_DOLLAR_RATE).toFixed(2);
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -95,10 +90,10 @@ export const CreditsManagement: React.FC = () => {
                 <span className="text-sm font-medium text-muted-foreground">Current Balance</span>
               </div>
               <div className="text-4xl font-light text-foreground">
-                ${balance ? formatCurrency(balance.balance) : '0.00'}
+                {balance?.balance?.toLocaleString() || '0'} credits
               </div>
               <div className="text-sm text-muted-foreground">
-                {balance?.balance || 0} credits available
+                Available for conversations
               </div>
             </div>
             <div className="text-right space-y-1">
@@ -141,10 +136,10 @@ export const CreditsManagement: React.FC = () => {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <div className="font-medium text-green-600 dark:text-green-400">
-                          +${formatCurrency(transaction.amount)}
+                          +{transaction.amount.toLocaleString()} credits
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {transaction.amount} credits
+                          {transaction.reason}
                         </div>
                       </div>
                       <button className="flex items-center gap-1 text-sm text-blue-600 hover:underline">

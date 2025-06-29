@@ -7,7 +7,7 @@ import ChatArea from "./components/ChatArea";
 import FileAttachmentSidebar from "./components/FileAttachmentSidebar";
 import type { AttachedFile } from "./types";
 import { Button } from "../../components/ui/button";
-import { X, Paperclip, MessageCircle, Files, ChevronRight, ChevronLeft } from "lucide-react";
+import { X, Paperclip, MessageCircle, Files, ChevronRight } from "lucide-react";
 
 const MultiAgentChatPage: React.FC = () => {
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
@@ -17,7 +17,6 @@ const MultiAgentChatPage: React.FC = () => {
   const [activeView, setActiveView] = useState<'chat' | 'conversations' | 'files'>('chat');
 
   const handleCreateNewConversation = () => {
-    // Clear current conversation to show empty state
     setActiveConversation(null);
   };
 

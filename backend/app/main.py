@@ -15,7 +15,6 @@ from .core.database import db_manager
 from .core.config import create_app
 from contextlib import asynccontextmanager
 from .services.websocket_service import websocket_service
-# Import chat_socketio to register Socket.IO events
 from .routers import chat_socketio
 
 from dotenv import load_dotenv
@@ -43,7 +42,7 @@ async def lifespan(app):
     
     try:
         from .services.docker.background_port_service import get_background_port_service
-        get_background_port_service()  # This starts the worker
+        get_background_port_service()
         print("✅ Background port service started successfully")
     except Exception as e:
         print(f"⚠️ Background port service startup failed: {e}")
@@ -66,7 +65,6 @@ async def lifespan(app):
 
 app = create_app(lifespan=lifespan)
 
-# Mount Socket.IO app
 app.mount("/socket.io", websocket_service.get_socketio_app())
 
 app.include_router(health.router)
@@ -79,13 +77,15 @@ app.include_router(voice_connections.router)
 app.include_router(podcast.router)
 app.include_router(files.router)
 app.include_router(mcp.router)
-app.include_router(credit.router)
+from .core.config import settings
 
-# Add credit exception handler
-from .services.credit.application.credit_service import InsufficientCreditsError
-from .middleware.credit_middleware import credit_exception_handler
-
-app.add_exception_handler(InsufficientCreditsError, credit_exception_handler)
+if settings.enable_credits:
+    app.include_router(credit.router)
+    
+    from .services.credit.application.credit_service import InsufficientCreditsError
+    from .middleware.credit_middleware import credit_exception_handler
+    
+    app.add_exception_handler(InsufficientCreditsError, credit_exception_handler)
 
 
 def signal_handler(signum):
