@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import Avatar from "boring-avatars";
 import type { ConversationMessage } from "../types";
 
 interface MessageBubbleProps {
@@ -65,15 +66,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       >
         {message.speaker !== "user" && (
           <div className="flex items-end mr-2 mb-1">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
-              style={{
-                backgroundColor: message.agent_id
-                  ? getAgentColor(message.agent_id)
-                  : "#6b7280",
-              }}
-            >
-              {message.speaker ? message.speaker.charAt(0).toUpperCase() : "A"}
+            <div className="w-8 h-8 rounded-full overflow-hidden shadow-sm">
+              <Avatar
+                size={32}
+                name={message.speaker || message.agent_id || "Agent"}
+                variant="beam"
+                colors={[
+                  getAgentColor(message.agent_id || "default"),
+                  "#92A1C6",
+                  "#146A7C",
+                  "#F0AB3D",
+                  "#C271B4"
+                ]}
+              />
             </div>
           </div>
         )}
