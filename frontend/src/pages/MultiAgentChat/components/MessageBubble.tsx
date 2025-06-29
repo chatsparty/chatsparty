@@ -1,5 +1,8 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import type { ConversationMessage } from "../types";
 
 interface MessageBubbleProps {
@@ -13,6 +16,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   getAgentColor,
   isMobile = false,
 }) => {
+  const navigate = useNavigate();
+  
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], {
       hour: "2-digit",
@@ -20,6 +25,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       second: "2-digit",
     });
   };
+
+  // Check if this is a credit error message
+  const creditErrorRegex = /I'm sorry, but you don't have enough credits.*Required: (\d+), Available: (\d+)/;
+  const creditErrorMatch = message.message.match(creditErrorRegex);
+  const isCreditError = !!creditErrorMatch;
 
   return (
     <>
@@ -78,12 +88,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             className={`px-3 py-2 rounded-2xl relative ${
               message.speaker === "user"
                 ? "bg-blue-500 text-white rounded-br-md"
+                : isCreditError
+                ? "bg-yellow-50 border border-yellow-200 text-gray-900 rounded-bl-md"
                 : "bg-gray-100 text-gray-900 rounded-bl-md"
             }`}
             style={{
               backgroundColor:
                 message.speaker === "user"
                   ? "#0084ff"
+                  : isCreditError
+                  ? undefined
                   : message.agent_id
                   ? `${getAgentColor(message.agent_id)}15`
                   : "#f1f3f4",
@@ -117,6 +131,37 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     animationDelay: "0.4s",
                   }}
                 />
+              </div>
+            </div>
+          ) : isCreditError ? (
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900 mb-1">
+                  Insufficient Credits
+                </p>
+                <p className="text-sm text-gray-600 mb-3">
+                  You don't have enough credits to continue this conversation.
+                </p>
+                {creditErrorMatch && (
+                  <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Required credits:</span>
+                      <span className="font-medium text-gray-900">{creditErrorMatch[1]}</span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-gray-600">Available credits:</span>
+                      <span className="font-medium text-gray-900">{creditErrorMatch[2]}</span>
+                    </div>
+                  </div>
+                )}
+                <Button
+                  onClick={() => navigate("/settings/credits")}
+                  size="sm"
+                  className="w-full"
+                >
+                  Get More Credits
+                </Button>
               </div>
             </div>
           ) : (

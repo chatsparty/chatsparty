@@ -60,33 +60,6 @@ async def start_multi_agent_conversation(sid, data):
         
         ai_service = get_ai_service()
         
-        if user_id and settings.enable_credits:
-            try:
-                credit_service = get_credit_service()
-                estimated_cost = await credit_service.calculate_conversation_cost(
-                    agent_count=len(agent_ids),
-                    max_turns=max_turns
-                )
-                
-                consumption_request = CreditConsumptionRequest(
-                    amount=estimated_cost,
-                    reason=CreditConsumptionReason.MULTI_AGENT_CONVERSATION,
-                    description=f"Multi-agent conversation with {len(agent_ids)} agents, {max_turns} max turns",
-                    metadata={
-                        "agent_count": len(agent_ids),
-                        "max_turns": max_turns,
-                        "conversation_id": conversation_id
-                    }
-                )
-                await credit_service.consume_credits(user_id, consumption_request)
-            except InsufficientCreditsError as e:
-                await sio.emit('conversation_error', {
-                    'conversation_id': conversation_id,
-                    'error': f'Insufficient credits: {str(e)}'
-                }, room=sid)
-                return
-            except Exception as e:
-                logger.error(f"Credit consumption failed: {e}")
         
         try:
             async for message in ai_service.multi_agent_conversation_stream(

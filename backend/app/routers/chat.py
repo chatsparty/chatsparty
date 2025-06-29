@@ -253,24 +253,7 @@ async def start_multi_agent_conversation(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
-        if settings.enable_credits:
-            credit_service = get_credit_service()
-            estimated_cost = await credit_service.calculate_conversation_cost(
-                agent_count=len(conversation_request.agent_ids),
-                max_turns=conversation_request.max_turns
-            )
-            
-            consumption_request = CreditConsumptionRequest(
-                amount=estimated_cost,
-                reason=CreditConsumptionReason.MULTI_AGENT_CONVERSATION,
-                description=f"Multi-agent conversation with {len(conversation_request.agent_ids)} agents, {conversation_request.max_turns} max turns",
-                metadata={
-                    "agent_count": len(conversation_request.agent_ids),
-                    "max_turns": conversation_request.max_turns,
-                    "conversation_id": conversation_request.conversation_id
-                }
-            )
-            await credit_service.consume_credits(current_user.id, consumption_request)
+        # Credit checking will now happen per AI request
         
         file_attachments = None
         if conversation_request.file_attachments:

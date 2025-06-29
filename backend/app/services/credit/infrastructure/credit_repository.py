@@ -60,11 +60,11 @@ class CreditRepository(CreditRepositoryInterface):
         """Create a new credit transaction record"""
         try:
             db_transaction = CreditTransactionModel(
-                id=transaction.transaction_id,
+                id=transaction.id,
                 user_id=transaction.user_id,
                 amount=transaction.amount,
                 transaction_type=transaction.transaction_type.value,
-                reason=transaction.reason.value,
+                reason=transaction.reason,
                 description=transaction.description,
                 transaction_metadata=transaction.metadata,
                 balance_after=transaction.balance_after
@@ -97,7 +97,7 @@ class CreditRepository(CreditRepositoryInterface):
             for db_tx in db_transactions:
                 from ..domain.entities import CreditTransactionType, CreditConsumptionReason
                 transactions.append(CreditTransaction(
-                    transaction_id=db_tx.id,
+                    id=db_tx.id,
                     user_id=db_tx.user_id,
                     amount=db_tx.amount,
                     transaction_type=CreditTransactionType(db_tx.transaction_type),

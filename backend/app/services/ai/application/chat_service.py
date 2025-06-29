@@ -42,7 +42,8 @@ class ChatService:
         response = await self._model_provider.chat_completion(
             conversation_messages,
             agent.get_system_prompt(),
-            agent.model_config
+            agent.model_config,
+            user_id=user_id
         )
         
         assistant_message = Message(role="assistant", content=response, speaker=agent.name, agent_id=agent_id)
@@ -122,7 +123,8 @@ class ChatService:
             response = await self._model_provider.chat_completion(
                 context_messages,
                 current_agent.get_system_prompt(),
-                current_agent.model_config
+                current_agent.model_config,
+                user_id=user_id
             )
             
             agent_message = Message(
@@ -140,6 +142,9 @@ class ChatService:
                 message=response,
                 timestamp=asyncio.get_event_loop().time()
             ))
+            
+            if "I'm sorry, but you don't have enough credits" in response:
+                break
             
             current_agent_index = (current_agent_index + 1) % len(agent_ids)
             
@@ -224,7 +229,8 @@ class ChatService:
             response = await self._model_provider.chat_completion(
                 context_messages,
                 current_agent.get_system_prompt(),
-                current_agent.model_config
+                current_agent.model_config,
+                user_id=user_id
             )
             
             agent_message = Message(
@@ -245,6 +251,9 @@ class ChatService:
             }
             conversation_log.append(agent_msg)
             yield agent_msg
+            
+            if "I'm sorry, but you don't have enough credits" in response:
+                break
             
             current_agent_index = (current_agent_index + 1) % len(agent_ids)
             

@@ -36,7 +36,6 @@ class CreditService(CreditServiceInterface):
         balance = await self.repository.get_user_balance(user_id)
         
         if not balance:
-            # Get initial credits from settings or use default (10,000 = $100 worth)
             initial_credits = getattr(settings, 'INITIAL_FREE_CREDITS', 10000)
             balance = CreditBalance(
                 user_id=user_id,
@@ -64,17 +63,13 @@ class CreditService(CreditServiceInterface):
         request: CreditConsumptionRequest
     ) -> CreditTransaction:
         """Consume credits from user's balance"""
-        # Get current balance
         balance = await self.get_balance(user_id)
         
-        # Check if user has enough credits
         if balance.balance < request.amount:
             raise InsufficientCreditsError(request.amount, balance.balance)
         
-        # Calculate new balance
         new_balance = balance.balance - request.amount
         
-        # Create transaction record
         transaction = CreditTransaction(
             id=str(uuid.uuid4()),
             user_id=user_id,
@@ -87,7 +82,6 @@ class CreditService(CreditServiceInterface):
             created_at=datetime.now(timezone.utc)
         )
         
-        # Update balance and create transaction atomically
         await self.repository.update_user_balance(
             user_id=user_id,
             new_balance=new_balance,
@@ -105,20 +99,16 @@ class CreditService(CreditServiceInterface):
         description: Optional[str] = None
     ) -> CreditTransaction:
         """Add credits to user's balance"""
-        # Get current balance
         balance = await self.get_balance(user_id)
         
-        # Calculate new balance
         new_balance = balance.balance + amount
         
-        # Determine transaction type
         transaction_type = (
             CreditTransactionType.PURCHASE if "purchase" in reason.lower()
             else CreditTransactionType.BONUS if "bonus" in reason.lower()
             else CreditTransactionType.CREDIT
         )
         
-        # Create transaction record
         transaction = CreditTransaction(
             id=str(uuid.uuid4()),
             user_id=user_id,
@@ -130,7 +120,6 @@ class CreditService(CreditServiceInterface):
             created_at=datetime.now(timezone.utc)
         )
         
-        # Update balance
         credits_purchased_delta = amount if transaction_type == CreditTransactionType.PURCHASE else 0
         await self.repository.update_user_balance(
             user_id=user_id,
@@ -157,12 +146,10 @@ class CreditService(CreditServiceInterface):
     ) -> ModelCreditCost:
         """Get the credit cost for a specific model from database or defaults"""
         try:
-            # Try to get cost from database first
             from ....models.database import ModelCreditCost as ModelCreditCostDB
             from ....core.database import get_sync_db_session
             
             with get_sync_db_session() as db:
-                # Check exact match first
                 db_cost = db.query(ModelCreditCostDB).filter(
                     ModelCreditCostDB.provider == provider,
                     ModelCreditCostDB.model_name == model_name,
@@ -178,7 +165,6 @@ class CreditService(CreditServiceInterface):
                         is_default_model=db_cost.is_default_model
                     )
                 
-                # Check for wildcard match
                 db_cost = db.query(ModelCreditCostDB).filter(
                     ModelCreditCostDB.provider == provider,
                     ModelCreditCostDB.model_name == "*",
@@ -194,15 +180,13 @@ class CreditService(CreditServiceInterface):
                     )
         
         except Exception:
-            # Fall back to defaults if database lookup fails
             pass
         
-        # Default costs for known providers
         if provider == "ollama":
             return ModelCreditCost(
                 provider=provider,
                 model_name=model_name,
-                cost_per_message=0  # Free for local models
+                cost_per_message=0
             )
         elif provider == "chatsparty":
             return ModelCreditCost(
@@ -212,7 +196,6 @@ class CreditService(CreditServiceInterface):
                 is_default_model=True
             )
         else:
-            # Default cost for unknown models
             default_cost = getattr(settings, 'DEFAULT_CREDIT_COST_PER_MESSAGE', 2)
             return ModelCreditCost(
                 provider=provider,
@@ -220,17 +203,3 @@ class CreditService(CreditServiceInterface):
                 cost_per_message=default_cost
             )
     
-    async def calculate_conversation_cost(
-        self,
-        agent_count: int,
-        max_turns: int,
-        provider: str = "chatsparty",
-        model_name: str = "gemini-2.5-flash"
-    ) -> int:
-        """Calculate estimated cost for a multi-agent conversation"""
-        model_cost = await self.get_model_cost(provider, model_name)
-        
-        # Formula: (number of agents * max turns * cost per message)
-        # Add 20% buffer for system messages
-        base_cost = agent_count * max_turns * model_cost.cost_per_message
-        return int(base_cost * 1.2)

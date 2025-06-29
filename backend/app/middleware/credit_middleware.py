@@ -89,7 +89,7 @@ class CreditTrackingMiddleware:
         self.app = app
         self.credit_endpoints = {
             "/chat/agents/chat": (1, CreditConsumptionReason.CHAT_MESSAGE),
-            "/chat/agents/conversation": (5, CreditConsumptionReason.MULTI_AGENT_CONVERSATION),
+            # Multi-agent conversations now check credits per AI request
             "/voice/generate": (3, CreditConsumptionReason.VOICE_GENERATION),
         }
     

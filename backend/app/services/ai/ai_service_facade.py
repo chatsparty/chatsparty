@@ -191,8 +191,17 @@ class AIServiceFacade(AIServiceInterface):
         file_attachments: List[Dict[str, str]] = None,
         project_id: str = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        with SessionManager.get_agent_repository() as agent_repo, \
-                SessionManager.get_conversation_repository() as conv_repo:
+        from app.core.database import db_manager
+        from app.services.ai.infrastructure.agent_repository import DatabaseAgentRepository
+        from app.services.ai.infrastructure.conversation_repository import DatabaseConversationRepository
+        
+        agent_session = db_manager.sync_session_maker()
+        conv_session = db_manager.sync_session_maker()
+        
+        try:
+            agent_repo = DatabaseAgentRepository(agent_session)
+            conv_repo = DatabaseConversationRepository(conv_session)
+            
             base_chat_service = ChatService(
                 self._model_provider,
                 agent_repo,
@@ -219,12 +228,25 @@ class AIServiceFacade(AIServiceInterface):
                     conversation_id, agent_ids, initial_message, max_turns,
                     user_id, file_attachments, project_id
                 ):
+                    conv_session.commit()
                     yield message
             except ImportError:
                 async for message in base_chat_service.multi_agent_conversation_stream(
                     conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
                 ):
+                    conv_session.commit()
                     yield message
+                    
+            conv_session.commit()
+            agent_session.commit()
+            
+        except Exception as e:
+            agent_session.rollback()
+            conv_session.rollback()
+            raise
+        finally:
+            agent_session.close()
+            conv_session.close()
 
     def get_conversation_history(self, conversation_id: str, user_id: str = None) -> List[Dict[str, Any]]:
         with SessionManager.get_conversation_repository() as conv_repo:

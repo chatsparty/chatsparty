@@ -9,7 +9,8 @@ class ModelProviderInterface(ABC):
         self, 
         messages: List[Message], 
         system_prompt: str,
-        model_config: ModelConfiguration
+        model_config: ModelConfiguration,
+        user_id: Optional[str] = None
     ) -> str:
         pass
 
