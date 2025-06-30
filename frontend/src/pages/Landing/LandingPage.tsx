@@ -7,14 +7,18 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import Avatar from "boring-avatars";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 
 interface LandingPageProps {
   onGetStarted?: () => void;
 }
 
 function WebsiteHeader() {
+  const { t } = useTranslation();
+  
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
+    <header className="fixed top-0 inset-x-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xl font-bold text-foreground">
@@ -24,7 +28,7 @@ function WebsiteHeader() {
               variant="beam"
               colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
             />
-            <span>Chats<span className="text-primary">Party</span></span>
+            <span>{t("common.appName")}</span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -58,6 +62,7 @@ function WebsiteHeader() {
               Star
             </Button>
 
+            <LanguageSwitcher />
             <ThemeToggle />
           </div>
         </div>
@@ -68,6 +73,7 @@ function WebsiteHeader() {
 
 export function LandingPage({}: LandingPageProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const avatarColors = ["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"];
 
   const handleGetStarted = () => {
@@ -78,17 +84,17 @@ export function LandingPage({}: LandingPageProps) {
       <WebsiteHeader />
       
       {/* Floating Avatars Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-10 -left-10 opacity-10">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" dir="ltr">
+        <div className="absolute -top-10 start-[-2.5rem] opacity-10">
           <Avatar size={200} name="bg-1" variant="beam" colors={avatarColors} />
         </div>
-        <div className="absolute top-20 right-10 opacity-10 animate-float">
+        <div className="absolute top-20 end-10 opacity-10 animate-float">
           <Avatar size={150} name="bg-2" variant="beam" colors={avatarColors} />
         </div>
-        <div className="absolute bottom-20 left-20 opacity-10 animate-bounce-slow">
+        <div className="absolute bottom-20 start-20 opacity-10 animate-bounce-slow">
           <Avatar size={180} name="bg-3" variant="beam" colors={avatarColors} />
         </div>
-        <div className="absolute bottom-40 right-40 opacity-10 animate-float" style={{ animationDelay: '2s' }}>
+        <div className="absolute bottom-40 end-40 opacity-10 animate-float" style={{ animationDelay: '2s' }}>
           <Avatar size={120} name="bg-4" variant="beam" colors={avatarColors} />
         </div>
       </div>
@@ -110,13 +116,11 @@ export function LandingPage({}: LandingPageProps) {
           </div>
           
           <h1 className="text-6xl md:text-7xl font-bold text-foreground mb-8 leading-tight">
-            Chats<span className="text-primary">Party</span>
+            {t("common.appName")}
           </h1>
 
           <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
-            An open-source platform for creating and managing AI agents with
-            multi-agent conversations. Experience the future of AI
-            collaboration.
+            {t("landing.subtitle")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -125,7 +129,7 @@ export function LandingPage({}: LandingPageProps) {
               size="lg"
               className="flex items-center gap-3 px-10 py-6 text-lg"
             >
-              Get Started
+              {t("landing.cta.getStarted")}
               <FaArrowRight className="text-sm" />
             </Button>
 
@@ -141,7 +145,7 @@ export function LandingPage({}: LandingPageProps) {
               }
             >
               <FaGithub className="text-lg" />
-              View on GitHub
+              {t("common.viewOn")} GitHub
             </Button>
           </div>
         </div>
@@ -153,9 +157,9 @@ export function LandingPage({}: LandingPageProps) {
               <Avatar size={60} name="feature-agent" variant="beam" colors={avatarColors} />
             </div>
             <div className="pt-6">
-              <h3 className="text-xl font-bold mb-3">Agent Management</h3>
+              <h3 className="text-xl font-bold mb-3">{t("landing.features.agents.title")}</h3>
               <p className="text-muted-foreground">
-                Create and manage AI agents with unique personalities. Each agent gets their own colorful avatar!
+                {t("landing.features.agents.description")}
               </p>
             </div>
           </div>
@@ -173,9 +177,9 @@ export function LandingPage({}: LandingPageProps) {
               </div>
             </div>
             <div className="pt-6">
-              <h3 className="text-xl font-bold mb-3">Multi-Agent Chat</h3>
+              <h3 className="text-xl font-bold mb-3">{t("landing.features.collaboration.title")}</h3>
               <p className="text-muted-foreground">
-                Watch colorful AI agents collaborate in real-time conversations.
+                {t("landing.features.collaboration.description")}
               </p>
             </div>
           </div>
@@ -183,7 +187,7 @@ export function LandingPage({}: LandingPageProps) {
 
         {/* Avatar Showcase */}
         <div className="mb-20">
-          <h2 className="text-3xl font-bold text-center mb-12">Meet Your New AI Friends</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">{t("landing.title")}</h2>
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-background pointer-events-none z-10" />
             <div className="overflow-hidden">

@@ -2,8 +2,10 @@ import React, { useEffect } from "react";
 import AgentModal from "./components/AgentModal";
 import AgentTable from "./components/AgentTable";
 import { useAgentManager } from "./hooks/useAgentManager";
+import { useTranslation } from "react-i18next";
 
 const AgentManagerPage: React.FC = () => {
+  const { t } = useTranslation();
   const {
     agents,
     isLoading,
@@ -71,7 +73,7 @@ const AgentManagerPage: React.FC = () => {
             />
             <div className="relative bg-card border border-border rounded-lg shadow-lg max-w-sm w-full mx-4">
               <div className="flex items-center justify-between p-4 border-b border-border">
-                <h2 className="text-base font-medium text-foreground">Delete Agent</h2>
+                <h2 className="text-base font-medium text-foreground">{t("agents.deleteAgent")}</h2>
                 <button
                   onClick={cancelDeleteAgent}
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -83,7 +85,7 @@ const AgentManagerPage: React.FC = () => {
               </div>
               <div className="p-4">
                 <p className="text-sm text-muted-foreground">
-                  Delete "{agentToDelete?.name}"? This cannot be undone.
+                  {t("agents.deleteConfirmation", { name: agentToDelete?.name })}
                 </p>
               </div>
               <div className="flex justify-end gap-2 p-4 pt-0">
@@ -92,14 +94,14 @@ const AgentManagerPage: React.FC = () => {
                   onClick={cancelDeleteAgent}
                   disabled={isLoading}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   className="px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 transition-colors"
                   onClick={confirmDeleteAgent}
                   disabled={isLoading}
                 >
-                  {isLoading ? "Deleting..." : "Delete"}
+                  {isLoading ? t("agents.deleting") : t("common.delete")}
                 </button>
               </div>
             </div>

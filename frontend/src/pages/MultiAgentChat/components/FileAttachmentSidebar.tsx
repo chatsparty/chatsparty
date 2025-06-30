@@ -1,9 +1,8 @@
 import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Paperclip, X, FileText, Upload, Loader2 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 
 interface AttachedFile {
   id: string;
@@ -34,6 +33,7 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
   isMobile = false,
   onCloseSidebar,
 }) => {
+  const { t } = useTranslation();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: AttachedFile[] = acceptedFiles.map(file => ({
@@ -59,9 +59,9 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
   });
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return t('files.sizes.bytes', { count: 0 });
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = [t('files.sizes.bytes'), t('files.sizes.kb'), t('files.sizes.mb'), t('files.sizes.gb')];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
@@ -80,7 +80,7 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
   };
 
   return (
-    <div className={`${isMobile ? 'w-full' : 'w-72'} bg-background/98 backdrop-blur-lg ${!isMobile ? 'border-l-2 border-border/70' : ''} flex flex-col shadow-lg`}>
+    <div className={`${isMobile ? 'w-full' : 'w-72'} bg-background/98 backdrop-blur-lg ${!isMobile ? 'border-s-2 border-border/70' : ''} flex flex-col shadow-lg`}>
       
       <div className="p-4 border-b-2 border-border/50 bg-gradient-to-b from-card/30 to-background">
         <div className="flex items-center gap-3 mb-4">
@@ -88,8 +88,8 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
             <Paperclip className="h-4 w-4 text-foreground/80" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-bold text-foreground">Attachments</h3>
-            <p className="text-xs text-muted-foreground/80">Drag & drop files</p>
+            <h3 className="text-sm font-bold text-foreground">{t('files.attachments')}</h3>
+            <p className="text-xs text-muted-foreground/80">{t('files.dragDropFiles')}</p>
           </div>
           {attachedFiles.length > 0 && (
             <div className="w-6 h-6 rounded-full bg-primary/15 border border-primary/20 flex items-center justify-center">
@@ -101,8 +101,8 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
               variant="ghost"
               size="sm"
               onClick={onCloseSidebar}
-              className="h-6 w-6 p-0 ml-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-200"
-              title="Close sidebar"
+              className="h-6 w-6 p-0 ms-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-200"
+              title={t('files.closeSidebar')}
             >
               <X className="h-3 w-3" />
             </Button>
@@ -125,10 +125,10 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
               <Upload className={`h-5 w-5 text-muted-foreground transition-all duration-300 ${isDragActive ? 'rotate-6' : ''}`} />
             </div>
             <p className="text-sm font-medium text-foreground mb-1">
-              {isDragActive ? 'Drop files here' : 'Click or drag files'}
+              {isDragActive ? t('files.dropFilesHere') : t('files.clickOrDragFiles')}
             </p>
             <p className="text-xs text-muted-foreground/70">
-              PDF • TXT • DOC • DOCX
+              {t('files.supportedFormats')}
             </p>
           </div>
         </div>
@@ -141,8 +141,8 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
             <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-muted/30 flex items-center justify-center">
               <FileText className="w-6 h-6 text-muted-foreground" />
             </div>
-            <p className="text-sm font-medium text-foreground">No files yet</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">Upload to get started</p>
+            <p className="text-sm font-medium text-foreground">{t('files.noFilesYet')}</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">{t('files.uploadToGetStarted')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -199,10 +199,10 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
                         <>
                           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary/15 border-2 border-primary/30 shadow-md">
                             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-                            <span className="text-xs font-bold text-primary">Ready</span>
+                            <span className="text-xs font-bold text-primary">{t('files.ready')}</span>
                           </div>
                           <span className="text-xs text-muted-foreground/70">
-                            {Math.round(file.extractedContent.length / 1000)}k chars
+                            {t('files.charactersCount', { count: Math.round(file.extractedContent.length / 1000) })}
                           </span>
                         </>
                       ) : (
@@ -215,11 +215,11 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
                         >
                           {file.isExtracting ? (
                             <>
-                              <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                              Processing
+                              <Loader2 className="h-3 w-3 me-1.5 animate-spin" />
+                              {t('files.processing')}
                             </>
                           ) : (
-                            'Extract'
+                            t('files.extract')
                           )}
                         </Button>
                       )}

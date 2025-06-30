@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { PostHogProvider } from 'posthog-js/react'
 import { createFaviconDataURL } from './utils/generateFavicon'
+import './i18n/config'
 
 const AppWithProviders = () => {
   const content = (
@@ -30,7 +31,6 @@ const AppWithProviders = () => {
   );
 };
 
-// Set the favicon dynamically
 const setFavicon = () => {
   const faviconURL = createFaviconDataURL();
   const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
@@ -45,7 +45,6 @@ const setFavicon = () => {
   }
 };
 
-// Set favicon before rendering
 setFavicon();
 
 createRoot(document.getElementById('root')!).render(

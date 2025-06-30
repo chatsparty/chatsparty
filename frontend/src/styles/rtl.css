@@ -1,0 +1,329 @@
+/* RTL Support Styles */
+
+/* Direction-aware utility classes */
+[dir="rtl"] {
+  direction: rtl;
+}
+
+[dir="ltr"] {
+  direction: ltr;
+}
+
+/* Logical properties fallbacks for older browsers */
+.start-0 {
+  inset-inline-start: 0;
+}
+
+.end-0 {
+  inset-inline-end: 0;
+}
+
+.ms-auto {
+  margin-inline-start: auto;
+}
+
+.me-auto {
+  margin-inline-end: auto;
+}
+
+.ps-2 { padding-inline-start: 0.5rem; }
+.ps-3 { padding-inline-start: 0.75rem; }
+.ps-4 { padding-inline-start: 1rem; }
+.ps-5 { padding-inline-start: 1.25rem; }
+.ps-6 { padding-inline-start: 1.5rem; }
+.ps-8 { padding-inline-start: 2rem; }
+
+.pe-2 { padding-inline-end: 0.5rem; }
+.pe-3 { padding-inline-end: 0.75rem; }
+.pe-4 { padding-inline-end: 1rem; }
+.pe-5 { padding-inline-end: 1.25rem; }
+.pe-6 { padding-inline-end: 1.5rem; }
+.pe-8 { padding-inline-end: 2rem; }
+
+.ms-1 { margin-inline-start: 0.25rem; }
+.ms-2 { margin-inline-start: 0.5rem; }
+.ms-3 { margin-inline-start: 0.75rem; }
+.ms-4 { margin-inline-start: 1rem; }
+.ms-5 { margin-inline-start: 1.25rem; }
+.ms-6 { margin-inline-start: 1.5rem; }
+.ms-8 { margin-inline-start: 2rem; }
+
+.me-1 { margin-inline-end: 0.25rem; }
+.me-2 { margin-inline-end: 0.5rem; }
+.me-3 { margin-inline-end: 0.75rem; }
+.me-4 { margin-inline-end: 1rem; }
+.me-5 { margin-inline-end: 1.25rem; }
+.me-6 { margin-inline-end: 1.5rem; }
+.me-8 { margin-inline-end: 2rem; }
+
+/* Text alignment */
+.text-start {
+  text-align: start;
+}
+
+.text-end {
+  text-align: end;
+}
+
+/* Border radius logical properties */
+.rounded-s-md {
+  border-start-start-radius: 0.375rem;
+  border-end-start-radius: 0.375rem;
+}
+
+.rounded-e-md {
+  border-start-end-radius: 0.375rem;
+  border-end-end-radius: 0.375rem;
+}
+
+.rounded-s-lg {
+  border-start-start-radius: 0.5rem;
+  border-end-start-radius: 0.5rem;
+}
+
+.rounded-e-lg {
+  border-start-end-radius: 0.5rem;
+  border-end-end-radius: 0.5rem;
+}
+
+/* Float replacements */
+.float-start {
+  float: inline-start;
+}
+
+.float-end {
+  float: inline-end;
+}
+
+/* Transform utilities for RTL */
+[dir="rtl"] .rtl\:scale-x-\[-1\] {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .rtl\:rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* Icon flipping for directional icons */
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Flexbox utilities */
+.flex-start {
+  justify-content: flex-start;
+}
+
+[dir="rtl"] .flex-start {
+  justify-content: flex-end;
+}
+
+.flex-end {
+  justify-content: flex-end;
+}
+
+[dir="rtl"] .flex-end {
+  justify-content: flex-start;
+}
+
+/* Grid utilities */
+.grid-flow-col-rtl {
+  grid-auto-flow: column;
+}
+
+[dir="rtl"] .grid-flow-col-rtl {
+  direction: rtl;
+}
+
+/* Scrollbar styling for RTL */
+[dir="rtl"] ::-webkit-scrollbar {
+  position: absolute;
+  left: 0;
+  right: auto;
+}
+
+/* Animation direction adjustments */
+[dir="rtl"] .animate-slide-in-left {
+  animation-name: slideInRight;
+}
+
+[dir="rtl"] .animate-slide-in-right {
+  animation-name: slideInLeft;
+}
+
+/* Custom scrollbar for RTL */
+[dir="rtl"] .scrollbar-rtl::-webkit-scrollbar-track {
+  margin-right: 0;
+  margin-left: 4px;
+}
+
+/* Dropdown and menu positioning */
+[dir="rtl"] .dropdown-menu {
+  left: auto !important;
+  right: 0 !important;
+}
+
+[dir="rtl"] .origin-top-left {
+  transform-origin: top right;
+}
+
+[dir="rtl"] .origin-top-right {
+  transform-origin: top left;
+}
+
+/* Modal and dialog positioning */
+[dir="rtl"] .modal-close {
+  left: 1rem;
+  right: auto;
+}
+
+/* Tooltip positioning */
+[dir="rtl"] [data-tooltip-placement="left"] {
+  --tooltip-placement: right;
+}
+
+[dir="rtl"] [data-tooltip-placement="right"] {
+  --tooltip-placement: left;
+}
+
+/* Progress bar direction */
+[dir="rtl"] .progress-bar {
+  direction: ltr;
+}
+
+/* Breadcrumb separator */
+[dir="rtl"] .breadcrumb-item + .breadcrumb-item::before {
+  content: "\\" !important;
+  transform: scaleX(-1);
+}
+
+/* Pagination arrows */
+[dir="rtl"] .pagination-prev::before {
+  content: "›";
+}
+
+[dir="rtl"] .pagination-next::after {
+  content: "‹";
+}
+
+/* Form elements */
+[dir="rtl"] input[type="checkbox"],
+[dir="rtl"] input[type="radio"] {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+/* Tables */
+[dir="rtl"] table {
+  text-align: right;
+}
+
+[dir="rtl"] th,
+[dir="rtl"] td {
+  text-align: inherit;
+}
+
+/* Code blocks should remain LTR */
+[dir="rtl"] pre,
+[dir="rtl"] code,
+[dir="rtl"] .code-block {
+  direction: ltr;
+  text-align: left;
+}
+
+/* File paths should remain LTR */
+[dir="rtl"] .file-path {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Numbers should remain LTR */
+[dir="rtl"] .number-display {
+  direction: ltr;
+  display: inline-block;
+}
+
+/* Chat bubbles */
+[dir="rtl"] .chat-bubble-start {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+[dir="rtl"] .chat-bubble-end {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Timeline items */
+[dir="rtl"] .timeline-item::before {
+  left: auto;
+  right: -1px;
+}
+
+[dir="rtl"] .timeline-content {
+  padding-left: 0;
+  padding-right: 2rem;
+}
+
+/* Sidebar transitions */
+[dir="rtl"] .sidebar-left {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .sidebar-right {
+  right: auto;
+  left: 0;
+}
+
+/* List items with icons */
+[dir="rtl"] .list-icon {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* Badges positioning */
+[dir="rtl"] .badge-top-right {
+  right: auto;
+  left: 0;
+}
+
+[dir="rtl"] .badge-top-left {
+  left: auto;
+  right: 0;
+}
+
+/* Stepper component */
+[dir="rtl"] .stepper-item:not(:last-child)::after {
+  left: auto;
+  right: 50%;
+  transform: translateX(50%);
+}
+
+/* Notification positioning */
+[dir="rtl"] .notification-top-right {
+  right: auto;
+  left: 1rem;
+}
+
+[dir="rtl"] .notification-top-left {
+  left: auto;
+  right: 1rem;
+}
+
+/* Tab indicators */
+[dir="rtl"] .tab-indicator {
+  right: 0;
+  left: auto;
+}
+
+/* Carousel navigation */
+[dir="rtl"] .carousel-prev {
+  left: auto;
+  right: 1rem;
+}
+
+[dir="rtl"] .carousel-next {
+  right: auto;
+  left: 1rem;
+}

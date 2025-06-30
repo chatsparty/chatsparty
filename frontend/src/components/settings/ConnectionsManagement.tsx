@@ -9,6 +9,7 @@ import type {
   ModelConnection,
 } from "@/types/connection";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export const ConnectionsManagement: React.FC = () => {
   const {
@@ -20,6 +21,7 @@ export const ConnectionsManagement: React.FC = () => {
     deleteConnection,
     testConnection,
   } = useConnections();
+  const { t } = useTranslation();
 
   const [showForm, setShowForm] = useState(false);
   const [editingConnection, setEditingConnection] =
@@ -54,7 +56,7 @@ export const ConnectionsManagement: React.FC = () => {
   };
 
   const handleDeleteConnection = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this connection?")) {
+    if (window.confirm(t("connections.confirmDelete"))) {
       try {
         await deleteConnection(id);
       } catch (error) {
@@ -84,7 +86,7 @@ export const ConnectionsManagement: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading connections...</div>
+        <div className="text-muted-foreground">{t("connections.loadingConnections")}</div>
       </div>
     );
   }
@@ -92,7 +94,7 @@ export const ConnectionsManagement: React.FC = () => {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-destructive">Error: {error}</div>
+        <div className="text-destructive">{t("common.error")}: {error}</div>
       </div>
     );
   }
@@ -101,14 +103,14 @@ export const ConnectionsManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold mb-2">Model Connections</h2>
+          <h2 className="text-2xl font-semibold mb-2">{t("connections.title")}</h2>
           <p className="text-muted-foreground">
-            Manage your AI model connections and configurations
+            {t("settings.connectionsDescription")}
           </p>
         </div>
         {!showForm && (
           <Button onClick={() => setShowForm(true)}>
-            Create New Connection
+            {t("connections.addConnection")}
           </Button>
         )}
       </div>
@@ -131,11 +133,11 @@ export const ConnectionsManagement: React.FC = () => {
       {connections.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-muted-foreground mb-4">
-            No connections configured yet
+            {t("connections.noConnections")}
           </div>
           {!showForm && (
             <Button onClick={() => setShowForm(true)}>
-              Create Your First Connection
+              {t("connections.createFirstConnection")}
             </Button>
           )}
         </div>

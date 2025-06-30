@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useConnections } from "@/hooks/useConnections";
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 interface Agent {
   agent_id: string;
@@ -51,6 +52,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
   onInputChange,
   onSubmit,
 }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { loading: connectionsLoading, getActiveConnections } = useConnections();
   const activeConnections = getActiveConnections();
@@ -77,28 +79,28 @@ const AgentModal: React.FC<AgentModalProps> = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {editingAgent ? "Edit Agent" : "Create New Agent"}
+            {editingAgent ? t("agents.editAgent") : t("agents.createNewAgent")}
           </DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleFormSubmit} className="space-y-4">
           <div>
             <Label htmlFor="name" className="text-sm font-medium">
-              Agent Name *
+              {t("agents.agentName")} *
             </Label>
             <Input
               id="name"
               name="name"
               value={formData.name}
               onChange={onInputChange}
-              placeholder="e.g., My Assistant"
+              placeholder={t("agents.namePlaceholder")}
               required
             />
           </div>
 
           <div>
             <Label htmlFor="characteristics" className="text-sm font-medium">
-              Characteristics *
+              {t("agents.characteristics")} *
             </Label>
             <Textarea
               id="characteristics"
@@ -106,7 +108,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
               value={formData.characteristics}
               onChange={onInputChange}
               rows={3}
-              placeholder="Describe the agent's personality, expertise, and behavioral traits..."
+              placeholder={t("agents.characteristicsPlaceholder")}
               className="resize-none"
               required
             />
@@ -114,7 +116,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
 
           <div>
             <Label htmlFor="connection" className="text-sm font-medium">
-              AI Model Connection *
+              {t("agents.modelConnection")} *
             </Label>
             <Select
               value={formData.connection_id || ""}
@@ -122,35 +124,35 @@ const AgentModal: React.FC<AgentModalProps> = ({
               disabled={connectionsLoading}
             >
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select a model connection" />
+                <SelectValue placeholder={t("agents.selectModelConnection")} />
               </SelectTrigger>
               <SelectContent>
                 {activeConnections.map((connection) => (
                   <SelectItem key={connection.id} value={connection.id}>
                     {connection.name} ({connection.provider})
-                    {connection.is_default && " • Default"}
+                    {connection.is_default && ` • ${t("agents.default")}`}
                   </SelectItem>
                 ))}
-                <SelectItem value="add-new">+ Add New Connection</SelectItem>
+                <SelectItem value="add-new">{t("agents.addNewConnection")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading
-                ? "Saving..."
+                ? t("agents.saving")
                 : editingAgent
-                ? "Update Agent"
-                : "Create Agent"}
+                ? t("agents.updateAgent")
+                : t("agents.createAgent")}
             </Button>
           </div>
         </form>

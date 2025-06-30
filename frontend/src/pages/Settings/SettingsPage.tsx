@@ -4,14 +4,15 @@ import { Server, Settings, Shield, Mic, Plug, User, Coins } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CREDITS_ENABLED } from "@/config/features";
+import { useTranslation } from "react-i18next";
 
 export const SettingsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [selectedItem, setSelectedItem] = useState("general");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Extract the settings section from the URL path
   const getSettingsSectionFromPath = (pathname: string) => {
     if (pathname === "/settings" || pathname === "/settings/general") {
       return "general";
@@ -27,7 +28,7 @@ export const SettingsPage: React.FC = () => {
 
   const handleItemSelect = (itemId: string) => {
     setSelectedItem(itemId);
-    setIsMobileMenuOpen(false); // Close mobile menu when item is selected
+    setIsMobileMenuOpen(false);
     if (itemId === "general") {
       navigate("/settings/general");
     } else {
@@ -39,53 +40,51 @@ export const SettingsPage: React.FC = () => {
     {
       id: "general",
       path: "/settings/general",
-      label: "General",
-      description: "General application settings",
+      label: t("settings.general"),
+      description: t("settings.generalDescription"),
       icon: Settings,
     },
     {
       id: "connections",
       path: "/settings/connections",
-      label: "Model Connections",
-      description: "Manage your AI model connections and configurations",
+      label: t("connections.title"),
+      description: t("settings.connectionsDescription"),
       icon: Plug,
     },
     {
       id: "voice-connections",
       path: "/settings/voice-connections",
-      label: "Voice Connections",
-      description:
-        "Manage your voice synthesis and speech recognition connections",
+      label: t("voice.title"),
+      description: t("settings.voiceConnectionsDescription"),
       icon: Mic,
     },
     {
       id: "mcp-servers",
       path: "/settings/mcp-servers",
-      label: "MCP Servers",
-      description:
-        "Manage Model Context Protocol servers that provide tools for your agents",
+      label: t("settings.mcpServers"),
+      description: t("settings.mcpServersDescription"),
       icon: Server,
     },
     ...(CREDITS_ENABLED ? [{
       id: "credits",
       path: "/settings/credits",
-      label: "Credits",
-      description: "Manage your credits and billing information",
+      label: t("settings.credits"),
+      description: t("settings.creditsDescription"),
       icon: Coins,
     }] : []),
     {
       id: "profile",
       path: "#",
-      label: "Profile",
-      description: "Update your profile information and preferences",
+      label: t("settings.profile"),
+      description: t("settings.profileDescription"),
       icon: User,
       disabled: true,
     },
     {
       id: "security",
       path: "#",
-      label: "Security",
-      description: "Manage your account security and privacy settings",
+      label: t("settings.security"),
+      description: t("settings.securityDescription"),
       icon: Shield,
       disabled: true,
     },
@@ -99,7 +98,7 @@ export const SettingsPage: React.FC = () => {
         isMobileMenuOpen={isMobileMenuOpen}
         onMobileMenuClose={() => setIsMobileMenuOpen(false)}
       />
-      <div className="flex-1 md:ml-0 min-w-0">
+      <div className="flex-1 md:ms-0 min-w-0">
         <SettingsContent 
           selectedItem={selectedItem} 
           onMobileMenuOpen={() => setIsMobileMenuOpen(true)}

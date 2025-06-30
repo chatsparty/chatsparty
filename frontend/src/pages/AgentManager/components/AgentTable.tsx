@@ -12,6 +12,7 @@ import { useConnections } from "@/hooks/useConnections";
 import { Bot, Edit, Plus, Trash2 } from "lucide-react";
 import React from "react";
 import Avatar from "boring-avatars";
+import { useTranslation } from "react-i18next";
 
 interface Agent {
   agent_id: string;
@@ -35,6 +36,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
   onDeleteAgent,
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   const { connections } = useConnections();
   const avatarColors = ["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"];
 
@@ -52,37 +54,37 @@ const AgentTable: React.FC<AgentTableProps> = ({
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-foreground">
-            Agent Manager
+            {t("agents.title")}
           </h1>
           <Badge variant="secondary" className="text-sm">
-            {agents.length} {agents.length === 1 ? "Agent" : "Agents"}
+            {t("agents.agentCount", { count: agents.length })}
           </Badge>
         </div>
-        <Button onClick={onCreateAgent} className="flex items-center space-x-2">
+        <Button onClick={onCreateAgent} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
-          <span>Create Agent</span>
+          <span>{t("agents.createAgent")}</span>
         </Button>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-3 text-muted-foreground">Loading agents...</span>
+          <span className="ms-3 text-muted-foreground">{t("agents.loading")}</span>
         </div>
       ) : agents.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-border rounded-lg">
           <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium text-muted-foreground mb-2">
-            No agents created yet
+            {t("agents.noAgents")}
           </h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-            Create your first agent to get started with AI-powered conversations
+            {t("agents.noAgentsDescription")}
           </p>
           <Button onClick={onCreateAgent} variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Your First Agent
+            <Plus className="h-4 w-4 me-2" />
+            {t("agents.createFirstAgent")}
           </Button>
         </div>
       ) : (
@@ -90,12 +92,12 @@ const AgentTable: React.FC<AgentTableProps> = ({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="w-[200px] font-medium">Name</TableHead>
-                <TableHead className="font-medium">Characteristics</TableHead>
-                <TableHead className="w-[150px] font-medium">Model</TableHead>
-                <TableHead className="w-[100px] font-medium">ID</TableHead>
-                <TableHead className="w-[120px] text-right font-medium">
-                  Actions
+                <TableHead className="w-[200px] font-medium">{t("agents.name")}</TableHead>
+                <TableHead className="font-medium">{t("agents.characteristics")}</TableHead>
+                <TableHead className="w-[150px] font-medium">{t("agents.model")}</TableHead>
+                <TableHead className="w-[100px] font-medium">{t("agents.id")}</TableHead>
+                <TableHead className="w-[120px] text-end font-medium">
+                  {t("agents.actions")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -109,7 +111,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
                     onClick={() => onEditAgent(agent)}
                   >
                     <TableCell className="font-medium py-3">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center gap-3">
                         <Avatar
                           size={32}
                           name={agent.name || agent.agent_id}
@@ -131,7 +133,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">
-                          Not configured
+                          {t("agents.notConfigured")}
                         </span>
                       )}
                     </TableCell>
@@ -144,8 +146,8 @@ const AgentTable: React.FC<AgentTableProps> = ({
                         {agent.agent_id.slice(0, 8)}...
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right py-3">
-                      <div className="flex items-center justify-end space-x-1">
+                    <TableCell className="text-end py-3">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"

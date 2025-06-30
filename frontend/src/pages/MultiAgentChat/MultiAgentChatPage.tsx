@@ -8,12 +8,15 @@ import FileAttachmentSidebar from "./components/FileAttachmentSidebar";
 import type { AttachedFile } from "./types";
 import { Button } from "../../components/ui/button";
 import { Modal } from "../../components/ui/modal";
-import { X, Paperclip, MessageCircle, Files, ChevronRight } from "lucide-react";
+import { X, Paperclip, MessageCircle, Files, ChevronRight, ChevronLeft } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const MultiAgentChatPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.dir() === 'rtl';
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFileSidebarOpen, setIsFileSidebarOpen] = useState(false);
@@ -123,7 +126,7 @@ const MultiAgentChatPage: React.FC = () => {
 
   return (
     <div className="flex h-full bg-background relative">
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/98 backdrop-blur-lg border-b-2 border-border shadow-xl">
+      <div className="lg:hidden fixed top-0 inset-x-0 z-50 bg-background/98 backdrop-blur-lg border-b-2 border-border shadow-xl">
         <div className="flex items-center justify-between p-4 bg-gradient-to-r from-background to-card/90">
           <div className="flex items-center gap-3">
             <Button
@@ -138,7 +141,7 @@ const MultiAgentChatPage: React.FC = () => {
               <MessageCircle className="w-5 h-5" />
               <span className="sr-only">Toggle conversations</span>
             </Button>
-            <h1 className="text-lg font-bold text-foreground tracking-tight">Multi-Agent Chat</h1>
+            <h1 className="text-lg font-bold text-foreground tracking-tight">{t("chat.multiAgentChat")}</h1>
           </div>
           <Button
             variant="ghost"
@@ -151,7 +154,7 @@ const MultiAgentChatPage: React.FC = () => {
           >
             <Paperclip className="w-5 h-5" />
             {attachedFiles.length > 0 && (
-              <span className="ml-1 text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5 font-bold shadow-md border border-primary/20">
+              <span className="ms-1 text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5 font-bold shadow-md border border-primary/20">
                 {attachedFiles.length}
               </span>
             )}
@@ -160,11 +163,11 @@ const MultiAgentChatPage: React.FC = () => {
       </div>
 
       <div className="hidden lg:flex h-full w-full relative">
-        <div className="fixed left-0 top-0 bottom-0 z-30">
-          <div className="group w-2 h-full absolute left-0 top-0">
+        <div className="fixed start-0 top-0 bottom-0 z-30">
+          <div className="group w-2 h-full absolute start-0 top-0">
             <div className="w-2 h-full bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             
-            <div className="transform -translate-x-full group-hover:translate-x-0 transition-all duration-300 ease-out h-full shadow-2xl border-r border-border/20 backdrop-blur-sm absolute left-0 top-0">
+            <div className="transform rtl:translate-x-full ltr:-translate-x-full group-hover:translate-x-0 transition-all duration-300 ease-out h-full shadow-2xl border-e border-border/20 backdrop-blur-sm absolute start-0 top-0">
               <ConversationSidebar
                 agents={agents}
                 conversations={conversations}
@@ -207,16 +210,16 @@ const MultiAgentChatPage: React.FC = () => {
           />
         )}
 
-        <div className="fixed top-1/2 -translate-y-1/2 z-40" style={{ right: isDesktopFileSidebarOpen ? '288px' : '16px' }}>
+        <div className="fixed top-1/2 -translate-y-1/2 z-40" style={{ [isRTL ? 'left' : 'right']: isDesktopFileSidebarOpen ? '288px' : '16px' }}>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsDesktopFileSidebarOpen(!isDesktopFileSidebarOpen)}
-            className="h-12 w-8 p-0 bg-card/80 hover:bg-card border border-border/50 hover:border-border shadow-md transition-all duration-200 rounded-l-lg rounded-r-none"
+            className="h-12 w-8 p-0 bg-card/80 hover:bg-card border border-border/50 hover:border-border shadow-md transition-all duration-200 rounded-s-lg rounded-e-none"
             title={isDesktopFileSidebarOpen ? "Close file sidebar" : "Open file sidebar"}
           >
             {isDesktopFileSidebarOpen ? (
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              isRTL ? <ChevronLeft className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />
             ) : (
               <div className="flex flex-col items-center gap-1">
                 <Files className="w-4 h-4 text-muted-foreground" />
@@ -233,12 +236,12 @@ const MultiAgentChatPage: React.FC = () => {
 
       <div className="lg:hidden flex h-full w-full">
         <div className={`
-          fixed inset-0 z-40 bg-background backdrop-blur-lg transform transition-all duration-300 pt-16 shadow-2xl border-r-2 border-border/50
-          ${activeView === 'conversations' ? 'translate-x-0' : '-translate-x-full'}
+          fixed inset-0 z-40 bg-background backdrop-blur-lg transform transition-all duration-300 pt-16 shadow-2xl border-e-2 border-border/50
+          ${activeView === 'conversations' ? 'translate-x-0' : isRTL ? 'translate-x-full' : '-translate-x-full'}
         `}>
           <div className="h-full flex flex-col">
             <div className="p-4 border-b-2 border-border flex items-center justify-between bg-gradient-to-r from-card/70 to-background/50">
-              <h2 className="text-lg font-bold text-foreground tracking-tight">Conversations</h2>
+              <h2 className="text-lg font-bold text-foreground tracking-tight">{t("chat.conversations")}</h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -271,12 +274,12 @@ const MultiAgentChatPage: React.FC = () => {
         </div>
 
         <div className={`
-          fixed inset-0 z-40 bg-background backdrop-blur-lg transform transition-all duration-300 pt-16 shadow-2xl border-r-2 border-border/50
-          ${activeView === 'files' ? 'translate-x-0' : 'translate-x-full'}
+          fixed inset-0 z-40 bg-background backdrop-blur-lg transform transition-all duration-300 pt-16 shadow-2xl border-s-2 border-border/50
+          ${activeView === 'files' ? 'translate-x-0' : isRTL ? '-translate-x-full' : 'translate-x-full'}
         `}>
           <div className="h-full flex flex-col">
             <div className="p-4 border-b-2 border-border flex items-center justify-between bg-gradient-to-r from-card/70 to-background/50">
-              <h2 className="text-lg font-bold text-foreground tracking-tight">File Attachments</h2>
+              <h2 className="text-lg font-bold text-foreground tracking-tight">{t("chat.fileAttachments")}</h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -319,19 +322,19 @@ const MultiAgentChatPage: React.FC = () => {
       <Modal
         isOpen={showCreditsModal}
         onClose={() => setShowCreditsModal(false)}
-        title="Insufficient Credits"
+        title={t("credits.insufficientCredits")}
         size="md"
       >
         <div className="space-y-4">
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start gap-3">
               <div className="text-destructive mt-0.5">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h4 className="text-sm font-semibold text-destructive mb-1">Not enough credits</h4>
+                <h4 className="text-sm font-semibold text-destructive mb-1">{t("credits.notEnoughCredits")}</h4>
                 <p className="text-sm text-muted-foreground">
                   You need <span className="font-bold text-foreground">{creditsError?.required} credits</span> to start this multi-agent conversation, 
                   but you only have <span className="font-bold text-foreground">{creditsError?.available} credits</span> available.
@@ -346,15 +349,15 @@ const MultiAgentChatPage: React.FC = () => {
             </p>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start">
-                <span className="text-primary mr-2">•</span>
+                <span className="text-primary me-2">•</span>
                 <span className="text-muted-foreground">Number of agents in the conversation</span>
               </li>
               <li className="flex items-start">
-                <span className="text-primary mr-2">•</span>
+                <span className="text-primary me-2">•</span>
                 <span className="text-muted-foreground">Maximum number of conversation turns</span>
               </li>
               <li className="flex items-start">
-                <span className="text-primary mr-2">•</span>
+                <span className="text-primary me-2">•</span>
                 <span className="text-muted-foreground">Model complexity of each agent</span>
               </li>
             </ul>

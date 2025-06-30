@@ -2,6 +2,7 @@ import React from "react";
 import { Settings, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import type { SettingsItem } from "./types";
+import { useTranslation } from "react-i18next";
 
 interface SettingsSidebarProps {
   settingsItems: SettingsItem[];
@@ -17,6 +18,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onMobileMenuClose,
 }) => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   const SidebarContent = () => (
     <div className="p-5">
@@ -25,7 +27,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
           <div className="p-2 bg-primary/10 rounded-xl">
             <Settings className="w-4 h-4 text-primary" />
           </div>
-          <h1 className="text-xl font-light text-foreground">Settings</h1>
+          <h1 className="text-xl font-light text-foreground">{t("settings.title")}</h1>
         </div>
         {/* Mobile close button */}
         <button
@@ -43,7 +45,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               <button
                 key={item.id}
                 disabled={true}
-                className="w-full flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-xl text-left transition-all duration-200 text-muted-foreground cursor-not-allowed opacity-50 bg-muted/20 touch-manipulation"
+                className="w-full flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-xl text-start transition-all duration-200 text-muted-foreground cursor-not-allowed opacity-50 bg-muted/20 touch-manipulation"
               >
                 <div className="p-1.5 bg-muted/30 rounded-lg">
                   <item.icon className="w-4 h-4" />
@@ -52,7 +54,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                   <span className="text-sm font-medium">{item.label}</span>
                 </div>
                 <span className="text-xs bg-muted/50 px-2 py-1 rounded-full">
-                  Soon
+                  {t("common.soon")}
                 </span>
               </button>
             );
@@ -66,7 +68,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               key={item.id}
               to={item.path}
               onClick={() => onItemSelect(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-xl text-left transition-all duration-200 group touch-manipulation ${
+              className={`w-full flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-xl text-start transition-all duration-200 group touch-manipulation ${
                 isActive
                   ? "bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/20"
                   : "hover:bg-gradient-to-r hover:from-accent/50 hover:to-accent/20 hover:text-accent-foreground active:bg-accent/30"
@@ -94,7 +96,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden md:block w-60 bg-gradient-to-b from-card/50 to-card border-r border-border/50 flex-shrink-0">
+      <div className="hidden md:block w-60 bg-gradient-to-b from-card/50 to-card border-e border-border/50 flex-shrink-0">
         <SidebarContent />
       </div>
 
@@ -108,7 +110,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
           />
           
           {/* Mobile Sidebar */}
-          <div className="relative w-80 max-w-[85vw] bg-gradient-to-b from-card/95 to-card border-r border-border/50 shadow-2xl backdrop-blur-lg">
+          <div className="relative w-80 max-w-[85vw] bg-gradient-to-b from-card/95 to-card border-e border-border/50 shadow-2xl backdrop-blur-lg">
             <SidebarContent />
           </div>
         </div>

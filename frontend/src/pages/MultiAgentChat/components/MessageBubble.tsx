@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import Avatar from "boring-avatars";
 import type { ConversationMessage } from "../types";
+import { useTranslation } from "react-i18next";
 
 interface MessageBubbleProps {
   message: ConversationMessage;
@@ -18,6 +19,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   isMobile = false,
 }) => {
   const navigate = useNavigate();
+  const { i18n } = useTranslation();
+  const isRTL = i18n.dir() === 'rtl';
   
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], {
@@ -31,6 +34,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const creditErrorRegex = /I'm sorry, but you don't have enough credits.*Required: (\d+), Available: (\d+)/;
   const creditErrorMatch = message.message.match(creditErrorRegex);
   const isCreditError = !!creditErrorMatch;
+
+  // Detect text direction based on content
+  const detectTextDirection = (text: string) => {
+    // Check for RTL characters (Arabic, Hebrew, etc.)
+    const rtlRegex = /[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]/;
+    return rtlRegex.test(text) ? 'rtl' : 'ltr';
+  };
+
+  const textDirection = detectTextDirection(message.message);
 
   return (
     <>
@@ -61,11 +73,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       `}</style>
       <div
         className={`flex items-end message-bubble ${
-          message.speaker === "user" ? "justify-end" : "justify-start"
+          // In RTL mode, swap the alignment
+          isRTL
+            ? (message.speaker === "user" ? "justify-start" : "justify-end")
+            : (message.speaker === "user" ? "justify-end" : "justify-start")
         } group`}
       >
-        {message.speaker !== "user" && (
-          <div className="flex items-end mr-2 mb-1">
+        {message.speaker !== "user" && !isRTL && (
+          <div className="flex items-end me-2 mb-1">
             <div className="w-8 h-8 rounded-full overflow-hidden shadow-sm">
               <Avatar
                 size={32}
@@ -87,15 +102,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             <span className="font-medium">
               {message.speaker === "user" ? "You" : message.speaker}
             </span>
-            <span className="ml-2">{formatTime(message.timestamp)}</span>
+            <span className="ms-2">{formatTime(message.timestamp)}</span>
           </div>
           <div
             className={`px-3 py-2 rounded-2xl relative ${
               message.speaker === "user"
-                ? "bg-blue-500 text-white rounded-br-md"
+                ? isRTL
+                  ? "bg-blue-500 text-white rounded-es-md"
+                  : "bg-blue-500 text-white rounded-ee-md"
                 : isCreditError
-                ? "bg-yellow-50 border border-yellow-200 text-gray-900 rounded-bl-md"
-                : "bg-gray-100 text-gray-900 rounded-bl-md"
+                ? isRTL
+                  ? "bg-yellow-50 border border-yellow-200 text-gray-900 rounded-ee-md"
+                  : "bg-yellow-50 border border-yellow-200 text-gray-900 rounded-es-md"
+                : isRTL
+                  ? "bg-gray-100 text-gray-900 rounded-ee-md"
+                  : "bg-gray-100 text-gray-900 rounded-es-md"
             }`}
             style={{
               backgroundColor:
@@ -106,6 +127,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   : message.agent_id
                   ? `${getAgentColor(message.agent_id)}15`
                   : "#f1f3f4",
+              direction: textDirection,
+              textAlign: textDirection === 'rtl' ? 'right' : 'left',
             }}
           >
           {message.message === "..." ? (
@@ -195,10 +218,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     );
                   },
                   ul: ({ children }) => (
-                    <ul className="list-disc pl-4 space-y-1">{children}</ul>
+                    <ul className="list-disc ps-4 space-y-1">{children}</ul>
                   ),
                   ol: ({ children }) => (
-                    <ol className="list-decimal pl-4 space-y-1">{children}</ol>
+                    <ol className="list-decimal ps-4 space-y-1">{children}</ol>
                   ),
                   li: ({ children }) => <li className="text-sm">{children}</li>,
                   h1: ({ children }) => (
@@ -211,7 +234,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     <h3 className="text-sm font-bold mb-1">{children}</h3>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
+                    <blockquote className="border-s-4 border-gray-300 dark:border-gray-600 ps-4 italic">
                       {children}
                     </blockquote>
                   ),
@@ -227,6 +250,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           )}
           </div>
         </div>
+        {message.speaker !== "user" && isRTL && (
+          <div className="flex items-end ms-2 mb-1">
+            <div className="w-8 h-8 rounded-full overflow-hidden shadow-sm">
+              <Avatar
+                size={32}
+                name={message.speaker || message.agent_id || "Agent"}
+                variant="beam"
+                colors={[
+                  getAgentColor(message.agent_id || "default"),
+                  "#92A1C6",
+                  "#146A7C",
+                  "#F0AB3D",
+                  "#C271B4"
+                ]}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -1,8 +1,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, Users, MessageCircle, Plus } from 'lucide-react';
+import { Trash2, Users, Plus } from 'lucide-react';
 import type { ActiveConversation, Agent } from '../types';
 import Avatar from 'boring-avatars';
+import { useTranslation } from 'react-i18next';
 
 interface ConversationSidebarProps {
   agents: Agent[];
@@ -25,6 +26,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onCreateNewConversation,
   isMobile = false,
 }) => {
+  const { t } = useTranslation();
+  
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -34,14 +37,14 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   };
 
   return (
-    <div className={`${isMobile ? 'w-full' : 'w-72'} bg-card backdrop-blur-sm ${!isMobile ? 'border-r border-border' : ''} flex flex-col shadow-lg`}>
+    <div className={`${isMobile ? 'w-full' : 'w-72'} bg-card backdrop-blur-sm ${!isMobile ? 'border-e border-border' : ''} flex flex-col shadow-lg`}>
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center">
             <Users className="w-4 h-4 text-primary" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Conversations</h2>
-          <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full ml-auto">{conversations.length}</span>
+          <h2 className="text-sm font-semibold text-foreground">{t('conversations.title')}</h2>
+          <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full ms-auto">{conversations.length}</span>
         </div>
         
         {/* Create New Conversation Button */}
@@ -52,8 +55,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             size="sm"
             className="w-full h-8 text-xs border-dashed border-primary/30 text-primary hover:bg-primary/5"
           >
-            <Plus className="w-3 h-3 mr-1" />
-            New Chat
+            <Plus className="w-3 h-3 me-1" />
+            {t('conversations.newChat')}
           </Button>
         )}
       </div>
@@ -83,8 +86,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
               />
             </div>
-            <p className="text-sm font-medium">No conversations yet</p>
-            <p className="text-xs text-muted-foreground/80 mt-1">Create your first chat above</p>
+            <p className="text-sm font-medium">{t('conversations.noConversations')}</p>
+            <p className="text-xs text-muted-foreground/80 mt-1">{t('conversations.createFirstChat')}</p>
           </div>
         ) : (
           conversations.map((conv) => (
@@ -103,19 +106,19 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                     {conv.name}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-medium">{conv.messages.length}</span>
+                    <span className="font-medium">{t('conversations.messagesCount', { count: conv.messages.length })}</span>
                     {conv.isActive && (
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
                     )}
                     <span>
                       {conv.messages.length > 0 
                         ? formatTime(conv.messages[conv.messages.length - 1].timestamp)
-                        : 'Empty'
+                        : t('conversations.empty')
                       }
                     </span>
                   </div>
                 </div>
-                <div className="flex-shrink-0 ml-2">
+                <div className="flex-shrink-0 ms-2">
                   {conv.isActive ? (
                     <Button
                       onClick={(e) => {
@@ -125,7 +128,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
-                      title="Stop conversation"
+                      title={t('conversations.stopConversation')}
                     >
                       <div className="w-2.5 h-2.5 bg-current rounded-sm"></div>
                     </Button>
@@ -133,14 +136,14 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm('Delete this conversation?')) {
+                        if (confirm(t('conversations.deleteConfirm'))) {
                           onDeleteConversation(conv.id);
                         }
                       }}
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
-                      title="Delete conversation"
+                      title={t('conversations.deleteConversation')}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>

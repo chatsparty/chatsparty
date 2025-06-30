@@ -16,6 +16,9 @@ import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { useTracking } from "./hooks/useTracking";
 import Avatar from "boring-avatars";
+import { useTranslation } from "react-i18next";
+import { getDirection } from "./i18n/config";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import {
   AgentManagerPage,
   LandingPage,
@@ -36,6 +39,14 @@ const Layout = () => {
   const previousLocationRef = useRef<string>("");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const { t, i18n } = useTranslation();
+
+  // Apply language direction to HTML element
+  useEffect(() => {
+    const direction = getDirection(i18n.language);
+    document.documentElement.dir = direction;
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   useEffect(() => {
     const currentPath = location.pathname;
@@ -89,10 +100,10 @@ const Layout = () => {
   }
 
   const tabs = [
-    { path: "/projects", label: "Projects" },
-    { path: "/agents", label: "Agents" },
-    { path: "/chat", label: "Chat" },
-    { path: "/settings", label: "Settings" },
+    { path: "/projects", label: t("navigation.projects") },
+    { path: "/agents", label: t("navigation.agents") },
+    { path: "/chat", label: t("navigation.chat") },
+    { path: "/settings", label: t("navigation.settings") },
   ];
 
   return (
@@ -110,10 +121,10 @@ const Layout = () => {
                 variant="beam"
                 colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
               />
-              <span>Chats<span className="text-primary">Party</span></span>
+              <span>{t("common.appName")}</span>
             </Link>
             <div className="flex items-center">
-              <nav className="flex items-center gap-8 mr-6">
+              <nav className="flex items-center gap-8 me-6">
                 {tabs.map((tab) => (
                   <Link
                     key={tab.path}
@@ -129,6 +140,7 @@ const Layout = () => {
                 ))}
               </nav>
               <div className="flex items-center gap-4">
+                <LanguageSwitcher />
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -138,13 +150,13 @@ const Layout = () => {
                       <FaUser className="w-3 h-3 text-primary" />
                     </div>
                     <span className="text-sm font-medium text-foreground">
-                      {user?.email?.split("@")[0] || "User"}
+                      {user?.email?.split("@")[0] || t("navigation.userMenu")}
                     </span>
                     <ChevronDown className="w-3 h-3 text-muted-foreground" />
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-md shadow-lg z-50">
+                    <div className="absolute end-0 top-full mt-1 w-40 bg-card border border-border rounded-md shadow-lg z-50">
                       <div className="py-1">
                         <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border">
                           {user?.email}
@@ -155,17 +167,17 @@ const Layout = () => {
                           className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
                           <FaCog className="w-3 h-3" />
-                          Settings
+                          {t("navigation.settings")}
                         </Link>
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
                             handleLogout();
                           }}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full text-left"
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full text-start"
                         >
                           <FaSignOutAlt className="w-3 h-3" />
-                          Sign Out
+                          {t("navigation.signOut")}
                         </button>
                         <div className="border-t border-border mt-1 pt-1">
                           <div className="px-3 py-1.5">
@@ -212,13 +224,14 @@ const Layout = () => {
 const MainApp = () => {
   const { loading } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
+          <p className="mt-4 text-muted-foreground">{t("common.loading")}</p>
         </div>
       </div>
     );
