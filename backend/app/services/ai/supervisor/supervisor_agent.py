@@ -41,8 +41,6 @@ class SupervisorAgent:
             agents_info = self._get_agents_info(agent_ids, user_id)
             selection_prompt = self._build_selection_prompt(conversation_log, agents_info)
             
-            # Use model provider without credit deduction (supervisor call)
-            # Try to use the first agent's model config, fallback to default
             model_config = self._get_supervisor_model_config(agent_ids, user_id)
             
             response = await self._model_provider.chat_completion(
@@ -50,7 +48,7 @@ class SupervisorAgent:
                 system_prompt=self._get_supervisor_system_prompt(),
                 model_config=model_config,
                 user_id=user_id,
-                is_supervisor_call=True  # Flag to bypass credit system
+                is_supervisor_call=True
             )
             
             selected_agent_id = self._parse_agent_selection(response, agent_ids)
@@ -84,19 +82,14 @@ class SupervisorAgent:
             True if conversation should end, False otherwise
         """
         try:
-            # Safety: Always end if max turns reached
             if max_turns_reached:
                 return True
                 
-            # If conversation is too short, don't end
             if len(conversation_log) < 3:
                 return False
                 
-            # Let the supervisor LLM make intelligent termination decision
-            # without hardcoded language-specific patterns
             termination_prompt = self._build_termination_prompt(conversation_log)
             
-            # Use a default model configuration for supervisor
             model_config = ModelConfiguration(
                 provider="ollama",
                 model_name="gemma2:2b"
@@ -107,7 +100,7 @@ class SupervisorAgent:
                 system_prompt=self._get_termination_system_prompt(),
                 model_config=model_config,
                 user_id=user_id,
-                is_supervisor_call=True  # Flag to bypass credit system
+                is_supervisor_call=True
             )
             
             should_end = "yes" in response.lower().strip()
@@ -122,7 +115,6 @@ class SupervisorAgent:
             
         except Exception as e:
             logger.error(f"Supervisor termination decision failed: {e}")
-            # Conservative fallback: continue conversation
             return False
     
     def _get_agents_info(self, agent_ids: List[str], user_id: str = None) -> List[Dict[str, str]]:
@@ -147,7 +139,6 @@ class SupervisorAgent:
         agents_info: List[Dict[str, str]]
     ) -> str:
         """Build prompt for agent selection decision."""
-        # Get recent conversation context (last 5 messages)
         recent_messages = conversation_log[-5:] if len(conversation_log) > 5 else conversation_log
         
         conversation_context = ""
@@ -159,7 +150,6 @@ class SupervisorAgent:
         for agent in agents_info:
             agents_list += f"- {agent['id']}: {agent['name']} - {agent['description']}\n"
         
-        # Identify the last speaker
         last_speaker = recent_messages[-1].speaker if recent_messages else "unknown"
         
         prompt = f"""
@@ -237,12 +227,10 @@ Respond only with "yes" or "no"."""
         """Parse supervisor response to extract selected agent ID."""
         response = response.strip().lower()
         
-        # Look for exact agent ID matches
         for agent_id in agent_ids:
             if agent_id.lower() in response:
                 return agent_id
         
-        # Look for agent names or numbers
         for i, agent_id in enumerate(agent_ids):
             if str(i + 1) in response or f"agent_{i + 1}" in response:
                 return agent_id
@@ -252,7 +240,6 @@ Respond only with "yes" or "no"."""
     def _get_supervisor_model_config(self, agent_ids: List[str], user_id: str = None) -> ModelConfiguration:
         """Get model configuration for supervisor calls, preferably from available agents."""
         try:
-            # Try to use the first agent's model config
             if agent_ids:
                 first_agent = self._agent_repository.get_agent(agent_ids[0], user_id)
                 if first_agent and first_agent.model_config:
@@ -260,7 +247,6 @@ Respond only with "yes" or "no"."""
         except Exception:
             pass
         
-        # Fallback to default configuration
         return ModelConfiguration(
             provider="ollama",
             model_name="gemma2:2b"
@@ -268,5 +254,4 @@ Respond only with "yes" or "no"."""
     
     def _get_fallback_agent(self, agent_ids: List[str]) -> str:
         """Get fallback agent when supervisor decision fails."""
-        # Simple fallback: return first available agent
         return agent_ids[0] if agent_ids else None
