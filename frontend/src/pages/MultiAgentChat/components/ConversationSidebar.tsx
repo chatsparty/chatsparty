@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Trash2, Users, MessageCircle, Plus } from 'lucide-react';
 import type { ActiveConversation, Agent } from '../types';
+import Avatar from 'boring-avatars';
 
 interface ConversationSidebarProps {
   agents: Agent[];
@@ -63,8 +63,25 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         
         {conversations.length === 0 ? (
           <div className="text-center text-muted-foreground p-6">
-            <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-muted/50 flex items-center justify-center">
-              <MessageCircle className="w-5 h-5" />
+            <div className="flex -space-x-2 justify-center mb-3">
+              <Avatar
+                size={32}
+                name="Empty-1"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
+              <Avatar
+                size={32}
+                name="Empty-2"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
+              <Avatar
+                size={32}
+                name="Empty-3"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
             </div>
             <p className="text-sm font-medium">No conversations yet</p>
             <p className="text-xs text-muted-foreground/80 mt-1">Create your first chat above</p>

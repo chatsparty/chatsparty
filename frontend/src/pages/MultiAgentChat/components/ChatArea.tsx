@@ -19,6 +19,7 @@ import {
   Search,
 } from "lucide-react";
 import axios from "axios";
+import Avatar from "boring-avatars";
 
 interface ChatAreaProps {
   activeConversation: ActiveConversation | undefined;
@@ -44,7 +45,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   onSendMessage,
   isMobile = false,
   showCreditsModal = false,
-  setShowCreditsModal = () => {}, // eslint-disable-line @typescript-eslint/no-unused-vars
+  setShowCreditsModal = () => {},
   creditsError = null,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -69,7 +70,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [agentSearchQuery, setAgentSearchQuery] = useState("");
   
-  // Debug effect to track modal state
   useEffect(() => {
     console.log('Credits modal state changed (from props):', { showCreditsModal, creditsError });
   }, [showCreditsModal, creditsError]);
@@ -387,7 +387,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     if (!activeConversation) {
       setIsSendingMessage(true);
       
-      // Store whether we got an error to avoid double handling
       let errorHandled = false;
       
       try {
@@ -395,7 +394,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           errorHandled = true;
           console.error("Socket error during conversation start:", error);
           
-          // The parent component will handle showing the credits modal
           if (!error.startsWith('insufficient_credits:')) {
             showToast("Failed to start conversation. Please try again.", "error");
           }
@@ -403,7 +401,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           setIsSendingMessage(false);
         });
         
-        // Only clear message and reset state if no error occurred
         setMessageInput("");
         setIsSendingMessage(false);
       } catch (error) {
@@ -492,11 +489,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         
         <div className={`flex-1 flex flex-col justify-center items-center ${isMobile ? 'p-6' : 'p-10'}`}>
           <div className="mb-6 text-center">
-            <div className="flex -space-x-2 mb-3 justify-center">
-              <div className="w-8 h-8 rounded-full bg-muted-foreground/30 border-2 border-background"></div>
-              <div className="w-8 h-8 rounded-full bg-muted-foreground/30 border-2 border-background"></div>
-              <div className="w-8 h-8 rounded-full bg-muted-foreground/30 border-2 border-background flex items-center justify-center">
-                <Plus className="w-4 h-4 text-muted-foreground/70" />
+            <div className="flex -space-x-3 mb-4 justify-center items-center">
+              <Avatar
+                size={40}
+                name="Agent-1"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
+              <Avatar
+                size={40}
+                name="Agent-2"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
+              <div className="w-10 h-10 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                <Plus className="w-5 h-5 text-muted-foreground" />
               </div>
             </div>
             <div>

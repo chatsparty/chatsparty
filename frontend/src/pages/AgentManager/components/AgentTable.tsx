@@ -9,8 +9,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useConnections } from "@/hooks/useConnections";
-import { Bot, Edit, Plus, Trash2, User } from "lucide-react";
+import { Bot, Edit, Plus, Trash2 } from "lucide-react";
 import React from "react";
+import Avatar from "boring-avatars";
 
 interface Agent {
   agent_id: string;
@@ -35,6 +36,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
   isLoading = false,
 }) => {
   const { connections } = useConnections();
+  const avatarColors = ["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"];
 
   const handleDeleteClick = (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
@@ -108,9 +110,12 @@ const AgentTable: React.FC<AgentTableProps> = ({
                   >
                     <TableCell className="font-medium py-3">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <User className="h-4 w-4 text-primary" />
-                        </div>
+                        <Avatar
+                          size={32}
+                          name={agent.name || agent.agent_id}
+                          variant="beam"
+                          colors={avatarColors}
+                        />
                         <span>{agent.name}</span>
                       </div>
                     </TableCell>

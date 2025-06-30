@@ -17,8 +17,14 @@ function WebsiteHeader() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="text-xl font-bold text-foreground">
-            Chats<span className="text-primary">Party</span>
+          <div className="flex items-center gap-2 text-xl font-bold text-foreground">
+            <Avatar
+              size={32}
+              name="ChatsParty"
+              variant="beam"
+              colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+            />
+            <span>Chats<span className="text-primary">Party</span></span>
           </div>
 
           <div className="flex items-center gap-4">

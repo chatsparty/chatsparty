@@ -15,6 +15,7 @@ import { AuthPage } from "./components/auth/AuthPage";
 import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { useTracking } from "./hooks/useTracking";
+import Avatar from "boring-avatars";
 import {
   AgentManagerPage,
   LandingPage,
@@ -101,9 +102,15 @@ const Layout = () => {
           <div className="flex items-center justify-between">
             <Link
               to="/"
-              className="text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
+              className="flex items-center gap-2 text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
             >
-              ChatsParty
+              <Avatar
+                size={28}
+                name="ChatsParty"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
+              <span>Chats<span className="text-primary">Party</span></span>
             </Link>
             <div className="flex items-center">
               <nav className="flex items-center gap-8 mr-6">
