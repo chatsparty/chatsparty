@@ -40,6 +40,18 @@ export const useSocketConversation = ({
       console.log('Conversation started:', data);
     };
 
+    const handleConversationResumed = (data: any) => {
+      console.log('Conversation resumed:', data);
+      const conversationId = data.conversation_id;
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === conversationId 
+            ? { ...conv, isActive: true }
+            : conv
+        )
+      );
+    };
+
     const handleConversationComplete = (data: any) => {
       const conversationId = data.conversation_id;
       setConversations(prev => 
@@ -114,6 +126,7 @@ export const useSocketConversation = ({
     };
 
     socketService.on('conversation_started', handleConversationStarted);
+    socketService.on('conversation_resumed', handleConversationResumed);
     socketService.on('conversation_complete', handleConversationComplete);
     socketService.on('conversation_error', handleConversationError);
     socketService.on('agent_typing', handleAgentTyping);
@@ -121,6 +134,7 @@ export const useSocketConversation = ({
 
     return () => {
       socketService.off('conversation_started', handleConversationStarted);
+      socketService.off('conversation_resumed', handleConversationResumed);
       socketService.off('conversation_complete', handleConversationComplete);
       socketService.off('conversation_error', handleConversationError);
       socketService.off('agent_typing', handleAgentTyping);

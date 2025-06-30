@@ -26,20 +26,18 @@ class UnifiedModelProvider(ModelProviderInterface):
         messages: List[Message], 
         system_prompt: str,
         model_config: ModelConfiguration,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        is_supervisor_call: bool = False
     ) -> str:
         try:
-            # Check and consume credits if user_id is provided and credits are enabled
-            if user_id and settings.enable_credits:
+            if user_id and settings.enable_credits and not is_supervisor_call:
                 credit_service = get_credit_service()
                 
-                # Get the cost for this model
                 model_cost = await credit_service.get_model_cost(
                     provider=model_config.provider,
                     model_name=model_config.model_name
                 )
                 
-                # Create consumption request
                 consumption_request = CreditConsumptionRequest(
                     amount=model_cost.cost_per_message,
                     reason=CreditConsumptionReason.CHAT_MESSAGE,
@@ -50,11 +48,9 @@ class UnifiedModelProvider(ModelProviderInterface):
                     }
                 )
                 
-                # Try to consume credits
                 try:
                     await credit_service.consume_credits(user_id, consumption_request)
                 except InsufficientCreditsError as e:
-                    # Return a friendly message instead of raising to maintain conversation flow
                     return f"I'm sorry, but you don't have enough credits to continue this conversation. {str(e.detail)}"
             
             unified_service = await self._get_service()
@@ -73,7 +69,6 @@ class UnifiedModelProvider(ModelProviderInterface):
                 base_url=model_config.base_url
             )
         except InsufficientCreditsError:
-            # Already handled above
             raise
         except Exception as e:
             logger.error(f"Error in chat_completion: {e}")

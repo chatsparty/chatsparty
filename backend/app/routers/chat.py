@@ -253,7 +253,6 @@ async def start_multi_agent_conversation(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
-        # Credit checking will now happen per AI request
         
         file_attachments = None
         if conversation_request.file_attachments:
@@ -270,7 +269,7 @@ async def start_multi_agent_conversation(
             conversation_request.conversation_id,
             conversation_request.agent_ids,
             conversation_request.initial_message,
-            conversation_request.max_turns,
+            conversation_request.max_turns or 20,
             current_user.id,
             file_attachments,
             conversation_request.project_id
@@ -308,7 +307,7 @@ async def stream_multi_agent_conversation(
                 conversation_request.conversation_id,
                 conversation_request.agent_ids,
                 conversation_request.initial_message,
-                conversation_request.max_turns,
+                conversation_request.max_turns or 20,
                 current_user.id,
                 file_attachments,
                 conversation_request.project_id
@@ -334,6 +333,7 @@ async def stream_multi_agent_conversation(
             "Access-Control-Allow-Headers": "Cache-Control"
         }
     )
+
 
 
 @router.get("/conversations", response_model=List[Dict[str, Any]])

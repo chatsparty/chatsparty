@@ -133,11 +133,27 @@ class AIServiceFacade(AIServiceInterface):
         conversation_id: str,
         agent_ids: List[str],
         initial_message: str,
-        max_turns: int = 10,
+        max_turns: int = 20,
         user_id: str = None,
         file_attachments: List[Dict[str, str]] = None,
         project_id: str = None
     ) -> List[Dict[str, Any]]:
+        """Multi-agent conversation managed by an invisible supervisor agent"""
+        return await self._multi_agent_conversation_supervised(
+            conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments, project_id
+        )
+    
+    async def _multi_agent_conversation_supervised(
+        self,
+        conversation_id: str,
+        agent_ids: List[str],
+        initial_message: str,
+        max_turns: int = 20,
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None,
+        project_id: str = None
+    ) -> List[Dict[str, Any]]:
+        """Multi-agent conversation managed by an invisible supervisor agent"""
         with SessionManager.get_agent_repository() as agent_repo, \
                 SessionManager.get_conversation_repository() as conv_repo:
             base_chat_service = ChatService(
@@ -145,31 +161,11 @@ class AIServiceFacade(AIServiceInterface):
                 agent_repo,
                 conv_repo
             )
-            try:
-                from services.project.application.services import ProjectService
-                from services.project.infrastructure.project_repository import (
-                    ProjectRepository,
-                )
-
-                project_repo = ProjectRepository(conv_repo.db_session)
-                project_service = ProjectService(
-                    project_repo=project_repo,
-                    file_repo=None,
-                    vm_service_repo=None,
-                )
-
-                enhanced_chat_service = ProjectEnhancedChatService(
-                    base_chat_service, project_service
-                )
-                conversation_messages = await enhanced_chat_service.multi_agent_conversation(
-                    conversation_id, agent_ids, initial_message, max_turns,
-                    user_id, file_attachments, project_id
-                )
-            except ImportError:
-                enhanced_chat_service = EnhancedChatService(base_chat_service)
-                conversation_messages = await enhanced_chat_service.multi_agent_conversation(
-                    conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
-                )
+            
+            conversation_messages = await base_chat_service._multi_agent_conversation_supervised(
+                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
+            )
+            
             return [
                 {
                     "speaker": msg.speaker,
@@ -186,11 +182,28 @@ class AIServiceFacade(AIServiceInterface):
         conversation_id: str,
         agent_ids: List[str],
         initial_message: str,
-        max_turns: int = 10,
+        max_turns: int = 20,
         user_id: str = None,
         file_attachments: List[Dict[str, str]] = None,
         project_id: str = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Streaming multi-agent conversation managed by an invisible supervisor agent"""
+        async for message in self._multi_agent_conversation_stream_supervised(
+            conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments, project_id
+        ):
+            yield message
+            
+    async def _multi_agent_conversation_stream_supervised(
+        self,
+        conversation_id: str,
+        agent_ids: List[str],
+        initial_message: str,
+        max_turns: int = 20,
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None,
+        project_id: str = None
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Streaming multi-agent conversation managed by an invisible supervisor agent"""
         from app.core.database import db_manager
         from app.services.ai.infrastructure.agent_repository import DatabaseAgentRepository
         from app.services.ai.infrastructure.conversation_repository import DatabaseConversationRepository
@@ -207,35 +220,12 @@ class AIServiceFacade(AIServiceInterface):
                 agent_repo,
                 conv_repo
             )
-
-            try:
-                from services.project.application.services import ProjectService
-                from services.project.infrastructure.project_repository import (
-                    ProjectRepository,
-                )
-
-                project_repo = ProjectRepository(conv_repo.db_session)
-                project_service = ProjectService(
-                    project_repo=project_repo,
-                    file_repo=None,
-                    vm_service_repo=None,
-                )
-
-                enhanced_chat_service = ProjectEnhancedChatService(
-                    base_chat_service, project_service
-                )
-                async for message in enhanced_chat_service.multi_agent_conversation_stream(
-                    conversation_id, agent_ids, initial_message, max_turns,
-                    user_id, file_attachments, project_id
-                ):
-                    conv_session.commit()
-                    yield message
-            except ImportError:
-                async for message in base_chat_service.multi_agent_conversation_stream(
-                    conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
-                ):
-                    conv_session.commit()
-                    yield message
+            
+            async for message in base_chat_service._multi_agent_conversation_stream_supervised(
+                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
+            ):
+                conv_session.commit()
+                yield message
                     
             conv_session.commit()
             agent_session.commit()

@@ -82,6 +82,10 @@ class SocketService {
       this.emit('conversation_started', data);
     });
 
+    this.socket.on('conversation_resumed', (data) => {
+      this.emit('conversation_resumed', data);
+    });
+
     this.socket.on('conversation_stopped', (data) => {
       this.emit('conversation_stopped', data);
     });

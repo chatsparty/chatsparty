@@ -10,7 +10,8 @@ class ModelProviderInterface(ABC):
         messages: List[Message], 
         system_prompt: str,
         model_config: ModelConfiguration,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        is_supervisor_call: bool = False
     ) -> str:
         pass
 
