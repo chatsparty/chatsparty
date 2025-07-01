@@ -71,7 +71,12 @@ app.mount("/socket.io", websocket_service.get_socketio_app())
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(system.router)
-app.include_router(projects_router)
+
+from .core.config import settings
+
+if settings.enable_projects:
+    app.include_router(projects_router)
+
 app.include_router(chat.router)
 app.include_router(connections.router)
 app.include_router(voice_connections.router)
@@ -79,7 +84,6 @@ app.include_router(podcast.router)
 app.include_router(audio_test.router)
 app.include_router(files.router)
 app.include_router(mcp.router)
-from .core.config import settings
 
 if settings.enable_credits:
     app.include_router(credit.router)

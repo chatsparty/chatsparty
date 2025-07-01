@@ -19,6 +19,7 @@ import Avatar from "boring-avatars";
 import { useTranslation } from "react-i18next";
 import { getDirection } from "./i18n/config";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { PROJECTS_ENABLED } from "./config/features";
 import {
   AgentManagerPage,
   LandingPage,
@@ -100,7 +101,7 @@ const Layout = () => {
   }
 
   const tabs = [
-    { path: "/projects", label: t("navigation.projects") },
+    ...(PROJECTS_ENABLED ? [{ path: "/projects", label: t("navigation.projects") }] : []),
     { path: "/agents", label: t("navigation.agents") },
     { path: "/chat", label: t("navigation.chat") },
     { path: "/settings", label: t("navigation.settings") },
@@ -195,8 +196,12 @@ const Layout = () => {
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects/new" element={<CreateProjectPage />} />
+            {PROJECTS_ENABLED && (
+              <>
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projects/new" element={<CreateProjectPage />} />
+              </>
+            )}
             <Route path="/agents" element={<AgentManagerPage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
@@ -213,7 +218,7 @@ const Layout = () => {
             />
             <Route path="/settings/mcp-servers" element={<SettingsPage />} />
             <Route path="/settings/credits" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/projects" replace />} />
+            <Route path="*" element={<Navigate to={PROJECTS_ENABLED ? "/projects" : "/agents"} replace />} />
           </Routes>
         </div>
       </div>
@@ -237,7 +242,7 @@ const MainApp = () => {
     );
   }
 
-  if (location.pathname === "/projects/new") {
+  if (PROJECTS_ENABLED && location.pathname === "/projects/new") {
     return (
       <div className="h-screen w-screen bg-background">
         <CreateProjectPage />
@@ -246,6 +251,7 @@ const MainApp = () => {
   }
 
   if (
+    PROJECTS_ENABLED &&
     location.pathname.startsWith("/projects/") &&
     location.pathname !== "/projects"
   ) {

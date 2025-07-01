@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     enable_credits: bool = False
     docker_mode: str = "local"
     vm_workspace_enabled: bool = False
+    enable_projects: bool = False
 
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
     access_token_expire_minutes: int = 30
