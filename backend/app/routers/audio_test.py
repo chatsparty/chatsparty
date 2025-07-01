@@ -7,7 +7,7 @@ import logging
 import numpy as np
 from typing import Optional
 
-from ..services.audio_handler import AudioSegment
+from ..services.podcast.audio_handler import AudioSegment
 
 logger = logging.getLogger(__name__)
 

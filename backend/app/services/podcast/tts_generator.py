@@ -6,7 +6,7 @@ import logging
 from typing import Dict, Any, Optional
 
 try:
-    from app.services.audio_handler import AudioSegment
+    from .audio_handler import AudioSegment
 except ImportError:
     from pydub import AudioSegment
 
