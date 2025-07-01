@@ -324,7 +324,12 @@
     "saving": "Saving...",
     "updateAgent": "Update Agent",
     "deleteConfirmation": "Delete \"{{name}}\"? This cannot be undone.",
-    "deleting": "Deleting..."
+    "deleting": "Deleting...",
+    "voiceConfiguration": "Voice Configuration",
+    "voiceConfigurationDescription": "Enable voice synthesis for this agent",
+    "voiceConnection": "Voice Connection",
+    "selectVoiceConnection": "Select a voice connection",
+    "addVoiceConnection": "+ Add Voice Connection"
   },
   "chat": {
     "title": "Chat",
@@ -473,7 +478,9 @@
     "noAgentsFound": "No agents found matching \"{{query}}\"",
     "podcastProgress": "{{percent}}% Complete",
     "selectAgentsToContinue": "Select agents to continue...",
-    "addAgents": "Add Agents"
+    "addAgents": "Add Agents",
+    "downloadPodcast": "Download Podcast",
+    "retryPodcast": "Retry Podcast"
   },
   "conversations": {
     "title": "Conversations",
