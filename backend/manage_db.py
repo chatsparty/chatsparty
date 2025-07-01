@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Database management script for Wisty AI API
+Database management script for Wisty AI API using yoyo-migrations
 
 Usage:
     python manage_db.py migrate [--env=ENV_FILE]
         # Run pending migrations
-    python manage_db.py create-migration [--env=ENV_FILE]
-        # Create a new migration
+    python manage_db.py rollback [--env=ENV_FILE]
+        # Rollback last migration
+    python manage_db.py status [--env=ENV_FILE]
+        # Show migration status
     python manage_db.py reset [--env=ENV_FILE]
         # Reset database to empty state
     python manage_db.py init [--env=ENV_FILE]
@@ -20,48 +22,97 @@ Environment Options:
 
 import argparse
 import os
-import subprocess
 import sys
 from pathlib import Path
+from yoyo import get_backend, read_migrations
+from dotenv import load_dotenv
 
 
-def run_alembic_command(cmd: str, env_file: str = ".env"):
-    """Run an alembic command with specified environment file"""
-    # Set environment file for the command
-    env = os.environ.copy()
-    env['ENV_FILE'] = env_file
-
-    result = subprocess.run(
-        f"uv run alembic {cmd}",
-        shell=True,
-        capture_output=True,
-        text=True,
-        env=env
-    )
-    if result.returncode != 0:
-        print(f"Error running alembic {cmd} with {env_file}:")
-        print(result.stderr)
-        sys.exit(1)
-    print(result.stdout)
+def get_db_url(env_file: str = ".env"):
+    """Get database URL from environment file"""
+    load_dotenv(env_file)
+    
+    use_sqlite = os.getenv("USE_SQLITE", "true").lower() == "true"
+    
+    if use_sqlite:
+        db_path = os.getenv("SQLITE_DB_PATH", "wisty.db")
+        return f"sqlite:///{db_path}"
+    else:
+        # PostgreSQL
+        db_host = os.getenv("DATABASE_HOST", "localhost")
+        db_port = os.getenv("DATABASE_PORT", "5432")
+        db_name = os.getenv("DATABASE_NAME", "wisty")
+        db_user = os.getenv("DATABASE_USER", "postgres")
+        db_pass = os.getenv("DATABASE_PASSWORD", "")
+        
+        if db_pass:
+            return f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+        else:
+            return f"postgresql://{db_user}@{db_host}:{db_port}/{db_name}"
 
 
 def migrate(env_file: str = ".env"):
     """Run database migrations"""
     print(f"Running database migrations using {env_file}...")
-    run_alembic_command("upgrade head", env_file)
-    print("✅ Migrations completed successfully")
+    
+    db_url = get_db_url(env_file)
+    backend = get_backend(db_url)
+    migrations = read_migrations("./migrations")
+    
+    with backend.lock():
+        pending = backend.to_apply(migrations)
+        if pending:
+            print(f"Applying {len(pending)} migration(s)...")
+            backend.apply_migrations(pending)
+            print("✅ Migrations completed successfully")
+        else:
+            print("✅ No pending migrations")
 
 
-def create_migration(env_file: str = ".env"):
-    """Create a new migration"""
-    message = input("Enter migration message: ")
-    if not message:
-        print("Migration message cannot be empty")
-        sys.exit(1)
+def rollback(env_file: str = ".env"):
+    """Rollback last migration"""
+    print(f"Rolling back last migration using {env_file}...")
+    
+    db_url = get_db_url(env_file)
+    backend = get_backend(db_url)
+    migrations = read_migrations("./migrations")
+    
+    with backend.lock():
+        applied = backend.to_rollback(migrations)
+        if applied:
+            last_migration = applied[-1]
+            print(f"Rolling back: {last_migration.id}")
+            backend.rollback_migrations([last_migration])
+            print("✅ Rollback completed successfully")
+        else:
+            print("⚠️  No migrations to rollback")
 
-    print(f"Creating migration: {message} using {env_file}")
-    run_alembic_command(f'revision --autogenerate -m "{message}"', env_file)
-    print("✅ Migration created successfully")
+
+def status(env_file: str = ".env"):
+    """Show migration status"""
+    print(f"Checking migration status using {env_file}...")
+    
+    db_url = get_db_url(env_file)
+    backend = get_backend(db_url)
+    migrations = read_migrations("./migrations")
+    
+    with backend.lock():
+        applied_migrations = [m for m in migrations if backend.is_applied(m)]
+        pending = backend.to_apply(migrations)
+        
+        print("\n📋 Applied migrations:")
+        if applied_migrations:
+            for migration in applied_migrations:
+                print(f"  ✅ {migration.id}")
+        else:
+            print("  (none)")
+        
+        print("\n📦 Pending migrations:")
+        if pending:
+            for migration in pending:
+                print(f"  ⏳ {migration.id}")
+        else:
+            print("  (none)")
 
 
 def reset_database(env_file: str = ".env"):
@@ -73,20 +124,24 @@ def reset_database(env_file: str = ".env"):
         return
 
     # Load environment to check database type
-    from dotenv import load_dotenv
     load_dotenv(env_file)
     use_sqlite = os.getenv("USE_SQLITE", "true").lower() == "true"
 
     if use_sqlite:
         # For SQLite, delete the database file
-        db_path = Path(os.getenv("SQLITE_DB_PATH", "chatsparty.db"))
+        db_path = Path(os.getenv("SQLITE_DB_PATH", "wisty.db"))
         if db_path.exists():
             db_path.unlink()
             print("🗑️  SQLite database file deleted")
     else:
-        # For PostgreSQL, drop all tables
-        print("🗑️  Dropping all tables in PostgreSQL database...")
-        run_alembic_command("downgrade base", env_file)
+        # For PostgreSQL, rollback all migrations
+        db_url = get_db_url(env_file)
+        backend = get_backend(db_url)
+        migrations = read_migrations("./migrations")
+        
+        with backend.lock():
+            print("🗑️  Rolling back all migrations...")
+            backend.rollback_migrations(backend.to_rollback(migrations))
 
     print("🔄 Reinitializing database...")
     migrate(env_file)
@@ -107,7 +162,7 @@ def parse_args():
     )
     parser.add_argument(
         "command",
-        choices=["migrate", "create-migration", "reset", "init"],
+        choices=["migrate", "rollback", "status", "reset", "init"],
         help="Command to execute"
     )
     parser.add_argument(
@@ -133,7 +188,8 @@ def main():
 
     commands = {
         "migrate": lambda: migrate(args.env),
-        "create-migration": lambda: create_migration(args.env),
+        "rollback": lambda: rollback(args.env),
+        "status": lambda: status(args.env),
         "reset": lambda: reset_database(args.env),
         "init": lambda: init_database(args.env),
     }

@@ -16,13 +16,11 @@ from .core.database import db_manager
 from .core.config import create_app
 from contextlib import asynccontextmanager
 from .services.websocket_service import websocket_service
-from .routers import chat_socketio
-
 from dotenv import load_dotenv
 import logging
 import signal
 import sys
-import asyncio
+from .services.migration_runner import migration_runner
 
 load_dotenv()
 
@@ -34,6 +32,13 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app):
+    # Run migrations first
+    try:
+        await migration_runner.ensure_migrations_applied()
+    except Exception as e:
+        print(f"⚠️ Migration runner failed: {e}")
+        # Continue anyway - migrations might be applied manually
+    
     try:
         await db_manager.create_tables()
         print("✅ Database tables created successfully")
