@@ -146,7 +146,7 @@ const FileAttachmentSidebar: React.FC<FileAttachmentSidebarProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {attachedFiles.map((file, index) => (
+            {attachedFiles.map((file) => (
               <div 
                 key={file.id} 
                 className="group rounded-lg border-2 border-border/60 bg-card/40 hover:border-primary/40 hover:bg-card/80 hover:shadow-lg transition-all duration-300 p-3"

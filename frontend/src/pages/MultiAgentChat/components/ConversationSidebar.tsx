@@ -17,7 +17,6 @@ interface ConversationSidebarProps {
 }
 
 const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
-  agents,
   conversations,
   activeConversation,
   onStopConversation,

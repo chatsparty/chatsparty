@@ -39,14 +39,12 @@ interface ChatAreaProps {
 const ChatArea: React.FC<ChatAreaProps> = ({
   activeConversation,
   agents,
-  getAgentName,
   getAgentColor,
   onConversationUpdated,
   onStartNewConversation,
   onSendMessage,
   isMobile = false,
   showCreditsModal = false,
-  setShowCreditsModal = () => {},
   creditsError = null,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
