@@ -123,6 +123,16 @@ export const VoiceConnectionList: React.FC<VoiceConnectionListProps> = ({
         <Button onClick={() => setShowForm(true)}>Add Voice Connection</Button>
       </div>
 
+      {/* Info about default connections */}
+      {connections.some(c => c.is_default) && (
+        <div className="mb-6 p-4 rounded-lg text-sm bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/50 dark:border-blue-900/50 dark:text-blue-300">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">ℹ️ Platform Default:</span>
+            <span>The default voice connection is provided by the ChatsParty platform and cannot be modified.</span>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-8">
           <p className="text-muted-foreground">Loading voice connections...</p>

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { VoiceConnection, VoiceConnectionTestResult } from "@/types/voice";
 import React, { useState } from "react";
 import {
@@ -157,8 +158,15 @@ export const VoiceConnectionsTable: React.FC<VoiceConnectionsTableProps> = ({
                   {/* Connection Name & Description */}
                   <td className="px-4 py-3">
                     <div>
-                      <div className="font-medium text-sm text-card-foreground">
-                        {connection.name}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-card-foreground">
+                          {connection.name}
+                        </span>
+                        {connection.is_default && (
+                          <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400">
+                            Default
+                          </Badge>
+                        )}
                       </div>
                       {connection.description && (
                         <div className="text-sm text-muted-foreground truncate max-w-[200px] mt-1">
@@ -224,8 +232,9 @@ export const VoiceConnectionsTable: React.FC<VoiceConnectionsTableProps> = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleTest(connection)}
-                          disabled={testState.testing}
+                          disabled={testState.testing || connection.is_default}
                           className="h-7 px-3 text-sm"
+                          title={connection.is_default ? "Default connections cannot be tested" : "Test connection"}
                         >
                           {testState.testing ? (
                             <FaSpinner className="h-3 w-3 animate-spin" />
@@ -260,8 +269,9 @@ export const VoiceConnectionsTable: React.FC<VoiceConnectionsTableProps> = ({
                         onClick={() =>
                           onToggleActive(connection.id, !connection.is_active)
                         }
+                        disabled={connection.is_default}
                         className="h-7 w-7 p-0"
-                        title={connection.is_active ? "Deactivate" : "Activate"}
+                        title={connection.is_default ? "Default connections cannot be modified" : (connection.is_active ? "Deactivate" : "Activate")}
                       >
                         {connection.is_active ? (
                           <FaPause className="h-3 w-3" />
@@ -273,20 +283,23 @@ export const VoiceConnectionsTable: React.FC<VoiceConnectionsTableProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => onEdit(connection)}
+                        disabled={connection.is_default}
                         className="h-7 w-7 p-0"
-                        title="Edit"
+                        title={connection.is_default ? "Default connections cannot be edited" : "Edit"}
                       >
                         <FaEdit className="h-3 w-3" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(connection.id)}
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive/80"
-                        title="Delete"
-                      >
-                        <FaTrash className="h-3 w-3" />
-                      </Button>
+                      {!connection.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(connection.id)}
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive/80"
+                          title="Delete"
+                        >
+                          <FaTrash className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

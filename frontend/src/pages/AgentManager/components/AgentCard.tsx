@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import Avatar from 'boring-avatars';
 
 interface ModelConfig {
   provider: string;
@@ -23,6 +24,8 @@ interface AgentCardProps {
 }
 
 const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete }) => {
+  const avatarColors = ["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"];
+  
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete(agent.agent_id);
@@ -33,20 +36,30 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete }) => {
       className="p-4 bg-card rounded-md border border-border cursor-pointer hover:bg-accent hover:border-accent-foreground/20 transition-all duration-200 relative"
       onClick={() => onEdit(agent)}
     >
-      <div className="flex justify-between items-start mb-2">
-        <h4 className="font-semibold text-md text-card-foreground">
-          {agent.name}
-        </h4>
-        <button
-          onClick={handleDeleteClick}
-          className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded p-1 transition-colors duration-200"
-          title="Delete agent"
-        >
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-            <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-          </svg>
-        </button>
+      <div className="flex items-start gap-3 mb-3">
+        <Avatar
+          size={48}
+          name={agent.name || agent.agent_id}
+          variant="beam"
+          colors={avatarColors}
+        />
+        <div className="flex-1">
+          <div className="flex justify-between items-start">
+            <h4 className="font-semibold text-md text-card-foreground">
+              {agent.name}
+            </h4>
+            <button
+              onClick={handleDeleteClick}
+              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded p-1 transition-colors duration-200"
+              title="Delete agent"
+            >
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2 mb-2">
         <Badge 

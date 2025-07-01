@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 
@@ -41,6 +41,7 @@ class VoiceConnectionResponse(VoiceConnectionBase):
     api_key_encrypted: bool = Field(..., description="Whether the API key is encrypted")
     is_active: bool = Field(..., description="Whether the connection is active")
     is_cloud_proxy: bool = Field(..., description="Whether this is a cloud proxy connection")
+    is_default: bool = Field(False, description="Whether this is a default platform connection")
     user_id: str = Field(..., description="ID of the user who owns this connection")
     created_at: datetime = Field(..., description="When the connection was created")
     updated_at: datetime = Field(..., description="When the connection was last updated")
@@ -55,6 +56,18 @@ class VoiceConnectionTestResult(BaseModel):
     details: Optional[Dict[str, Any]] = Field(None, description="Additional test details")
     latency_ms: Optional[int] = Field(None, description="API response latency in milliseconds")
     provider_info: Optional[Dict[str, Any]] = Field(None, description="Provider-specific information")
+
+
+class VoiceOption(BaseModel):
+    id: str = Field(..., description="Voice identifier")
+    name: str = Field(..., description="Voice name")
+    description: str = Field("", description="Voice description")
+    category: str = Field("standard", description="Voice category")
+    gender: Optional[str] = Field(None, description="Voice gender")
+    age: Optional[str] = Field(None, description="Voice age group")
+    accent: Optional[str] = Field(None, description="Voice accent")
+    preview_url: Optional[str] = Field(None, description="URL to preview the voice")
+    available_for_tiers: List[str] = Field(default_factory=list, description="Available subscription tiers")
 
 
 class VoiceGenerationRequest(BaseModel):

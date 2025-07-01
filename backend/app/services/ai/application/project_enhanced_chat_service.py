@@ -297,7 +297,8 @@ class ProjectEnhancedChatService(EnhancedChatService):
             response = await self.base_chat_service._model_provider.chat_completion(
                 context_messages,
                 enhanced_agent.get_system_prompt(),
-                enhanced_agent.model_config
+                enhanced_agent.model_config,
+                user_id=user_id
             )
 
             vm_commands = self._extract_vm_commands(response)
@@ -324,6 +325,10 @@ class ProjectEnhancedChatService(EnhancedChatService):
                 message=response,
                 timestamp=datetime.now().timestamp()
             ))
+
+            # Check if this is a credit error message and stop the conversation
+            if "I'm sorry, but you don't have enough credits" in response:
+                break
 
             current_agent_index = (current_agent_index + 1) % len(agent_ids)
 
@@ -510,7 +515,8 @@ Be collaborative and document your work for the team.
         response = await self.base_chat_service._model_provider.chat_completion(
             conversation_messages,
             enhanced_agent.get_system_prompt(),
-            enhanced_agent.model_config
+            enhanced_agent.model_config,
+            user_id=user_id
         )
 
         return response

@@ -56,7 +56,14 @@ class ConnectionService:
         try:
             with RepositoryFactory.create_connection_repository_with_session() as repo:
                 connections = repo.get_all_connections(user_id)
-                return [ConnectionResponse(**conn) for conn in connections]
+                connection_responses = [ConnectionResponse(**conn) for conn in connections]
+                
+                from ..core.config import settings
+                if settings.chatsparty_default_enabled:
+                    default_connection = self._create_virtual_default_connection()
+                    connection_responses.insert(0, default_connection)
+                
+                return connection_responses
         except SQLAlchemyError as e:
             raise DatabaseErrorHandler.handle_query_error(e, "connections")
         except Exception as e:
@@ -64,6 +71,10 @@ class ConnectionService:
     
     def get_connection(self, connection_id: str, user_id: str = None) -> Optional[ConnectionResponse]:
         """Get a specific connection"""
+        from ..core.config import settings
+        if connection_id == "chatsparty-default" and settings.chatsparty_default_enabled:
+            return self._create_virtual_default_connection()
+        
         with RepositoryFactory.create_connection_repository_with_session() as repo:
             connection = repo.get_connection(connection_id, user_id)
             if connection:
@@ -72,6 +83,9 @@ class ConnectionService:
     
     def update_connection(self, connection_id: str, request: ConnectionUpdateRequest, user_id: str = None) -> Optional[ConnectionResponse]:
         """Update an existing connection"""
+        if connection_id == "chatsparty-default":
+            raise ValueError("Cannot update the default ChatsParty connection")
+        
         update_data = request.dict(exclude_unset=True)
         
         with RepositoryFactory.create_connection_repository_with_session() as repo:
@@ -83,6 +97,9 @@ class ConnectionService:
     
     def delete_connection(self, connection_id: str, user_id: str = None) -> bool:
         """Delete a connection"""
+        if connection_id == "chatsparty-default":
+            raise ValueError("Cannot delete the default ChatsParty connection")
+        
         with RepositoryFactory.create_connection_repository_with_session() as repo:
             success = repo.delete_connection(connection_id, user_id)
             if success:
@@ -91,6 +108,13 @@ class ConnectionService:
     
     async def test_connection(self, connection_id: str, user_id: str = None) -> ConnectionTestResult:
         """Test a connection"""
+        if connection_id == "chatsparty-default":
+            return ConnectionTestResult(
+                success=True,
+                message="Default ChatsParty connection is always available",
+                latency=0
+            )
+        
         with RepositoryFactory.create_connection_repository_with_session() as repo:
             connection = repo.get_connection(connection_id, user_id)
             if not connection:
@@ -154,7 +178,14 @@ class ConnectionService:
         try:
             with RepositoryFactory.create_connection_repository_with_session() as repo:
                 connections = repo.get_active_connections(user_id)
-                return [ConnectionResponse(**conn) for conn in connections]
+                connection_responses = [ConnectionResponse(**conn) for conn in connections]
+                
+                from ..core.config import settings
+                if settings.chatsparty_default_enabled:
+                    default_connection = self._create_virtual_default_connection()
+                    connection_responses.insert(0, default_connection)
+                
+                return connection_responses
         except SQLAlchemyError as e:
             raise DatabaseErrorHandler.handle_query_error(e, "active connections")
         except Exception as e:
@@ -176,9 +207,49 @@ class ConnectionService:
         """Initialize some default connections for testing"""
         pass
     
+    def _create_virtual_default_connection(self) -> ConnectionResponse:
+        """Create a virtual default ChatsParty connection"""
+        from ..core.config import settings
+        from datetime import datetime
+        
+        return ConnectionResponse(
+            id="chatsparty-default",
+            name="ChatsParty Default",
+            description=f"Default ChatsParty platform connection with {settings.chatsparty_default_model}",
+            provider="chatsparty",
+            model_name=settings.chatsparty_default_model,
+            api_key=settings.chatsparty_default_api_key,
+            base_url=settings.chatsparty_default_base_url,
+            is_active=True,
+            is_default=True,
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat()
+        )
+    
     def create_default_connections_for_user(self, user_id: str):
         """Create default connections for a new user"""
-        default_connections = [
+        from ..core.config import settings
+        
+        default_connections = []
+        
+        if settings.chatsparty_default_enabled:
+            chatsparty_connection = {
+                "name": "ChatsParty Default",
+                "description": f"Default ChatsParty platform connection with {settings.chatsparty_default_model}",
+                "provider": "chatsparty",
+                "model_name": settings.chatsparty_default_model,
+                "is_active": True,
+                "is_default": True
+            }
+            
+            if settings.chatsparty_default_api_key:
+                chatsparty_connection["api_key"] = settings.chatsparty_default_api_key
+            if settings.chatsparty_default_base_url:
+                chatsparty_connection["base_url"] = settings.chatsparty_default_base_url
+                
+            default_connections.append(chatsparty_connection)
+        
+        default_connections.extend([
             {
                 "name": "Ollama Local - Gemma2",
                 "description": "Local Ollama instance with Gemma2 2B model",
@@ -193,7 +264,7 @@ class ConnectionService:
                 "model_name": "gemma3:4b",
                 "base_url": "http://localhost:11434"
             }
-        ]
+        ])
         
         for conn_data in default_connections:
             request = ConnectionCreateRequest(**conn_data)

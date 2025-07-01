@@ -146,6 +146,31 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_from_token(token: str, db: AsyncSession = None):
+    """Get current user from token (for WebSocket authentication)"""
+    should_close_db = False
+    if db is None:
+        async for session in get_db_session():
+            db = session
+            should_close_db = True
+            break
+    
+    try:
+        token_data = auth_service.verify_token(token)
+        
+        if token_data is None:
+            return None
+        
+        user = await auth_service.get_user_by_id(db, token_data.user_id)
+        if user is None or not user.is_active:
+            return None
+        
+        return user
+    finally:
+        if should_close_db and db:
+            await db.close()
+
+
 async def get_current_user_dependency(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db_session)

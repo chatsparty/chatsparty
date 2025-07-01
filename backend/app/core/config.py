@@ -19,10 +19,25 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    
+    chatsparty_default_enabled: bool = True
+    chatsparty_default_model: str = "gemini-2.5-flash"
+    chatsparty_default_api_key: Optional[str] = None
+    chatsparty_default_base_url: Optional[str] = None
+    
+    chatsparty_default_voice_enabled: bool = True
+    chatsparty_default_voice_provider: str = "elevenlabs"
+    chatsparty_default_voice_id: str = "EXAVITQu4vr4xnSDxMaL"
+    chatsparty_default_voice_api_key: Optional[str] = None
+    chatsparty_default_voice_base_url: Optional[str] = None
+    
     vm_provider: str = "docker"
     docker_image: str = "wisty-dev-capsule"
+    
+    enable_credits: bool = False
     docker_mode: str = "local"
-    vm_workspace_enabled: bool = False  # Feature flag for VM workspace functionality
+    vm_workspace_enabled: bool = False
+    enable_projects: bool = False
 
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
     access_token_expire_minutes: int = 30

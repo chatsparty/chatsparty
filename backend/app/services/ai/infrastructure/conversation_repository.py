@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy.orm import Session, selectinload
 
 from ....models.database import Conversation as ConversationModel, Message as MessageModel
@@ -48,7 +48,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             for msg in db_conversation.messages
         ]
     
-    def add_message(self, conversation_id: str, message: Message) -> None:
+    def add_message(self, conversation_id: str, message: Message, language: Optional[str] = None) -> None:
         db_message = MessageModel(
             conversation_id=conversation_id,
             role=message.role,
@@ -56,6 +56,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             created_at=message.timestamp,
             agent_id=message.agent_id,
             speaker=message.speaker,
+            language=language,
         )
         self.db_session.add(db_message)
     

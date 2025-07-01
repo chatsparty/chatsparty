@@ -6,7 +6,8 @@ from ..models.voice import (
     VoiceConnectionCreateRequest,
     VoiceConnectionUpdateRequest, 
     VoiceConnectionResponse,
-    VoiceConnectionTestResult
+    VoiceConnectionTestResult,
+    VoiceOption
 )
 from ..models.database import User
 from ..services.voice_connection_service import voice_connection_service
@@ -84,23 +85,35 @@ async def update_voice_connection(
     current_user: User = Depends(get_current_user_dependency)
 ):
     """Update a voice connection"""
-    connection = voice_connection_service.update_voice_connection(connection_id, request, current_user.id)
-    if not connection:
+    try:
+        connection = voice_connection_service.update_voice_connection(connection_id, request, current_user.id)
+        if not connection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Voice connection not found"
+            )
+        return connection
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Voice connection not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
-    return connection
 
 
 @router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_voice_connection(connection_id: str, current_user: User = Depends(get_current_user_dependency)):
     """Delete a voice connection"""
-    success = voice_connection_service.delete_voice_connection(connection_id, current_user.id)
-    if not success:
+    try:
+        success = voice_connection_service.delete_voice_connection(connection_id, current_user.id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Voice connection not found"
+            )
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Voice connection not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
 
 
@@ -134,4 +147,22 @@ async def test_voice_connection_data(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to test voice connection: {str(e)}"
+        )
+
+
+@router.get("/{connection_id}/voices", response_model=List[VoiceOption])
+async def get_available_voices(
+    connection_id: str, 
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Get available voices for a voice connection"""
+    try:
+        voices = await voice_connection_service.get_available_voices(connection_id, current_user.id)
+        return voices
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch available voices: {str(e)}"
         )

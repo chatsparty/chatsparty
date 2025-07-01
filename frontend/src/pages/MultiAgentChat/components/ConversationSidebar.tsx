@@ -1,50 +1,32 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, Users, MessageCircle, Plus } from 'lucide-react';
+import { Trash2, Users, Plus } from 'lucide-react';
 import type { ActiveConversation, Agent } from '../types';
+import Avatar from 'boring-avatars';
+import { useTranslation } from 'react-i18next';
 
 interface ConversationSidebarProps {
   agents: Agent[];
   conversations: ActiveConversation[];
   activeConversation: string | null;
-  showNewConversationForm: boolean;
-  selectedAgents: string[];
-  initialMessage: string;
-  maxTurns: number;
-  isLoading: boolean;
-  onShowNewConversationForm: (show: boolean) => void;
-  onSelectAgent: (agentId: string, checked: boolean) => void;
-  onInitialMessageChange: (message: string) => void;
-  onMaxTurnsChange: (turns: number) => void;
-  onStartConversation: () => void;
   onStopConversation: (conversationId: string) => void;
   onSelectConversation: (conversationId: string) => void;
   onDeleteConversation: (conversationId: string) => void;
+  onCreateNewConversation?: () => void;
+  isMobile?: boolean;
 }
 
 const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
-  agents,
   conversations,
   activeConversation,
-  showNewConversationForm,
-  selectedAgents,
-  initialMessage,
-  maxTurns,
-  isLoading,
-  onShowNewConversationForm,
-  onSelectAgent,
-  onInitialMessageChange,
-  onMaxTurnsChange,
-  onStartConversation,
   onStopConversation,
   onSelectConversation,
   onDeleteConversation,
+  onCreateNewConversation,
+  isMobile = false,
 }) => {
+  const { t } = useTranslation();
+  
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -54,169 +36,88 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   };
 
   return (
-    <div className="w-80 bg-card border-r border-border flex flex-col shadow-sm">
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Users className="w-5 h-5 text-primary" />
+    <div className={`${isMobile ? 'w-full' : 'w-72'} bg-card backdrop-blur-sm ${!isMobile ? 'border-e border-border' : ''} flex flex-col shadow-lg`}>
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Users className="w-4 h-4 text-primary" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">Multi-Agent Chat</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t('conversations.title')}</h2>
+          <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full ms-auto">{conversations.length}</span>
         </div>
-        <Button
-          onClick={() => onShowNewConversationForm(true)}
-          disabled={agents.length < 2}
-          className="w-full h-10 text-sm font-medium"
-          variant={agents.length >= 2 ? "default" : "secondary"}
-        >
-          <Plus className="w-4 h-4 mr-2" /> Start New Conversation
-        </Button>
-        {agents.length < 2 && (
-          <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <p className="text-xs text-destructive font-medium">
-              Create at least 2 agents first
-            </p>
-          </div>
+        
+        {/* Create New Conversation Button */}
+        {onCreateNewConversation && (
+          <Button
+            onClick={onCreateNewConversation}
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs border-dashed border-primary/30 text-primary hover:bg-primary/5"
+          >
+            <Plus className="w-3 h-3 me-1" />
+            {t('conversations.newChat')}
+          </Button>
         )}
       </div>
 
-      {/* New Conversation Form */}
-      {showNewConversationForm && (
-        <div className="p-6 border-b border-border bg-muted/30">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-base font-semibold text-foreground">New Conversation</h3>
-            <Button
-              onClick={() => onShowNewConversationForm(false)}
-              variant="ghost"
-              size="sm"
-              className="h-8 px-3 text-muted-foreground hover:text-foreground"
-            >
-              Cancel
-            </Button>
-          </div>
-
-          <div className="mb-6">
-            <Label className="block mb-3 text-sm font-medium text-foreground">
-              Select Agents (min 2):
-            </Label>
-            <div className="space-y-3">
-              {agents.map(agent => (
-                <div key={agent.agent_id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                  <Checkbox
-                    id={agent.agent_id}
-                    checked={selectedAgents.includes(agent.agent_id)}
-                    onCheckedChange={(checked) => onSelectAgent(agent.agent_id, checked as boolean)}
-                    className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                  />
-                  <Label htmlFor={agent.agent_id} className="text-sm font-medium text-foreground cursor-pointer flex-1">
-                    {agent.name}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <Label className="block mb-3 text-sm font-medium text-foreground">
-              Initial Message:
-            </Label>
-            <Textarea
-              value={initialMessage}
-              onChange={(e) => onInitialMessageChange(e.target.value)}
-              placeholder="Start the conversation with a topic or question..."
-              rows={3}
-              className="resize-y bg-background border-input focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            />
-          </div>
-
-          <div className="mb-6">
-            <Label className="block mb-3 text-sm font-medium text-foreground">
-              Max Turns: <span className="text-primary font-semibold">{maxTurns}</span>
-            </Label>
-            <Slider
-              value={[maxTurns]}
-              onValueChange={(value) => onMaxTurnsChange(value[0])}
-              min={5}
-              max={20}
-              step={1}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>5</span>
-              <span>20</span>
-            </div>
-          </div>
-
-          <Button
-            onClick={onStartConversation}
-            disabled={selectedAgents.length < 2 || !initialMessage.trim() || isLoading}
-            className="w-full h-11 text-sm font-medium"
-            variant={(selectedAgents.length >= 2 && initialMessage.trim() && !isLoading) ? "default" : "secondary"}
-          >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                Starting...
-              </div>
-            ) : (
-              'Start Conversation'
-            )}
-          </Button>
-        </div>
-      )}
-
       {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <h3 className="mb-4 text-sm font-semibold text-foreground uppercase tracking-wider">
-          Conversations ({conversations.length})
-        </h3>
+      <div className="flex-1 overflow-y-auto p-3 space-y-1">
         
         {conversations.length === 0 ? (
-          <div className="text-center text-muted-foreground p-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-              <MessageCircle className="w-8 h-8 opacity-50" />
+          <div className="text-center text-muted-foreground p-6">
+            <div className="flex -space-x-2 justify-center mb-3">
+              <Avatar
+                size={32}
+                name="Empty-1"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
+              <Avatar
+                size={32}
+                name="Empty-2"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
+              <Avatar
+                size={32}
+                name="Empty-3"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
             </div>
-            <p className="text-sm mb-2 font-medium">No conversations yet</p>
-            <p className="text-xs opacity-75">Start your first multi-agent conversation!</p>
+            <p className="text-sm font-medium">{t('conversations.noConversations')}</p>
+            <p className="text-xs text-muted-foreground/80 mt-1">{t('conversations.createFirstChat')}</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {conversations.map((conv) => (
-              <div
-                key={conv.id}
-                className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer group relative ${
-                  activeConversation === conv.id 
-                    ? 'bg-primary/5 border-primary/20 shadow-sm' 
-                    : 'bg-card border-border hover:bg-accent/30 hover:border-accent-foreground/20'
-                }`}
-              >
-                <div 
-                  onClick={() => onSelectConversation(conv.id)}
-                  className="pr-8"
-                >
-                  <div className="font-semibold text-sm text-foreground mb-2 group-hover:text-primary transition-colors">
+          conversations.map((conv) => (
+            <div
+              key={conv.id}
+              className={`p-3 rounded-lg transition-all duration-200 cursor-pointer group relative border ${
+                activeConversation === conv.id 
+                  ? 'bg-primary/10 border-primary/30 shadow-sm' 
+                  : 'border-transparent hover:bg-muted/50 hover:border-border/50'
+              }`}
+              onClick={() => onSelectConversation(conv.id)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-foreground mb-1 truncate group-hover:text-primary transition-colors">
                     {conv.name}
                   </div>
-                  <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                    <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40"></span>
-                      {conv.messages.length} messages
-                    </span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-medium">{t('conversations.messagesCount', { count: conv.messages.length })}</span>
                     {conv.isActive && (
-                      <Badge variant="secondary" className="bg-green-500 text-white text-xs px-2 py-0.5 animate-pulse">
-                        LIVE
-                      </Badge>
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
                     )}
-                  </div>
-                  <div className="text-xs text-muted-foreground/70">
-                    {conv.messages.length > 0 
-                      ? formatTime(conv.messages[conv.messages.length - 1].timestamp)
-                      : 'No messages'
-                    }
+                    <span>
+                      {conv.messages.length > 0 
+                        ? formatTime(conv.messages[conv.messages.length - 1].timestamp)
+                        : t('conversations.empty')
+                      }
+                    </span>
                   </div>
                 </div>
-                
-                {/* Action buttons positioned in top-right */}
-                <div className="absolute top-3 right-3 flex gap-1">
+                <div className="flex-shrink-0 ms-2">
                   {conv.isActive ? (
                     <Button
                       onClick={(e) => {
@@ -225,31 +126,31 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                       }}
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Stop conversation"
+                      className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                      title={t('conversations.stopConversation')}
                     >
-                      <div className="w-3 h-3 bg-current rounded-sm"></div>
+                      <div className="w-2.5 h-2.5 bg-current rounded-sm"></div>
                     </Button>
                   ) : (
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+                        if (confirm(t('conversations.deleteConfirm'))) {
                           onDeleteConversation(conv.id);
                         }
                       }}
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
-                      title="Delete conversation"
+                      title={t('conversations.deleteConversation')}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))
         )}
       </div>
     </div>

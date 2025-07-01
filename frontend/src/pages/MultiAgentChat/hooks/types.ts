@@ -16,8 +16,9 @@ export interface UseMultiAgentChatReturn {
   setInitialMessage: (message: string) => void;
   setMaxTurns: (turns: number) => void;
   setShowNewConversationForm: (show: boolean) => void;
-  startConversation: () => Promise<void>;
+  startConversation: (agentsToUse?: string[], messageToUse?: string, onError?: (error: string) => void) => Promise<void>;
   stopConversation: (conversationId: string) => void;
+  sendMessage: (conversationId: string, message: string, agentIds: string[]) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
   handleSelectAgent: (agentId: string, checked: boolean) => void;
   loadConversations: () => Promise<void>;

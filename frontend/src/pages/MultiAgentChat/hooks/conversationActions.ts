@@ -1,8 +1,9 @@
 import { useCallback, useRef } from 'react';
 import type { ActiveConversation, Agent } from '../types';
-import { handleStreamConversation, createStreamMessageHandlers } from './streamHandlers';
+import { createStreamMessageHandlers } from './streamHandlers';
 import { createAgentHelpers } from './helpers';
 import { useTracking } from '../../../hooks/useTracking';
+import { useSocketConversation } from './useSocketConversation';
 
 export const useConversationActions = (
   agents: Agent[],
@@ -15,15 +16,58 @@ export const useConversationActions = (
   setSelectedAgents: React.Dispatch<React.SetStateAction<string[]>>,
   setInitialMessage: (message: string) => void,
   setIsLoading: (loading: boolean) => void,
-  attachedFiles?: Array<{id: string, name: string, extractedContent?: string, file: File}>
+  attachedFiles?: Array<{id: string, name: string, extractedContent?: string, file: File}>,
+  navigate?: (path: string, options?: { replace?: boolean }) => void
 ) => {
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const conversationErrorCallbackRef = useRef<((error: string) => void) | null>(null);
   const { getAgentName } = createAgentHelpers(agents);
   const { handleStreamMessage } = createStreamMessageHandlers(setConversations);
   const { trackConversationStarted, trackMessageSent, trackError } = useTracking();
+  
+  const activeConversationIdRef = useRef<string | null>(null);
+  
+  const { startSocketConversation, stopSocketConversation, sendSocketMessage } = useSocketConversation({
+    setConversations,
+    onError: (error, conversationId) => {
+      trackError('socket_error', error, 'multi_agent_chat');
+      
+      // Clean up the failed conversation
+      if (conversationId || activeConversationIdRef.current) {
+        const convId = conversationId || activeConversationIdRef.current;
+        setConversations(prev => prev.filter(conv => conv.id !== convId));
+        activeConversationIdRef.current = null;
+      }
+      
+      // Check if it's an insufficient credits error
+      if (error.includes('Insufficient credits')) {
+        // Parse the error to extract the numbers
+        const match = error.match(/Required: (\d+), Available: (\d+)/);
+        if (match) {
+          const required = match[1];
+          const available = match[2];
+          // Call the error callback if it exists
+          if (conversationErrorCallbackRef.current) {
+            conversationErrorCallbackRef.current(`insufficient_credits:${required}:${available}`);
+          }
+        }
+      } else if (conversationErrorCallbackRef.current) {
+        conversationErrorCallbackRef.current(error);
+      }
+    }
+  });
 
-  const startConversation = useCallback(async (): Promise<void> => {
-    if (selectedAgents.length < 2 || !initialMessage.trim()) return;
+  const startConversation = useCallback(async (
+    agentsToUse?: string[], 
+    messageToUse?: string,
+    onError?: (error: string) => void
+  ): Promise<void> => {
+    // Set the error callback for socket errors
+    conversationErrorCallbackRef.current = onError || null;
+    const finalAgents = agentsToUse || selectedAgents;
+    const finalMessage = messageToUse || initialMessage;
+    
+    if (finalAgents.length < 2 || !finalMessage.trim()) return;
 
     setIsLoading(true);
     const conversationId = `conv_${Date.now()}`;
@@ -31,39 +75,40 @@ export const useConversationActions = (
     abortControllersRef.current.set(conversationId, abortController);
     
     try {
-      // Create new conversation in local state
       const newConversation: ActiveConversation = {
         id: conversationId,
-        name: selectedAgents.map(id => getAgentName(id)).join(' & '),
-        agents: selectedAgents,
+        name: finalAgents.map(id => getAgentName(id)).join(' & '),
+        agents: finalAgents,
         messages: [],
         isActive: true
       };
 
       setConversations(prev => [...prev, newConversation]);
       setActiveConversation(conversationId);
+      activeConversationIdRef.current = conversationId;
       
-      // Track conversation started
+      // Navigate to the conversation URL
+      if (navigate) {
+        navigate(`/chat/${conversationId}`);
+      }
+      
       trackConversationStarted({
         conversation_id: conversationId,
-        agent_count: selectedAgents.length,
-        agent_names: selectedAgents.map(id => getAgentName(id)).join(', ')
+        agent_count: finalAgents.length,
+        agent_names: finalAgents.map(id => getAgentName(id)).join(', ')
       });
       
-      // Track initial message
       trackMessageSent({
-        message_length: initialMessage.length,
+        message_length: finalMessage.length,
         conversation_type: 'multi_agent',
-        agent_count: selectedAgents.length,
+        agent_count: finalAgents.length,
         conversation_id: conversationId
       });
       
-      // Reset form
       setShowNewConversationForm(false);
       setSelectedAgents([]);
       setInitialMessage('');
 
-      // Prepare file attachments for API
       const fileAttachments = attachedFiles
         ?.filter(file => file.extractedContent)
         .map(file => ({
@@ -72,22 +117,21 @@ export const useConversationActions = (
           file_type: file.file.type || 'application/octet-stream'
         }));
 
-      // Start streaming conversation
-      await handleStreamConversation(
+      await startSocketConversation(
         conversationId,
-        selectedAgents,
-        initialMessage,
+        finalAgents,
+        finalMessage,
         maxTurns,
-        abortController,
-        handleStreamMessage,
-        fileAttachments
+        fileAttachments,
+        undefined
       );
       
     } catch (error) {
       console.error('Failed to start conversation:', error instanceof Error ? error.message : String(error));
       trackError('conversation_start_error', error instanceof Error ? error.message : 'Unknown error', 'multi_agent_chat');
-      alert('Failed to start conversation. Make sure all selected agents exist.');
-      setConversations(prev => prev.filter(conv => conv.id !== conversationId));
+      // Don't remove conversation here - let socket error handler handle it
+      // Re-throw the error to be handled by the UI
+      throw error;
     } finally {
       abortControllersRef.current.delete(conversationId);
       setIsLoading(false);
@@ -107,23 +151,27 @@ export const useConversationActions = (
     attachedFiles,
     trackConversationStarted,
     trackMessageSent,
-    trackError
+    trackError,
+    startSocketConversation
   ]);
 
   const stopConversation = useCallback((conversationId: string): void => {
+    stopSocketConversation(conversationId);
+    
     const abortController = abortControllersRef.current.get(conversationId);
     if (abortController) {
       abortController.abort();
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === conversationId 
-            ? { ...conv, isActive: false }
-            : conv
-        )
-      );
       abortControllersRef.current.delete(conversationId);
     }
-  }, [setConversations]);
+    
+    setConversations(prev => 
+      prev.map(conv => 
+        conv.id === conversationId 
+          ? { ...conv, isActive: false }
+          : conv
+      )
+    );
+  }, [setConversations, stopSocketConversation]);
 
   const handleSelectAgent = useCallback((agentId: string, checked: boolean): void => {
     if (checked) {
@@ -133,7 +181,29 @@ export const useConversationActions = (
     }
   }, [setSelectedAgents]);
 
-  // Cleanup function for useEffect
+  const sendMessage = useCallback(async (
+    conversationId: string,
+    message: string,
+    agentIds: string[]
+  ): Promise<void> => {
+    if (!message.trim() || agentIds.length < 2) return;
+
+    try {
+      trackMessageSent({
+        message_length: message.length,
+        conversation_type: 'multi_agent',
+        agent_count: agentIds.length,
+        conversation_id: conversationId
+      });
+
+      await sendSocketMessage(conversationId, message, agentIds);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      trackError('message_send_error', error instanceof Error ? error.message : 'Unknown error', 'multi_agent_chat');
+      throw error;
+    }
+  }, [sendSocketMessage, trackMessageSent, trackError]);
+
   const cleanup = useCallback(() => {
     abortControllersRef.current.forEach(controller => controller.abort());
     abortControllersRef.current.clear();
@@ -142,6 +212,7 @@ export const useConversationActions = (
   return {
     startConversation,
     stopConversation,
+    sendMessage,
     handleSelectAgent,
     cleanup
   };

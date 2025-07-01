@@ -9,6 +9,7 @@ export interface ModelConnection {
   created_at: string;
   updated_at: string;
   is_active: boolean;
+  is_default?: boolean;
   // MCP-specific fields
   mcp_server_url?: string;
   mcp_server_config?: Record<string, any>;
@@ -23,6 +24,7 @@ export interface CreateConnectionRequest {
   model_name: string;
   api_key?: string;
   base_url?: string;
+  is_default?: boolean; 
   // MCP-specific fields
   mcp_server_url?: string;
   mcp_server_config?: Record<string, any>;

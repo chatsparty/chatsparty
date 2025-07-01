@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class AgentVoiceConfig(BaseModel):
     voice_connection_id: Optional[str] = None
     voice_enabled: bool = False
+    selected_voice_id: Optional[str] = None
     podcast_settings: Optional[Dict[str, Any]] = None
 
 
@@ -37,8 +38,9 @@ class ModelConfig(BaseModel):
 class AgentCreateRequest(BaseModel):
     agent_id: Optional[str] = None
     name: str
-    prompt: str
-    characteristics: str
+    prompt: Optional[str] = None
+    characteristics: Optional[str] = None
+    gender: str = "neutral"  # 'male', 'female', or 'neutral'
     connection_id: str
     chat_style: Optional[ChatStyle] = None
     voice_config: Optional[AgentVoiceConfig] = None
@@ -52,6 +54,7 @@ class AgentResponse(BaseModel):
     name: str
     prompt: str
     characteristics: str
+    gender: str
     connection_id: str
     chat_style: Optional[ChatStyle] = None
     voice_config: Optional[AgentVoiceConfig] = None
@@ -95,6 +98,7 @@ class ConnectionCreateRequest(BaseModel):
     model_name: str
     api_key: Optional[str] = None
     base_url: Optional[str] = None
+    is_default: Optional[bool] = False
 
 
 class ConnectionUpdateRequest(BaseModel):
@@ -105,6 +109,7 @@ class ConnectionUpdateRequest(BaseModel):
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
 
 
 class ConnectionResponse(BaseModel):
@@ -118,6 +123,7 @@ class ConnectionResponse(BaseModel):
     created_at: str
     updated_at: str
     is_active: bool = True
+    is_default: bool = False
 
 
 class ConnectionTestResult(BaseModel):

@@ -15,6 +15,11 @@ import { AuthPage } from "./components/auth/AuthPage";
 import { OAuthCallback } from "./components/auth/OAuthCallback";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { useTracking } from "./hooks/useTracking";
+import Avatar from "boring-avatars";
+import { useTranslation } from "react-i18next";
+import { getDirection } from "./i18n/config";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { PROJECTS_ENABLED } from "./config/features";
 import {
   AgentManagerPage,
   LandingPage,
@@ -35,6 +40,14 @@ const Layout = () => {
   const previousLocationRef = useRef<string>("");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const { t, i18n } = useTranslation();
+
+  // Apply language direction to HTML element
+  useEffect(() => {
+    const direction = getDirection(i18n.language);
+    document.documentElement.dir = direction;
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   useEffect(() => {
     const currentPath = location.pathname;
@@ -88,10 +101,10 @@ const Layout = () => {
   }
 
   const tabs = [
-    { path: "/projects", label: "Projects" },
-    { path: "/agents", label: "Agents" },
-    { path: "/chat", label: "Chat" },
-    { path: "/settings", label: "Settings" },
+    ...(PROJECTS_ENABLED ? [{ path: "/projects", label: t("navigation.projects") }] : []),
+    { path: "/agents", label: t("navigation.agents") },
+    { path: "/chat", label: t("navigation.chat") },
+    { path: "/settings", label: t("navigation.settings") },
   ];
 
   return (
@@ -101,12 +114,18 @@ const Layout = () => {
           <div className="flex items-center justify-between">
             <Link
               to="/"
-              className="text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
+              className="flex items-center gap-2 text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
             >
-              ChatsParty
+              <Avatar
+                size={28}
+                name="ChatsParty"
+                variant="beam"
+                colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
+              />
+              <span>{t("common.appName")}</span>
             </Link>
             <div className="flex items-center">
-              <nav className="flex items-center gap-8 mr-6">
+              <nav className="flex items-center gap-8 me-6">
                 {tabs.map((tab) => (
                   <Link
                     key={tab.path}
@@ -122,6 +141,7 @@ const Layout = () => {
                 ))}
               </nav>
               <div className="flex items-center gap-4">
+                <LanguageSwitcher />
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -131,13 +151,13 @@ const Layout = () => {
                       <FaUser className="w-3 h-3 text-primary" />
                     </div>
                     <span className="text-sm font-medium text-foreground">
-                      {user?.email?.split("@")[0] || "User"}
+                      {user?.email?.split("@")[0] || t("navigation.userMenu")}
                     </span>
                     <ChevronDown className="w-3 h-3 text-muted-foreground" />
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-md shadow-lg z-50">
+                    <div className="absolute end-0 top-full mt-1 w-40 bg-card border border-border rounded-md shadow-lg z-50">
                       <div className="py-1">
                         <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border">
                           {user?.email}
@@ -148,17 +168,17 @@ const Layout = () => {
                           className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
                           <FaCog className="w-3 h-3" />
-                          Settings
+                          {t("navigation.settings")}
                         </Link>
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
                             handleLogout();
                           }}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full text-left"
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full text-start"
                         >
                           <FaSignOutAlt className="w-3 h-3" />
-                          Sign Out
+                          {t("navigation.signOut")}
                         </button>
                         <div className="border-t border-border mt-1 pt-1">
                           <div className="px-3 py-1.5">
@@ -176,11 +196,16 @@ const Layout = () => {
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects/new" element={<CreateProjectPage />} />
+            {PROJECTS_ENABLED && (
+              <>
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projects/new" element={<CreateProjectPage />} />
+              </>
+            )}
             <Route path="/agents" element={<AgentManagerPage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
+            <Route path="/chat/:conversationId" element={<MultiAgentChatPage />} />
             <Route
               path="/settings"
               element={<Navigate to="/settings/general" replace />}
@@ -192,7 +217,8 @@ const Layout = () => {
               element={<SettingsPage />}
             />
             <Route path="/settings/mcp-servers" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/projects" replace />} />
+            <Route path="/settings/credits" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to={PROJECTS_ENABLED ? "/projects" : "/agents"} replace />} />
           </Routes>
         </div>
       </div>
@@ -203,19 +229,20 @@ const Layout = () => {
 const MainApp = () => {
   const { loading } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
+          <p className="mt-4 text-muted-foreground">{t("common.loading")}</p>
         </div>
       </div>
     );
   }
 
-  if (location.pathname === "/projects/new") {
+  if (PROJECTS_ENABLED && location.pathname === "/projects/new") {
     return (
       <div className="h-screen w-screen bg-background">
         <CreateProjectPage />
@@ -224,6 +251,7 @@ const MainApp = () => {
   }
 
   if (
+    PROJECTS_ENABLED &&
     location.pathname.startsWith("/projects/") &&
     location.pathname !== "/projects"
   ) {

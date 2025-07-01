@@ -55,6 +55,11 @@ class UnifiedModelService:
             'supports_tools': True,
             'supports_resources': True,
             'connection_type': 'mcp_server'
+        },
+        'chatsparty': {
+            'models': ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+            'requires_api_key': True,
+            'base_url_required': False
         }
     }
 
@@ -189,6 +194,17 @@ class UnifiedModelService:
                     raise ValueError("OpenRouter API key is required")
                 os.environ['OPENROUTER_API_KEY'] = api_key
                 return f'openrouter:{model_name}'
+
+            elif provider == 'chatsparty':
+                # ChatsParty default uses Gemini models
+                if not api_key:
+                    # Try ChatsParty specific API key first, then fallback to general Gemini API key
+                    from ....core.config import settings
+                    api_key = settings.chatsparty_default_api_key or settings.gemini_api_key or os.getenv('GEMINI_API_KEY')
+                if not api_key:
+                    raise ValueError("Gemini API key is required for ChatsParty default connection. Set GEMINI_API_KEY environment variable or configure chatsparty_default_api_key.")
+                os.environ['GOOGLE_API_KEY'] = api_key
+                return f'google-gla:{model_name}'
 
             else:
                 raise ValueError(f"Unsupported provider: {provider}")

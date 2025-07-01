@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Button } from "./button";
 
 interface ModalProps {
@@ -18,6 +18,22 @@ const Modal: React.FC<ModalProps> = ({
   actions,
   size = "md",
 }) => {
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const sizeClasses = {

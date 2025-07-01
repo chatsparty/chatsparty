@@ -20,7 +20,8 @@ class MCPProvider(ModelProviderInterface):
         messages: List[Message], 
         system_prompt: str,
         model_config: ModelConfiguration,
-        agent: Optional[Any] = None
+        user_id: Optional[str] = None,
+        is_supervisor_call: bool = False
     ) -> str:
         """
         Process chat completion with MCP tools integration.

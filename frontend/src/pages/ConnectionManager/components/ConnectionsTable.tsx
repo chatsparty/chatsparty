@@ -183,6 +183,7 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
                         }
                         className="h-7 w-7 p-0"
                         title={connection.is_active ? "Deactivate" : "Activate"}
+                        disabled={connection.is_default}
                       >
                         {connection.is_active ? (
                           <FaPause className="h-3 w-3" />
@@ -196,18 +197,21 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
                         onClick={() => onEdit(connection)}
                         className="h-7 w-7 p-0"
                         title="Edit"
+                        disabled={connection.is_default}
                       >
                         <FaEdit className="h-3 w-3" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(connection.id)}
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive/80"
-                        title="Delete"
-                      >
-                        <FaTrash className="h-3 w-3" />
-                      </Button>
+                      {!connection.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(connection.id)}
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive/80"
+                          title="Delete"
+                        >
+                          <FaTrash className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

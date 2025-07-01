@@ -27,6 +27,14 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Credit system fields
+    credits_balance: Mapped[int] = mapped_column(Integer, default=10000)
+    credits_used: Mapped[int] = mapped_column(Integer, default=0)
+    credits_purchased: Mapped[int] = mapped_column(Integer, default=0)
+    credit_plan: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    last_credit_refill_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True)
+
     # Relationships
     agents: Mapped[List["Agent"]] = relationship(
         "Agent", back_populates="user")
@@ -54,6 +62,9 @@ class Agent(Base):
 
     # Chat style as JSON
     chat_style: Mapped[dict] = mapped_column(JSON, nullable=False)
+    
+    # Gender for voice assignment ('male', 'female', 'neutral')
+    gender: Mapped[str] = mapped_column(String(20), default='neutral', nullable=False)
 
     # Voice configuration
     voice_connection_id: Mapped[Optional[str]] = mapped_column(
@@ -129,6 +140,9 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     speaker: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     message_type: Mapped[str] = mapped_column(String(50), default="message")
+    
+    # Detected language code (e.g., 'en', 'es', 'fr')
+    language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now())
@@ -149,11 +163,12 @@ class Connection(Base):
     provider: Mapped[str] = mapped_column(String(100), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     api_key: Mapped[Optional[str]] = mapped_column(
-        String(1000), nullable=True)  # Increased size for encrypted data
+        String(1000), nullable=True)
     api_key_encrypted: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False)  # Track encryption status
+        Boolean, default=False, nullable=False)
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # Indicates if this is a default platform connection
 
     # MCP-specific fields
     mcp_server_url: Mapped[Optional[str]] = mapped_column(
@@ -191,7 +206,7 @@ class VoiceConnection(Base):
 
     # Voice settings
     voice_id: Mapped[Optional[str]] = mapped_column(
-        String(255), nullable=True)  # provider-specific voice identifier
+        String(255), nullable=True)
     speed: Mapped[float] = mapped_column(Float, default=1.0)
     pitch: Mapped[float] = mapped_column(Float, default=1.0)
     stability: Mapped[float] = mapped_column(Float, default=0.75)
@@ -201,7 +216,7 @@ class VoiceConnection(Base):
 
     # Authentication & Configuration
     api_key: Mapped[Optional[str]] = mapped_column(
-        String(1000), nullable=True)  # encrypted
+        String(1000), nullable=True)
     api_key_encrypted: Mapped[bool] = mapped_column(Boolean, default=False)
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -385,3 +400,37 @@ class ProjectVMService(Base):
     # Relationships
     project: Mapped["Project"] = relationship(
         "Project", back_populates="vm_services")
+
+
+class CreditTransaction(Base):
+    __tablename__ = "credit_transactions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    transaction_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    reason: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    transaction_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    balance_after: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+
+
+class ModelCreditCost(Base):
+    __tablename__ = "model_credit_costs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(100), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    cost_per_message: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    cost_per_1k_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    is_default_model: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

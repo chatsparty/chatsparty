@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,9 +20,50 @@ from ..models.database import User
 from ..services.ai import AIServiceFacade, get_ai_service
 from ..services.ai.infrastructure.unified_model_service import get_initialized_unified_model_service
 from ..services.connection_service import connection_service
+from ..services.websocket_service import websocket_service
+from ..core.config import settings
+
+if settings.enable_credits:
+    from ..middleware.credit_middleware import require_credits, get_credit_service, CreditCheckDependency
+    from ..models.credit import CreditConsumptionReason, CreditConsumptionRequest
+    from ..services.credit.application.credit_service import CreditService, InsufficientCreditsError
 from .auth import get_current_user_dependency
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+logger = logging.getLogger(__name__)
+
+
+async def consume_credits_for_connection(connection_id: str, user_id: str, reason=None):
+    """Consume credits based on the connection/provider used (only if credits are enabled)"""
+    if not settings.enable_credits:
+        return
+    
+    if reason is None:
+        from ..models.credit import CreditConsumptionReason
+        reason = CreditConsumptionReason.CHAT_MESSAGE
+    
+    try:
+        connection = connection_service.get_connection(connection_id, user_id)
+        if not connection:
+            return
+        
+        credit_service = get_credit_service()
+        model_cost = await credit_service.get_model_cost(connection.provider, connection.model_name)
+        
+        if model_cost.cost_per_message > 0:
+            consumption_request = CreditConsumptionRequest(
+                amount=model_cost.cost_per_message,
+                reason=reason,
+                description=f"Chat with {connection.provider}:{connection.model_name}",
+                metadata={
+                    "connection_id": connection_id,
+                    "provider": connection.provider,
+                    "model_name": connection.model_name
+                }
+            )
+            await credit_service.consume_credits(user_id, consumption_request)
+    except Exception as e:
+        pass
 
 
 @router.post("/agents", response_model=AgentResponse)
@@ -48,11 +90,15 @@ async def create_agent(
         if agent_request.voice_config:
             voice_config_dict = agent_request.voice_config.model_dump()
 
+        prompt = agent_request.prompt or f"You are {agent_request.name}, a helpful AI assistant."
+        characteristics = agent_request.characteristics or "Friendly, helpful, and knowledgeable assistant."
+        
         agent = ai_service.create_agent(
             agent_request.name,
-            agent_request.prompt,
-            agent_request.characteristics,
+            prompt,
+            characteristics,
             current_user.id,
+            agent_request.gender,
             model_config_dict,
             chat_style_dict,
             agent_request.connection_id,
@@ -65,6 +111,7 @@ async def create_agent(
             name=agent.name,
             prompt=agent.prompt,
             characteristics=agent.characteristics,
+            gender=agent.gender,
             connection_id=agent_request.connection_id,
             chat_style=agent_request.chat_style,
             voice_config=agent_request.voice_config,
@@ -117,17 +164,23 @@ async def update_agent(
         if agent_request.voice_config:
             voice_config_dict = agent_request.voice_config.model_dump()
 
+        logger.info(f"Updating agent with gender: {agent_request.gender}")
+        logger.info(f"model_config_dict type: {type(model_config_dict)}, value: {model_config_dict}")
+        logger.info(f"chat_style_dict type: {type(chat_style_dict)}, value: {chat_style_dict}")
+        logger.info(f"voice_config_dict type: {type(voice_config_dict)}, value: {voice_config_dict}")
+
         agent = ai_service.update_agent(
-            agent_id,
-            agent_request.name,
-            agent_request.prompt,
-            agent_request.characteristics,
-            model_config_dict,
-            chat_style_dict,
-            agent_request.connection_id,
-            voice_config_dict,
-            agent_request.mcp_tools,
-            agent_request.mcp_tool_config
+            agent_id=agent_id,
+            name=agent_request.name,
+            prompt=agent_request.prompt,
+            characteristics=agent_request.characteristics,
+            gender=agent_request.gender,
+            model_config=model_config_dict,
+            chat_style=chat_style_dict,
+            connection_id=agent_request.connection_id,
+            voice_config=voice_config_dict,
+            mcp_tools=agent_request.mcp_tools,
+            mcp_tool_config=agent_request.mcp_tool_config
         )
 
         if not agent:
@@ -139,6 +192,7 @@ async def update_agent(
             name=agent.name,
             prompt=agent.prompt,
             characteristics=agent.characteristics,
+            gender=agent.gender,
             connection_id=agent_request.connection_id,
             chat_style=agent_request.chat_style,
             voice_config=agent_request.voice_config,
@@ -149,6 +203,9 @@ async def update_agent(
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        logger.error(f"Failed to update agent: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500, detail=f"Failed to update agent: {str(e)}")
 
@@ -179,6 +236,16 @@ async def chat_with_agent(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
+        agent = ai_service.get_agent(chat_request.agent_id, current_user.id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        await consume_credits_for_connection(
+            agent.connection_id, 
+            current_user.id, 
+            CreditConsumptionReason.CHAT_MESSAGE
+        )
+        
         response = await ai_service.agent_chat(
             chat_request.agent_id,
             chat_request.message,
@@ -186,6 +253,8 @@ async def chat_with_agent(
             current_user.id
         )
         return ChatResponse(response=response, type="agent_response")
+    except InsufficientCreditsError as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Agent chat error: {str(e)}")
@@ -198,6 +267,7 @@ async def start_multi_agent_conversation(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
+        
         file_attachments = None
         if conversation_request.file_attachments:
             file_attachments = [
@@ -213,12 +283,14 @@ async def start_multi_agent_conversation(
             conversation_request.conversation_id,
             conversation_request.agent_ids,
             conversation_request.initial_message,
-            conversation_request.max_turns,
+            conversation_request.max_turns or 20,
             current_user.id,
             file_attachments,
             conversation_request.project_id
         )
         return [ConversationMessage(**msg) for msg in conversation_log]
+    except InsufficientCreditsError as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Multi-agent conversation error: {str(e)}")
@@ -249,7 +321,7 @@ async def stream_multi_agent_conversation(
                 conversation_request.conversation_id,
                 conversation_request.agent_ids,
                 conversation_request.initial_message,
-                conversation_request.max_turns,
+                conversation_request.max_turns or 20,
                 current_user.id,
                 file_attachments,
                 conversation_request.project_id
@@ -275,6 +347,7 @@ async def stream_multi_agent_conversation(
             "Access-Control-Allow-Headers": "Cache-Control"
         }
     )
+
 
 
 @router.get("/conversations", response_model=List[Dict[str, Any]])

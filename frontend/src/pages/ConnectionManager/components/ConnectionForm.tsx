@@ -30,6 +30,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   onCancel,
   isLoading = false,
 }) => {
+  const isDefaultConnection = connection?.is_default === true;
   const [formData, setFormData] = useState<CreateConnectionRequest>({
     name: connection?.name || "",
     description: connection?.description || "",
@@ -37,7 +38,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
     model_name: connection?.model_name || "",
     api_key: connection?.api_key || "",
     base_url: connection?.base_url || "",
-    // MCP-specific fields
     mcp_server_url: connection?.mcp_server_url || "",
     mcp_server_config: connection?.mcp_server_config || {},
     available_tools: connection?.available_tools || [],
@@ -59,7 +59,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(true);
 
-  // MCP-specific state
   const [testingMcp, setTestingMcp] = useState(false);
   const [mcpTestResult, setMcpTestResult] = useState<{
     success: boolean;
@@ -104,7 +103,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // For MCP provider, set model_name to 'mcp-server' if not provided
     const submitData = { ...formData };
     if (isMcpProvider && !submitData.model_name) {
       submitData.model_name = "mcp-server";
@@ -160,10 +158,34 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
     }
   };
 
+  if (isDefaultConnection) {
+    return (
+      <div className="h-[calc(100vh-12rem)] overflow-y-auto overflow-x-hidden scrollbar-hide">
+        <Card>
+          <CardHeader>
+            <CardTitle>Default ChatsParty Connection</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 rounded-md bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/50 dark:border-blue-900/50 dark:text-blue-300">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-medium">ℹ️ Platform Default Connection</span>
+              </div>
+              <p>This is a default connection provided by the ChatsParty platform and cannot be modified.</p>
+              <p className="mt-2">Model: <strong>{connection.model_name}</strong></p>
+              <p>Provider: <strong>{connection.provider}</strong></p>
+            </div>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Back
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-12rem)] overflow-y-auto overflow-x-hidden scrollbar-hide">
       <form onSubmit={handleSubmit} className="space-y-6 pb-6 max-w-full">
-        {/* Basic Information Section */}
         <Card>
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
@@ -198,7 +220,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
           </CardContent>
         </Card>
 
-        {/* Provider Configuration Section */}
         <Card>
           <CardHeader>
             <CardTitle>Provider Configuration</CardTitle>
@@ -258,7 +279,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
           </CardContent>
         </Card>
 
-        {/* Authentication Section - Only show if needed */}
         {(requiresApiKey || requiresBaseUrl) && (
           <Card>
             <CardHeader>
@@ -299,7 +319,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
           </Card>
         )}
 
-        {/* MCP Configuration Section - Only show for MCP provider */}
         {isMcpProvider && (
           <Card>
             <CardHeader>
@@ -348,7 +367,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
           </Card>
         )}
 
-        {/* Actions Section */}
         <div className="flex justify-end space-x-3 pt-6">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

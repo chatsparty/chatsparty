@@ -14,6 +14,7 @@ export interface VoiceConnection {
   base_url?: string;
   is_active: boolean;
   is_cloud_proxy: boolean;
+  is_default?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +83,7 @@ export interface VoiceOption {
 export interface AgentVoiceConfig {
   voice_connection_id?: string;
   voice_enabled: boolean;
+  selected_voice_id?: string;
   podcast_settings?: {
     intro_enabled?: boolean;
     outro_enabled?: boolean;
