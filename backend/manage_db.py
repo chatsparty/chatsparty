@@ -38,12 +38,12 @@ def get_db_url(env_file: str = ".env"):
         db_path = os.getenv("SQLITE_DB_PATH", "wisty.db")
         return f"sqlite:///{db_path}"
     else:
-        # PostgreSQL
-        db_host = os.getenv("DATABASE_HOST", "localhost")
-        db_port = os.getenv("DATABASE_PORT", "5432")
-        db_name = os.getenv("DATABASE_NAME", "wisty")
-        db_user = os.getenv("DATABASE_USER", "postgres")
-        db_pass = os.getenv("DATABASE_PASSWORD", "")
+        # PostgreSQL - support both DATABASE_* and POSTGRES_* prefixes
+        db_host = os.getenv("DATABASE_HOST") or os.getenv("POSTGRES_HOST", "localhost")
+        db_port = os.getenv("DATABASE_PORT") or os.getenv("POSTGRES_PORT", "5432")
+        db_name = os.getenv("DATABASE_NAME") or os.getenv("POSTGRES_DB", "wisty")
+        db_user = os.getenv("DATABASE_USER") or os.getenv("POSTGRES_USER", "postgres")
+        db_pass = os.getenv("DATABASE_PASSWORD") or os.getenv("POSTGRES_PASSWORD", "")
         
         if db_pass:
             return f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"

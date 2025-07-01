@@ -6,35 +6,46 @@ export const OAuthCallback: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { handleOAuthCallback, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (authLoading) {
+    if (authLoading || isProcessing) {
       return;
     }
 
     const handleCallback = async () => {
+      setIsProcessing(true);
       try {
         const code = searchParams.get("code");
         const state = searchParams.get("state");
-        const provider = window.location.pathname.split("/").pop();
+        const pathParts = window.location.pathname.split("/");
+        const provider = pathParts[pathParts.length - 1];
 
-        if (!code || !state || !provider) {
+        console.log("OAuth callback params:", { code, state, provider, pathname: window.location.pathname });
+
+        if (!code || !state) {
           throw new Error("Missing required OAuth parameters");
         }
 
-        if (!["google", "github"].includes(provider)) {
-          throw new Error("Invalid OAuth provider");
+        if (!provider || !["google", "github"].includes(provider)) {
+          throw new Error(`Invalid OAuth provider: ${provider}`);
         }
 
         await handleOAuthCallback(provider as "google" | "github", code, state);
         console.log("OAuth callback successful, navigating to /agents");
         setSuccess(true);
-        navigate("/agents");
+        // Small delay to show success state before navigation
+        setTimeout(() => navigate("/agents"), 500);
       } catch (error: any) {
         console.error("OAuth callback failed:", error);
+        console.error("Error details:", {
+          message: error.message,
+          response: error.response,
+          status: error.response?.status
+        });
         if (error.response) {
           setError(error.response.data?.detail || error.message || "Authentication failed");
         } else {
@@ -47,7 +58,7 @@ export const OAuthCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [searchParams, navigate, handleOAuthCallback, authLoading]);
+  }, [authLoading]);
 
   if (loading || authLoading) {
     return (

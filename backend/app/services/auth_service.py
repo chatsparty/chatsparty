@@ -62,7 +62,7 @@ class AuthService:
             return None
 
     async def get_user_by_email(self, db: AsyncSession, email: str) -> Optional[User]:
-        result = await db.execute(select(User).filter(User.email == email))
+        result = await db.execute(select(User).filter(User.email == email.lower()))
         return result.scalar_one_or_none()
 
     async def get_user_by_id(self, db: AsyncSession, user_id: str) -> Optional[User]:
@@ -70,7 +70,7 @@ class AuthService:
         return result.scalar_one_or_none()
 
     async def authenticate_user(self, db: AsyncSession, email: str, password: str) -> Optional[User]:
-        user = await self.get_user_by_email(db, email)
+        user = await self.get_user_by_email(db, email.lower())
         if not user:
             return None
         if not self.verify_password(password, user.hashed_password):
@@ -78,8 +78,11 @@ class AuthService:
         return user
 
     async def create_user(self, db: AsyncSession, user_create: UserCreate) -> User:
+        # Normalize email to lowercase
+        normalized_email = user_create.email.lower()
+        
         # Check if user already exists
-        existing_user = await self.get_user_by_email(db, user_create.email)
+        existing_user = await self.get_user_by_email(db, normalized_email)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -90,7 +93,7 @@ class AuthService:
         hashed_password = self.get_password_hash(user_create.password)
         db_user = User(
             id=str(uuid.uuid4()),
-            email=user_create.email,
+            email=normalized_email,
             hashed_password=hashed_password,
             first_name=user_create.first_name,
             last_name=user_create.last_name,
