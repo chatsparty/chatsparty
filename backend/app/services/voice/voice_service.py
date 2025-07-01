@@ -1,6 +1,7 @@
-from .domain.entities import VoiceConnection, VoiceConnectionTestResult
+from .domain.entities import VoiceConnection, VoiceConnectionTestResult, VoiceGenerationResult
 from .infrastructure.providers.elevenlabs_provider import ElevenLabsProvider
 from .infrastructure.providers.openai_voice_provider import OpenAIVoiceProvider
+from .infrastructure.providers.google_cloud import GoogleCloudProvider
 
 
 class VoiceService:
@@ -10,6 +11,7 @@ class VoiceService:
         self.providers = {
             "elevenlabs": ElevenLabsProvider(),
             "openai": OpenAIVoiceProvider(),
+            "google": GoogleCloudProvider(),
         }
     
     async def test_voice_connection(self, voice_connection: VoiceConnection) -> VoiceConnectionTestResult:
@@ -53,25 +55,34 @@ class VoiceService:
         provider = self.providers.get(voice_connection.provider.lower())
         
         if not provider:
-            return VoiceConnectionTestResult(
+            return VoiceGenerationResult(
                 success=False,
-                message=f"Unsupported voice provider: {voice_connection.provider}",
-                audio_data=None
+                audio_data=None,
+                audio_url=None,
+                duration_seconds=None,
+                file_size_bytes=None,
+                error_message=f"Unsupported voice provider: {voice_connection.provider}"
             )
         
         if not voice_connection.is_active:
-            return VoiceConnectionTestResult(
+            return VoiceGenerationResult(
                 success=False,
-                message="Voice connection is inactive",
-                audio_data=None
+                audio_data=None,
+                audio_url=None,
+                duration_seconds=None,
+                file_size_bytes=None,
+                error_message="Voice connection is inactive"
             )
         
         # Check if provider supports TTS
         if not hasattr(provider, 'generate_tts'):
-            return VoiceConnectionTestResult(
+            return VoiceGenerationResult(
                 success=False,
-                message=f"Provider {voice_connection.provider} does not support TTS generation",
-                audio_data=None
+                audio_data=None,
+                audio_url=None,
+                duration_seconds=None,
+                file_size_bytes=None,
+                error_message=f"Provider {voice_connection.provider} does not support TTS generation"
             )
         
         try:
@@ -79,8 +90,11 @@ class VoiceService:
             tts_result = await provider.generate_tts(voice_connection, text)
             return tts_result
         except Exception as e:
-            return VoiceConnectionTestResult(
+            return VoiceGenerationResult(
                 success=False,
-                message=f"TTS generation failed: {str(e)}",
-                audio_data=None
+                audio_data=None,
+                audio_url=None,
+                duration_seconds=None,
+                file_size_bytes=None,
+                error_message=f"TTS generation failed: {str(e)}"
             )

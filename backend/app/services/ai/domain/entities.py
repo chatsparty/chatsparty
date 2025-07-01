@@ -25,6 +25,7 @@ class ChatStyle:
 class VoiceConfig:
     voice_enabled: bool = False
     voice_connection_id: Optional[str] = None
+    selected_voice_id: Optional[str] = None
     podcast_settings: Optional[dict] = None
 
 
@@ -37,6 +38,7 @@ class Agent:
     model_config: ModelConfiguration
     chat_style: ChatStyle
     connection_id: str
+    gender: str = "neutral"
     voice_config: Optional[VoiceConfig] = None
     # MCP tool configuration
     selected_mcp_tools: Optional[List[str]] = None

@@ -9,9 +9,11 @@ from ..models.chat import (
     PodcastJobStatus,
 )
 from ..models.database import User
-from ..services.podcast_service import podcast_service
 from ..core.error_handler import DatabaseErrorHandler
 from .auth import get_current_user_dependency
+from ..services.podcast.orchestrator import PodcastOrchestrator
+
+podcast_service = PodcastOrchestrator()
 
 logger = logging.getLogger(__name__)
 

@@ -9,6 +9,7 @@ from .routers import (
     podcast,
     system,
     voice_connections,
+    audio_test,
 )
 from .routers.projects import router as projects_router
 from .core.database import db_manager
@@ -26,7 +27,7 @@ import asyncio
 load_dotenv()
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
@@ -75,6 +76,7 @@ app.include_router(chat.router)
 app.include_router(connections.router)
 app.include_router(voice_connections.router)
 app.include_router(podcast.router)
+app.include_router(audio_test.router)
 app.include_router(files.router)
 app.include_router(mcp.router)
 from .core.config import settings

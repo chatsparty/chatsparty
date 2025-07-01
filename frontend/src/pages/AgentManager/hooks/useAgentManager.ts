@@ -2,18 +2,23 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTracking } from '../../../hooks/useTracking';
 import { useConnections } from '../../../hooks/useConnections';
+import type { AgentVoiceConfig } from '@/types/voice';
 
 interface Agent {
   agent_id: string;
   name: string;
   characteristics?: string;
+  gender?: string;
   connection_id?: string;
+  voice_config?: AgentVoiceConfig;
 }
 
 interface FormData {
   name: string;
   characteristics: string;
+  gender: string;
   connection_id: string;
+  voice_config?: AgentVoiceConfig;
 }
 
 export const useAgentManager = () => {
@@ -28,7 +33,12 @@ export const useAgentManager = () => {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     characteristics: '',
-    connection_id: ''
+    gender: 'neutral',
+    connection_id: '',
+    voice_config: {
+      voice_enabled: false,
+      voice_connection_id: undefined
+    }
   });
 
   const fetchAgents = async () => {
@@ -48,19 +58,24 @@ export const useAgentManager = () => {
     e.preventDefault();
     setIsLoading(true);
     
+    console.log("Saving agent with formData:", formData);
+    console.log("Voice config being sent:", formData.voice_config);
+    
     try {
+      const payload = {
+        name: formData.name,
+        characteristics: formData.characteristics,
+        gender: formData.gender,
+        connection_id: formData.connection_id,
+        voice_config: formData.voice_config
+      };
+      
+      console.log("Full payload:", payload);
+      
       if (editingAgent) {
-        await axios.put(`/chat/agents/${editingAgent.agent_id}`, {
-          name: formData.name,
-          characteristics: formData.characteristics,
-          connection_id: formData.connection_id
-        });
+        await axios.put(`/chat/agents/${editingAgent.agent_id}`, payload);
       } else {
-        await axios.post('/chat/agents', {
-          name: formData.name,
-          characteristics: formData.characteristics,
-          connection_id: formData.connection_id
-        });
+        await axios.post('/chat/agents', payload);
       }
       
       const connection = connections.find(conn => conn.id === formData.connection_id);
@@ -97,17 +112,31 @@ export const useAgentManager = () => {
     setFormData({
       name: agent.name,
       characteristics: agent.characteristics || '',
-      connection_id: agent.connection_id || ''
+      gender: agent.gender || 'neutral',
+      connection_id: agent.connection_id || '',
+      voice_config: agent.voice_config || {
+        voice_enabled: false,
+        voice_connection_id: undefined
+      }
     });
     setShowCreateForm(true);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    // Handle voice_config updates specially
+    if (name === 'voice_config') {
+      setFormData({
+        ...formData,
+        voice_config: value
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const resetForm = () => {
@@ -116,7 +145,12 @@ export const useAgentManager = () => {
     setFormData({
       name: '',
       characteristics: '',
-      connection_id: ''
+      gender: 'neutral',
+      connection_id: '',
+      voice_config: {
+        voice_enabled: false,
+        voice_connection_id: undefined
+      }
     });
   };
 

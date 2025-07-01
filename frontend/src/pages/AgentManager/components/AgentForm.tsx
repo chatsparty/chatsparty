@@ -10,7 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useConnections } from "@/hooks/useConnections";
+import { useVoiceConnections } from "@/hooks/useVoiceConnections";
+import type { AgentVoiceConfig } from "@/types/voice";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -18,13 +21,17 @@ interface Agent {
   agent_id: string;
   name: string;
   characteristics?: string;
+  gender?: string;
   connection_id?: string;
+  voice_config?: AgentVoiceConfig;
 }
 
 interface FormData {
   name: string;
   characteristics: string;
+  gender: string;
   connection_id: string;
+  voice_config?: AgentVoiceConfig;
 }
 
 interface AgentFormProps {
@@ -47,6 +54,17 @@ const AgentForm: React.FC<AgentFormProps> = ({
   const navigate = useNavigate();
   const { loading: connectionsLoading, getActiveConnections } = useConnections();
   const activeConnections = getActiveConnections();
+  
+  const { connections: voiceConnections, loading: voiceConnectionsLoading } = useVoiceConnections();
+  const activeVoiceConnections = voiceConnections.filter(vc => vc.is_active);
+  
+  
+  // Initialize voice config if not present
+  const voiceConfig = formData.voice_config || {
+    voice_enabled: false,
+    voice_connection_id: undefined,
+    selected_voice_id: undefined,
+  };
 
   const handleConnectionChange = (connectionId: string) => {
     if (connectionId === "add-new") {
@@ -59,6 +77,38 @@ const AgentForm: React.FC<AgentFormProps> = ({
     } as React.ChangeEvent<HTMLInputElement>;
     onInputChange(event);
   };
+  
+  const handleVoiceEnabledChange = (enabled: boolean) => {
+    const event = {
+      target: {
+        name: "voice_config",
+        value: {
+          ...voiceConfig,
+          voice_enabled: enabled,
+        },
+      },
+    } as any;
+    onInputChange(event);
+  };
+  
+  const handleVoiceConnectionChange = (connectionId: string) => {
+    if (connectionId === "add-new") {
+      navigate("/settings/voice-connections");
+      return;
+    }
+    
+    const event = {
+      target: {
+        name: "voice_config",
+        value: {
+          ...voiceConfig,
+          voice_connection_id: connectionId,
+        },
+      },
+    } as any;
+    onInputChange(event);
+  };
+  
 
   return (
     <div className="max-w-md mx-auto">
@@ -104,6 +154,33 @@ const AgentForm: React.FC<AgentFormProps> = ({
             </div>
 
             <div>
+              <Label htmlFor="gender" className="text-sm font-medium">
+                Gender *
+              </Label>
+              <Select
+                value={formData.gender || "neutral"}
+                onValueChange={(value) => {
+                  const event = {
+                    target: { name: "gender", value },
+                  } as React.ChangeEvent<HTMLInputElement>;
+                  onInputChange(event);
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="neutral">Neutral</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Used for voice selection in podcasts and conversations
+              </p>
+            </div>
+
+            <div>
               <Label htmlFor="connection" className="text-sm font-medium">
                 AI Model Connection *
               </Label>
@@ -126,6 +203,55 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Voice Configuration</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Enable text-to-speech for this agent
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="voice-enabled" className="text-sm font-medium">
+                Enable Voice
+              </Label>
+              <Switch
+                id="voice-enabled"
+                checked={voiceConfig.voice_enabled}
+                onCheckedChange={handleVoiceEnabledChange}
+              />
+            </div>
+            
+            {voiceConfig.voice_enabled && (
+              <>
+                <div>
+                  <Label htmlFor="voice-connection" className="text-sm font-medium">
+                    Voice Connection
+                  </Label>
+                  <Select
+                    value={voiceConfig.voice_connection_id || ""}
+                    onValueChange={handleVoiceConnectionChange}
+                    disabled={voiceConnectionsLoading}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select a voice connection" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeVoiceConnections.map((connection) => (
+                        <SelectItem key={connection.id} value={connection.id}>
+                          {connection.name} ({connection.provider})
+                          {connection.is_default && " • Default"}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="add-new">+ Add Voice Connection</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

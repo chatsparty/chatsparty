@@ -16,6 +16,7 @@ class AgentService:
         prompt: str, 
         characteristics: str,
         user_id: str,
+        gender: str = "neutral",
         model_config: Optional[Dict] = None,
         chat_style: Optional[Dict] = None,
         connection_id: Optional[str] = None,
@@ -41,11 +42,14 @@ class AgentService:
             expertise_level=chat_style.get("expertise_level", "expert")
         ) if chat_style else ChatStyle()
         
+        print(f"Creating agent with voice_config: {voice_config}")
         voice_config_obj = VoiceConfig(
             voice_enabled=voice_config.get("voice_enabled", False),
             voice_connection_id=voice_config.get("voice_connection_id"),
+            selected_voice_id=voice_config.get("selected_voice_id"),
             podcast_settings=voice_config.get("podcast_settings")
         ) if voice_config else VoiceConfig()
+        print(f"Created voice_config_obj: {voice_config_obj}")
         
         # Generate a unique UUID for the agent
         agent_id = str(uuid.uuid4())
@@ -58,6 +62,7 @@ class AgentService:
             model_config=model_configuration,
             chat_style=chat_style_obj,
             connection_id=connection_id or "default",
+            gender=gender,
             voice_config=voice_config_obj,
             selected_mcp_tools=mcp_tools,
             mcp_tool_config=mcp_tool_config
@@ -76,6 +81,7 @@ class AgentService:
                 "name": agent.name,
                 "prompt": agent.prompt,
                 "characteristics": agent.characteristics,
+                "gender": getattr(agent, 'gender', 'neutral'),
                 "connection_id": agent.connection_id,
                 "model_configuration": {
                     "provider": agent.model_config.provider,
@@ -93,6 +99,7 @@ class AgentService:
                 "voice_config": {
                     "voice_enabled": agent.voice_config.voice_enabled if agent.voice_config else False,
                     "voice_connection_id": agent.voice_config.voice_connection_id if agent.voice_config else None,
+                    "selected_voice_id": agent.voice_config.selected_voice_id if agent.voice_config else None,
                     "podcast_settings": agent.voice_config.podcast_settings if agent.voice_config else None
                 } if agent.voice_config else None,
                 "selected_mcp_tools": agent.selected_mcp_tools,

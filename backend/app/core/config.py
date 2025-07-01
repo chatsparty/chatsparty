@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     chatsparty_default_api_key: Optional[str] = None
     chatsparty_default_base_url: Optional[str] = None
     
+    chatsparty_default_voice_enabled: bool = True
+    chatsparty_default_voice_provider: str = "elevenlabs"
+    chatsparty_default_voice_id: str = "EXAVITQu4vr4xnSDxMaL"
+    chatsparty_default_voice_api_key: Optional[str] = None
+    chatsparty_default_voice_base_url: Optional[str] = None
+    
     vm_provider: str = "docker"
     docker_image: str = "wisty-dev-capsule"
     

@@ -18,6 +18,7 @@ interface Agent {
   agent_id: string;
   name: string;
   characteristics?: string;
+  gender?: string;
   connection_id?: string;
 }
 
@@ -94,6 +95,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
               <TableRow className="bg-muted/50">
                 <TableHead className="w-[200px] font-medium">{t("agents.name")}</TableHead>
                 <TableHead className="font-medium">{t("agents.characteristics")}</TableHead>
+                <TableHead className="w-[100px] font-medium">{t("agents.gender")}</TableHead>
                 <TableHead className="w-[150px] font-medium">{t("agents.model")}</TableHead>
                 <TableHead className="w-[100px] font-medium">{t("agents.id")}</TableHead>
                 <TableHead className="w-[120px] text-end font-medium">
@@ -125,6 +127,11 @@ const AgentTable: React.FC<AgentTableProps> = ({
                       <p className="text-sm text-muted-foreground line-clamp-2 max-w-md">
                         {agent.characteristics}
                       </p>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {agent.gender || 'neutral'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="py-3">
                       {modelInfo ? (

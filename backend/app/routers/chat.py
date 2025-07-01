@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -29,6 +30,7 @@ if settings.enable_credits:
 from .auth import get_current_user_dependency
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+logger = logging.getLogger(__name__)
 
 
 async def consume_credits_for_connection(connection_id: str, user_id: str, reason=None):
@@ -96,6 +98,7 @@ async def create_agent(
             prompt,
             characteristics,
             current_user.id,
+            agent_request.gender,
             model_config_dict,
             chat_style_dict,
             agent_request.connection_id,
@@ -108,6 +111,7 @@ async def create_agent(
             name=agent.name,
             prompt=agent.prompt,
             characteristics=agent.characteristics,
+            gender=agent.gender,
             connection_id=agent_request.connection_id,
             chat_style=agent_request.chat_style,
             voice_config=agent_request.voice_config,
@@ -160,17 +164,23 @@ async def update_agent(
         if agent_request.voice_config:
             voice_config_dict = agent_request.voice_config.model_dump()
 
+        logger.info(f"Updating agent with gender: {agent_request.gender}")
+        logger.info(f"model_config_dict type: {type(model_config_dict)}, value: {model_config_dict}")
+        logger.info(f"chat_style_dict type: {type(chat_style_dict)}, value: {chat_style_dict}")
+        logger.info(f"voice_config_dict type: {type(voice_config_dict)}, value: {voice_config_dict}")
+
         agent = ai_service.update_agent(
-            agent_id,
-            agent_request.name,
-            agent_request.prompt,
-            agent_request.characteristics,
-            model_config_dict,
-            chat_style_dict,
-            agent_request.connection_id,
-            voice_config_dict,
-            agent_request.mcp_tools,
-            agent_request.mcp_tool_config
+            agent_id=agent_id,
+            name=agent_request.name,
+            prompt=agent_request.prompt,
+            characteristics=agent_request.characteristics,
+            gender=agent_request.gender,
+            model_config=model_config_dict,
+            chat_style=chat_style_dict,
+            connection_id=agent_request.connection_id,
+            voice_config=voice_config_dict,
+            mcp_tools=agent_request.mcp_tools,
+            mcp_tool_config=agent_request.mcp_tool_config
         )
 
         if not agent:
@@ -182,6 +192,7 @@ async def update_agent(
             name=agent.name,
             prompt=agent.prompt,
             characteristics=agent.characteristics,
+            gender=agent.gender,
             connection_id=agent_request.connection_id,
             chat_style=agent_request.chat_style,
             voice_config=agent_request.voice_config,
@@ -192,6 +203,9 @@ async def update_agent(
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        logger.error(f"Failed to update agent: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500, detail=f"Failed to update agent: {str(e)}")
 

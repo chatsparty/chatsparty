@@ -179,7 +179,9 @@ class ChatService:
             context += f"- Keep responses natural and conversational\n"
             context += f"- You can agree, disagree, add thoughts, make jokes, or simply acknowledge\n"
             context += f"- Respond in the same language as the conversation\n"
-            context += f"\nRespond as a natural participant in this group chat."
+            context += f"\nIMPORTANT: Your response must be in this exact format:\n"
+            context += f"LANGUAGE: [ISO 639-1 code like 'en', 'es', 'fr', etc.]\n"
+            context += f"RESPONSE: [Your actual response as a natural participant in this group chat]"
             
             if file_attachments:
                 context += f"\n\nNote: The user has attached {len(file_attachments)} file(s) with relevant content for this conversation."
@@ -193,23 +195,35 @@ class ChatService:
                 user_id=user_id
             )
             
+            language = "en"
+            actual_response = response
+            
+            if "LANGUAGE:" in response and "RESPONSE:" in response:
+                lines = response.split('\n')
+                for i, line in enumerate(lines):
+                    if line.startswith("LANGUAGE:"):
+                        language = line.replace("LANGUAGE:", "").strip()
+                    elif line.startswith("RESPONSE:"):
+                        actual_response = '\n'.join(lines[i:]).replace("RESPONSE:", "", 1).strip()
+                        break
+            
             agent_message = Message(
                 role="assistant", 
-                content=response, 
+                content=actual_response,
                 timestamp=datetime.now(),
                 agent_id=selected_agent_id,
                 speaker=current_agent.name
             )
-            self._conversation_repository.add_message(conversation_id, agent_message)
+            self._conversation_repository.add_message(conversation_id, agent_message, language=language)
             
             conversation_log.append(ConversationMessage(
                 speaker=current_agent.name,
                 agent_id=selected_agent_id,
-                message=response,
+                message=actual_response,
                 timestamp=asyncio.get_event_loop().time()
             ))
             
-            if "I'm sorry, but you don't have enough credits" in response:
+            if "I'm sorry, but you don't have enough credits" in actual_response:
                 break
             
             turn += 1
@@ -390,7 +404,9 @@ class ChatService:
             context += f"- Keep responses natural and conversational\n"
             context += f"- You can agree, disagree, add thoughts, make jokes, or simply acknowledge\n"
             context += f"- Respond in the same language as the conversation\n"
-            context += f"\nRespond as a natural participant in this group chat."
+            context += f"\nIMPORTANT: Your response must be in this exact format:\n"
+            context += f"LANGUAGE: [ISO 639-1 code like 'en', 'es', 'fr', etc.]\n"
+            context += f"RESPONSE: [Your actual response as a natural participant in this group chat]"
             
             if file_attachments:
                 context += f"\n\nNote: The user has attached {len(file_attachments)} file(s) with relevant content for this conversation."
@@ -404,26 +420,38 @@ class ChatService:
                 user_id=user_id
             )
             
+            language = "en"
+            actual_response = response
+            
+            if "LANGUAGE:" in response and "RESPONSE:" in response:
+                lines = response.split('\n')
+                for i, line in enumerate(lines):
+                    if line.startswith("LANGUAGE:"):
+                        language = line.replace("LANGUAGE:", "").strip()
+                    elif line.startswith("RESPONSE:"):
+                        actual_response = '\n'.join(lines[i:]).replace("RESPONSE:", "", 1).strip()
+                        break
+            
             agent_message = Message(
                 role="assistant", 
-                content=response, 
+                content=actual_response,
                 timestamp=datetime.now(),
                 agent_id=selected_agent_id,
                 speaker=current_agent.name
             )
-            self._conversation_repository.add_message(conversation_id, agent_message)
+            self._conversation_repository.add_message(conversation_id, agent_message, language=language)
             
             agent_msg = {
                 "speaker": current_agent.name,
                 "agent_id": selected_agent_id,
-                "message": response,
+                "message": actual_response,
                 "timestamp": asyncio.get_event_loop().time(),
                 "type": "message"
             }
             conversation_log.append(agent_msg)
             yield agent_msg
             
-            if "I'm sorry, but you don't have enough credits" in response:
+            if "I'm sorry, but you don't have enough credits" in actual_response:
                 break
             
             turn += 1

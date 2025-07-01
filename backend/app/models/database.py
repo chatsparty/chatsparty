@@ -62,6 +62,9 @@ class Agent(Base):
 
     # Chat style as JSON
     chat_style: Mapped[dict] = mapped_column(JSON, nullable=False)
+    
+    # Gender for voice assignment ('male', 'female', 'neutral')
+    gender: Mapped[str] = mapped_column(String(20), default='neutral', nullable=False)
 
     # Voice configuration
     voice_connection_id: Mapped[Optional[str]] = mapped_column(
@@ -137,6 +140,9 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     speaker: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     message_type: Mapped[str] = mapped_column(String(50), default="message")
+    
+    # Detected language code (e.g., 'en', 'es', 'fr')
+    language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now())

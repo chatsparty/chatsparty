@@ -18,20 +18,31 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
                 agent.voice_config.voice_enabled and 
                 agent.voice_config.voice_connection_id):
                 
-                voice_conn = self.db_session.query(VoiceConnectionModel).filter(
-                    VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
-                    VoiceConnectionModel.user_id == user_id,
-                    VoiceConnectionModel.is_active == True
-                ).first()
-                
-                if voice_conn:
+                if agent.voice_config.voice_connection_id == "chatsparty-default-voice":
                     voice_connection_id = agent.voice_config.voice_connection_id
+                else:
+                    voice_conn = self.db_session.query(VoiceConnectionModel).filter(
+                        VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
+                        VoiceConnectionModel.user_id == user_id,
+                        VoiceConnectionModel.is_active == True
+                    ).first()
+                    
+                    if voice_conn:
+                        voice_connection_id = agent.voice_config.voice_connection_id
+            
+            podcast_settings = {}
+            if agent.voice_config:
+                if agent.voice_config.podcast_settings:
+                    podcast_settings = agent.voice_config.podcast_settings.copy()
+                if agent.voice_config.selected_voice_id:
+                    podcast_settings['selected_voice_id'] = agent.voice_config.selected_voice_id
             
             db_agent = AgentModel(
                 id=agent.agent_id,
                 name=agent.name,
                 prompt=agent.prompt,
                 characteristics=agent.characteristics,
+                gender=agent.gender,
                 connection_id=agent.connection_id,
                 user_id=user_id,
                 model_config={
@@ -47,9 +58,9 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
                     "humor": agent.chat_style.humor,
                     "expertise_level": agent.chat_style.expertise_level,
                 },
-                voice_enabled=bool(voice_connection_id),  # Only enable voice if we have a valid connection
+                voice_enabled=bool(voice_connection_id),
                 voice_connection_id=voice_connection_id,
-                podcast_settings=agent.voice_config.podcast_settings if agent.voice_config else None
+                podcast_settings=podcast_settings if podcast_settings else None
             )
             
             self.db_session.add(db_agent)
@@ -86,6 +97,7 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
         db_agent.name = agent.name
         db_agent.prompt = agent.prompt
         db_agent.characteristics = agent.characteristics
+        db_agent.gender = agent.gender
         db_agent.connection_id = agent.connection_id
         db_agent.model_config = {
             "provider": agent.model_config.provider,
@@ -101,32 +113,39 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             "expertise_level": agent.chat_style.expertise_level,
         }
         
-        # Validate voice connection exists if specified  
         voice_connection_id = None
         if (agent.voice_config and 
             agent.voice_config.voice_enabled and 
             agent.voice_config.voice_connection_id):
             
-            voice_conn = self.db_session.query(VoiceConnectionModel).filter(
-                VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
-                VoiceConnectionModel.user_id == db_agent.user_id,
-                VoiceConnectionModel.is_active == True
-            ).first()
-            
-            if voice_conn:
+            if agent.voice_config.voice_connection_id == "chatsparty-default-voice":
                 voice_connection_id = agent.voice_config.voice_connection_id
+            else:
+                voice_conn = self.db_session.query(VoiceConnectionModel).filter(
+                    VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
+                    VoiceConnectionModel.user_id == db_agent.user_id,
+                    VoiceConnectionModel.is_active == True
+                ).first()
+                
+                if voice_conn:
+                    voice_connection_id = agent.voice_config.voice_connection_id
+        
+        podcast_settings = {}
+        if agent.voice_config:
+            if agent.voice_config.podcast_settings:
+                podcast_settings = agent.voice_config.podcast_settings.copy()
+            if agent.voice_config.selected_voice_id:
+                podcast_settings['selected_voice_id'] = agent.voice_config.selected_voice_id
         
         db_agent.voice_enabled = bool(voice_connection_id)
         db_agent.voice_connection_id = voice_connection_id
-        db_agent.podcast_settings = agent.voice_config.podcast_settings if agent.voice_config else None
+        db_agent.podcast_settings = podcast_settings if podcast_settings else None
         
-        # Add MCP fields update
         if hasattr(agent, 'selected_mcp_tools'):
             db_agent.selected_mcp_tools = agent.selected_mcp_tools
         if hasattr(agent, 'mcp_tool_config'):
             db_agent.mcp_tool_config = agent.mcp_tool_config
         
-        # Commit the changes to the database
         self.db_session.commit()
         self.db_session.refresh(db_agent)
         
@@ -161,10 +180,19 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             expertise_level=db_agent.chat_style.get("expertise_level", "expert"),
         )
         
+        podcast_settings = getattr(db_agent, 'podcast_settings', {}) or {}
+        selected_voice_id = None
+        if isinstance(podcast_settings, dict):
+            selected_voice_id = podcast_settings.get('selected_voice_id')
+            podcast_settings_clean = {k: v for k, v in podcast_settings.items() if k != 'selected_voice_id'}
+        else:
+            podcast_settings_clean = podcast_settings
+        
         voice_config = VoiceConfig(
             voice_enabled=getattr(db_agent, 'voice_enabled', False),
             voice_connection_id=getattr(db_agent, 'voice_connection_id', None),
-            podcast_settings=getattr(db_agent, 'podcast_settings', None)
+            selected_voice_id=selected_voice_id,
+            podcast_settings=podcast_settings_clean if podcast_settings_clean else None
         )
         
         return Agent(
@@ -175,5 +203,8 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             model_config=model_config,
             chat_style=chat_style,
             connection_id=db_agent.connection_id,
-            voice_config=voice_config
+            gender=getattr(db_agent, 'gender', 'neutral'),
+            voice_config=voice_config,
+            selected_mcp_tools=getattr(db_agent, 'selected_mcp_tools', None),
+            mcp_tool_config=getattr(db_agent, 'mcp_tool_config', None)
         )

@@ -25,6 +25,7 @@ class AIServiceFacade(AIServiceInterface):
         prompt: str,
         characteristics: str,
         user_id: str,
+        gender: str = "neutral",
         model_config: dict = None,
         chat_style: dict = None,
         connection_id: str = None,
@@ -35,7 +36,7 @@ class AIServiceFacade(AIServiceInterface):
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
             return agent_service.create_agent(
-                name, prompt, characteristics, user_id, model_config, chat_style, connection_id, voice_config, mcp_tools, mcp_tool_config
+                name, prompt, characteristics, user_id, gender, model_config, chat_style, connection_id, voice_config, mcp_tools, mcp_tool_config
             )
 
     def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
@@ -54,6 +55,7 @@ class AIServiceFacade(AIServiceInterface):
         name: str,
         prompt: str,
         characteristics: str,
+        gender: str = None,
         model_config: dict = None,
         chat_style: dict = None,
         connection_id: str = None,
@@ -68,6 +70,9 @@ class AIServiceFacade(AIServiceInterface):
             if not existing_agent:
                 return None
 
+            if model_config and not isinstance(model_config, dict):
+                raise TypeError(f"model_config must be a dict, got {type(model_config)}")
+                
             model_configuration = ModelConfiguration(
                 provider=model_config.get("provider", "ollama"),
                 model_name=model_config.get("model_name", "gemma3:4b"),
@@ -75,6 +80,9 @@ class AIServiceFacade(AIServiceInterface):
                 base_url=model_config.get("base_url")
             ) if model_config else existing_agent.model_config
 
+            if chat_style and not isinstance(chat_style, dict):
+                raise TypeError(f"chat_style must be a dict, got {type(chat_style)}")
+                
             chat_style_obj = ChatStyle(
                 friendliness=chat_style.get("friendliness", "friendly"),
                 response_length=chat_style.get("response_length", "medium"),
@@ -83,11 +91,17 @@ class AIServiceFacade(AIServiceInterface):
                 expertise_level=chat_style.get("expertise_level", "expert")
             ) if chat_style else existing_agent.chat_style
 
+            if voice_config and not isinstance(voice_config, dict):
+                raise TypeError(f"voice_config must be a dict, got {type(voice_config)}")
+                
+            print(f"Updating agent with voice_config: {voice_config}")
             voice_config_obj = VoiceConfig(
                 voice_enabled=voice_config.get("voice_enabled", False),
                 voice_connection_id=voice_config.get("voice_connection_id"),
+                selected_voice_id=voice_config.get("selected_voice_id"),
                 podcast_settings=voice_config.get("podcast_settings")
             ) if voice_config else existing_agent.voice_config
+            print(f"Created voice_config_obj for update: {voice_config_obj}")
 
             updated_agent = Agent(
                 agent_id=agent_id,
@@ -97,6 +111,7 @@ class AIServiceFacade(AIServiceInterface):
                 model_config=model_configuration,
                 chat_style=chat_style_obj,
                 connection_id=connection_id or existing_agent.connection_id,
+                gender=gender if gender is not None else existing_agent.gender,
                 voice_config=voice_config_obj,
                 selected_mcp_tools=mcp_tools if mcp_tools is not None else getattr(
                     existing_agent, 'selected_mcp_tools', None),
