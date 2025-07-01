@@ -19,6 +19,7 @@ sio = websocket_service.get_sio_server()
 @sio.event
 async def start_multi_agent_conversation(sid, data):
     """Handle starting a multi-agent conversation via Socket.IO"""
+    logger.info(f"Received start_multi_agent_conversation from sid {sid} with data: {data}")
     try:
         conversation_id = data.get('conversation_id')
         agent_ids = data.get('agent_ids', [])
@@ -26,6 +27,9 @@ async def start_multi_agent_conversation(sid, data):
         max_turns = data.get('max_turns', 20)
         file_attachments = data.get('file_attachments')
         project_id = data.get('project_id')
+        
+        logger.info(f"Conversation {conversation_id} using agents: {agent_ids}")
+        logger.info(f"Initial message: {initial_message}")
         
         token = data.get('token')
         user = None
@@ -58,10 +62,24 @@ async def start_multi_agent_conversation(sid, data):
             'status': 'started'
         }, room=conversation_id)
         
+        # Emit the user's initial message
+        await websocket_service.emit_agent_message(
+            conversation_id,
+            'user',
+            'User',
+            initial_message,
+            asyncio.get_event_loop().time()
+        )
+        
+        logger.info(f"Starting multi-agent conversation {conversation_id} with agents {agent_ids}")
+        logger.info(f"Initial message: {initial_message[:100]}...")
+        
         ai_service = get_ai_service()
         
         
         try:
+            logger.info(f"Starting AI service stream for conversation {conversation_id}")
+            message_count = 0
             async for message in ai_service.multi_agent_conversation_stream(
                 conversation_id,
                 agent_ids,
@@ -71,6 +89,8 @@ async def start_multi_agent_conversation(sid, data):
                 file_attachments,
                 project_id
             ):
+                message_count += 1
+                logger.info(f"Received message #{message_count} from AI service: {message}")
                 if conversation_id not in websocket_service.active_conversations:
                     break
                 
@@ -78,12 +98,14 @@ async def start_multi_agent_conversation(sid, data):
                     break
                 
                 if message.get('type') == 'typing':
+                    logger.debug(f"Emitting typing indicator for {message.get('speaker')}")
                     await websocket_service.emit_typing_indicator(
                         conversation_id,
                         message.get('agent_id', ''),
                         message.get('speaker', '')
                     )
                 elif message.get('type') == 'message':
+                    logger.info(f"Emitting message from {message.get('speaker')}: {message.get('message', '')[:100]}...")
                     await websocket_service.emit_agent_message(
                         conversation_id,
                         message.get('agent_id', ''),
@@ -100,10 +122,11 @@ async def start_multi_agent_conversation(sid, data):
                 
                 await asyncio.sleep(0.1)
             
+            logger.info(f"Conversation {conversation_id} completed. Total messages: {message_count}")
             await websocket_service.emit_conversation_complete(conversation_id)
             
         except Exception as e:
-            logger.error(f"Error in conversation stream: {str(e)}")
+            logger.error(f"Error in conversation stream: {str(e)}", exc_info=True)
             await websocket_service.emit_error(
                 conversation_id,
                 f"Conversation error: {str(e)}"

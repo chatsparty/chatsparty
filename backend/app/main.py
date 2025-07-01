@@ -1,6 +1,7 @@
 from .routers import (
     auth,
     chat,
+    chat_socketio,  # Import to register Socket.IO event handlers
     connections,
     credit,
     files,
@@ -10,6 +11,7 @@ from .routers import (
     system,
     voice_connections,
     audio_test,
+    test_ai,
 )
 from .routers.projects import router as projects_router
 from .core.database import db_manager
@@ -88,6 +90,7 @@ app.include_router(voice_connections.router)
 app.include_router(podcast.router)
 app.include_router(audio_test.router)
 app.include_router(files.router)
+app.include_router(test_ai.router)
 
 if settings.enable_mcp:
     app.include_router(mcp.router)
