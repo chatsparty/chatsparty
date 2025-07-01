@@ -83,7 +83,9 @@ app.include_router(voice_connections.router)
 app.include_router(podcast.router)
 app.include_router(audio_test.router)
 app.include_router(files.router)
-app.include_router(mcp.router)
+
+if settings.enable_mcp:
+    app.include_router(mcp.router)
 
 if settings.enable_credits:
     app.include_router(credit.router)

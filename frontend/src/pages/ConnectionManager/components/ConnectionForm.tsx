@@ -16,6 +16,7 @@ import type {
 } from "@/types/connection";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
+import { MCP_ENABLED } from "@/config/features";
 
 interface ConnectionFormProps {
   connection?: ModelConnection;
@@ -244,11 +245,13 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.keys(providers).map((provider) => (
-                    <SelectItem key={provider} value={provider}>
-                      {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                    </SelectItem>
-                  ))}
+                  {Object.keys(providers)
+                    .filter(provider => MCP_ENABLED || provider !== "mcp")
+                    .map((provider) => (
+                      <SelectItem key={provider} value={provider}>
+                        {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -319,7 +322,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
           </Card>
         )}
 
-        {isMcpProvider && (
+        {MCP_ENABLED && isMcpProvider && (
           <Card>
             <CardHeader>
               <CardTitle>MCP Server Configuration</CardTitle>
