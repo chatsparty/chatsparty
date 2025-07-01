@@ -1,7 +1,7 @@
 import {
   FaGithub,
   FaArrowRight,
-  FaStar,
+  FaUser,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -32,38 +32,17 @@ function WebsiteHeader() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              onClick={() =>
-                window.open(
-                  "https://github.com/chatsparty/chatsparty",
-                  "_blank"
-                )
-              }
-            >
-              <FaGithub className="text-sm" />
-              GitHub
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              onClick={() =>
-                window.open(
-                  "https://github.com/chatsparty/chatsparty",
-                  "_blank"
-                )
-              }
-            >
-              <FaStar className="text-sm" />
-              Star
-            </Button>
-
             <LanguageSwitcher />
             <ThemeToggle />
+            
+            <Button
+              size="sm"
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200"
+              onClick={() => window.location.href = '/login'}
+            >
+              <FaUser className="text-sm" />
+              {t("common.login")}
+            </Button>
           </div>
         </div>
       </div>
@@ -127,60 +106,157 @@ export function LandingPage({}: LandingPageProps) {
             <Button
               onClick={handleGetStarted}
               size="lg"
-              className="flex items-center gap-3 px-10 py-6 text-lg"
+              className="flex items-center gap-3 px-10 py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
             >
               {t("landing.cta.getStarted")}
               <FaArrowRight className="text-sm" />
             </Button>
 
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex items-center gap-3 px-10 py-6 text-lg"
-              onClick={() =>
-                window.open(
-                  "https://github.com/chatsparty/chatsparty",
-                  "_blank"
-                )
-              }
+            <a
+              href="https://github.com/chatsparty/chatsparty"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 flex items-center gap-1"
             >
-              <FaGithub className="text-lg" />
-              {t("common.viewOn")} GitHub
-            </Button>
+              <FaGithub className="text-base" />
+              <span>Open Source</span>
+            </a>
           </div>
         </div>
 
         {/* Features */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-20">
-          <div className="relative bg-card border rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 group-hover:scale-110 transition-transform duration-300">
-              <Avatar size={60} name="feature-agent" variant="beam" colors={avatarColors} />
+        <div className="mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">Experience AI Conversations Like Never Before</h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Watch multiple AI agents collaborate, debate, and analyze topics from every angle—giving you deeper insights than any single AI could provide
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Multi-Perspective Analysis */}
+            <div className="relative bg-card border rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 group">
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex gap-1">
+                <div className="group-hover:rotate-12 transition-transform duration-300">
+                  <Avatar size={45} name="perspective-1" variant="beam" colors={avatarColors} />
+                </div>
+                <div className="group-hover:-rotate-12 transition-transform duration-300">
+                  <Avatar size={45} name="perspective-2" variant="beam" colors={avatarColors} />
+                </div>
+              </div>
+              <div className="pt-6">
+                <h3 className="text-xl font-bold mb-3">Multi-Perspective Analysis</h3>
+                <p className="text-muted-foreground">
+                  Get comprehensive insights as different AI agents analyze your topic from unique viewpoints—like having a panel of experts at your fingertips
+                </p>
+              </div>
             </div>
-            <div className="pt-6">
-              <h3 className="text-xl font-bold mb-3">{t("landing.features.agents.title")}</h3>
-              <p className="text-muted-foreground">
-                {t("landing.features.agents.description")}
-              </p>
+
+            {/* Real-Time Collaboration */}
+            <div className="relative bg-card border rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 group">
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2">
+                <div className="relative">
+                  <div className="absolute inset-0 animate-ping">
+                    <Avatar size={50} name="collab-ping" variant="beam" colors={avatarColors} className="opacity-20" />
+                  </div>
+                  <Avatar size={50} name="collab-main" variant="beam" colors={avatarColors} />
+                </div>
+              </div>
+              <div className="pt-6">
+                <h3 className="text-xl font-bold mb-3">Real-Time Collaboration</h3>
+                <p className="text-muted-foreground">
+                  Watch AI agents build on each other's ideas in real-time, creating richer, more nuanced solutions to complex problems
+                </p>
+              </div>
+            </div>
+
+            {/* Deep Understanding */}
+            <div className="relative bg-card border rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 group">
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+                <div className="flex gap-2">
+                  <Avatar size={30} name="deep-1" variant="beam" colors={avatarColors} className="group-hover:scale-110 transition-transform" />
+                  <Avatar size={30} name="deep-2" variant="beam" colors={avatarColors} className="group-hover:scale-110 transition-transform delay-75" />
+                </div>
+                <Avatar size={40} name="deep-main" variant="beam" colors={avatarColors} className="group-hover:scale-110 transition-transform delay-150" />
+              </div>
+              <div className="pt-8">
+                <h3 className="text-xl font-bold mb-3">Deeper Understanding</h3>
+                <p className="text-muted-foreground">
+                  Agents fact-check, challenge, and refine each other's responses—ensuring you get accurate, well-rounded information
+                </p>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="relative bg-card border rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex gap-2">
-              <div className="group-hover:scale-110 transition-transform duration-300">
-                <Avatar size={40} name="chat-1" variant="beam" colors={avatarColors} />
-              </div>
-              <div className="group-hover:scale-110 transition-transform duration-300" style={{ transitionDelay: '0.1s' }}>
-                <Avatar size={40} name="chat-2" variant="beam" colors={avatarColors} />
-              </div>
-              <div className="group-hover:scale-110 transition-transform duration-300" style={{ transitionDelay: '0.2s' }}>
-                <Avatar size={40} name="chat-3" variant="beam" colors={avatarColors} />
+        {/* Use Cases */}
+        <div className="mb-20 bg-muted/20 rounded-3xl p-12">
+          <h2 className="text-3xl font-bold text-center mb-12">See ChatsParty in Action</h2>
+          <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {/* Business Strategy */}
+            <div className="bg-card rounded-xl p-6 border">
+              <div className="flex items-start gap-4">
+                <div className="flex -space-x-2">
+                  <Avatar size={40} name="biz-1" variant="beam" colors={avatarColors} />
+                  <Avatar size={40} name="biz-2" variant="beam" colors={avatarColors} />
+                  <Avatar size={40} name="biz-3" variant="beam" colors={avatarColors} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold mb-2">Business Strategy Analysis</h4>
+                  <p className="text-sm text-muted-foreground">
+                    "Analyze our market expansion strategy" → Watch a marketing expert, financial analyst, and risk manager debate your plan
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="pt-6">
-              <h3 className="text-xl font-bold mb-3">{t("landing.features.collaboration.title")}</h3>
-              <p className="text-muted-foreground">
-                {t("landing.features.collaboration.description")}
-              </p>
+
+            {/* Code Review */}
+            <div className="bg-card rounded-xl p-6 border">
+              <div className="flex items-start gap-4">
+                <div className="flex -space-x-2">
+                  <Avatar size={40} name="code-1" variant="beam" colors={avatarColors} />
+                  <Avatar size={40} name="code-2" variant="beam" colors={avatarColors} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold mb-2">Code Architecture Review</h4>
+                  <p className="text-sm text-muted-foreground">
+                    "Review my app architecture" → Security expert and performance engineer collaborate to optimize your code
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Research */}
+            <div className="bg-card rounded-xl p-6 border">
+              <div className="flex items-start gap-4">
+                <div className="flex -space-x-2">
+                  <Avatar size={40} name="research-1" variant="beam" colors={avatarColors} />
+                  <Avatar size={40} name="research-2" variant="beam" colors={avatarColors} />
+                  <Avatar size={40} name="research-3" variant="beam" colors={avatarColors} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold mb-2">Research & Analysis</h4>
+                  <p className="text-sm text-muted-foreground">
+                    "Explain quantum computing" → Watch experts break down complex topics from theoretical, practical, and future perspectives
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Creative */}
+            <div className="bg-card rounded-xl p-6 border">
+              <div className="flex items-start gap-4">
+                <div className="flex -space-x-2">
+                  <Avatar size={40} name="creative-1" variant="beam" colors={avatarColors} />
+                  <Avatar size={40} name="creative-2" variant="beam" colors={avatarColors} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold mb-2">Creative Brainstorming</h4>
+                  <p className="text-sm text-muted-foreground">
+                    "Product launch ideas" → Creative director and strategist bounce ideas off each other in real-time
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
