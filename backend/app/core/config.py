@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     docker_mode: str = "local"
     vm_workspace_enabled: bool = False
     enable_projects: bool = False
+    enable_mcp: bool = True
 
     secret_key: str = "your-secret-key-change-this-in-production-make-it-32-chars-long"
     access_token_expire_minutes: int = 30
@@ -72,12 +73,15 @@ class Settings(BaseSettings):
     @property
     def database_url_computed(self) -> str:
         if self.database_url:
+            if "postgresql+asyncpg://" in self.database_url and "prepared_statement_cache_size" not in self.database_url:
+                separator = "&" if "?" in self.database_url else "?"
+                return f"{self.database_url}{separator}prepared_statement_cache_size=0"
             return self.database_url
 
         if self.use_sqlite:
             return f"sqlite+aiosqlite:///{self.sqlite_db_path}"
         else:
-            return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+            return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}?prepared_statement_cache_size=0"
 
     class Config:
         env_file = ".env"

@@ -200,8 +200,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     try {
       const storedState = sessionStorage.getItem("oauth_state");
+      
       if (!storedState || storedState !== state) {
-        throw new Error("Invalid OAuth state");
+        const existingToken = localStorage.getItem("access_token");
+        if (!existingToken) {
+          throw new Error("Invalid OAuth state");
+        }
+        console.warn("OAuth state mismatch but user already authenticated");
       }
 
       const response = await authAxios.post(`/auth/oauth/callback/${provider}`, {

@@ -1,6 +1,7 @@
 from .routers import (
     auth,
     chat,
+    chat_socketio,  # Import to register Socket.IO event handlers
     connections,
     credit,
     files,
@@ -10,19 +11,18 @@ from .routers import (
     system,
     voice_connections,
     audio_test,
+    test_ai,
 )
 from .routers.projects import router as projects_router
 from .core.database import db_manager
 from .core.config import create_app
 from contextlib import asynccontextmanager
 from .services.websocket_service import websocket_service
-from .routers import chat_socketio
-
 from dotenv import load_dotenv
 import logging
 import signal
 import sys
-import asyncio
+from .services.migration_runner import migration_runner
 
 load_dotenv()
 
@@ -34,6 +34,13 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app):
+    # Run migrations first
+    try:
+        await migration_runner.ensure_migrations_applied()
+    except Exception as e:
+        print(f"⚠️ Migration runner failed: {e}")
+        # Continue anyway - migrations might be applied manually
+    
     try:
         await db_manager.create_tables()
         print("✅ Database tables created successfully")
@@ -83,7 +90,10 @@ app.include_router(voice_connections.router)
 app.include_router(podcast.router)
 app.include_router(audio_test.router)
 app.include_router(files.router)
-app.include_router(mcp.router)
+app.include_router(test_ai.router)
+
+if settings.enable_mcp:
+    app.include_router(mcp.router)
 
 if settings.enable_credits:
     app.include_router(credit.router)

@@ -201,7 +201,9 @@ class OAuthService:
         The User model would need to be updated with OAuth provider fields
         to track which provider was used for authentication.
         """
-        existing_user = await auth_service.get_user_by_email(db, email)
+        normalized_email = email.lower()
+        
+        existing_user = await auth_service.get_user_by_email(db, normalized_email)
 
         if existing_user:
             return existing_user
@@ -211,7 +213,7 @@ class OAuthService:
 
         db_user = User(
             id=str(uuid.uuid4()),
-            email=email,
+            email=normalized_email,
             hashed_password=hashed_password,
             first_name=first_name,
             last_name=last_name,

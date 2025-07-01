@@ -13,7 +13,6 @@ class Base(DeclarativeBase):
 
 class DatabaseManager:
     def __init__(self):
-        # Async engine for async operations
         self.async_engine = create_async_engine(
             settings.database_url_computed,
             echo=False,
@@ -25,9 +24,13 @@ class DatabaseManager:
             expire_on_commit=False
         )
         
-        # Sync engine for sync operations
         sync_url = settings.database_url_computed.replace("+aiosqlite", "").replace("+asyncpg", "")
-        # For PostgreSQL, use psycopg2 driver
+        
+        if "prepared_statement_cache_size" in sync_url:
+            import re
+            sync_url = re.sub(r'[?&]prepared_statement_cache_size=\d+', '', sync_url)
+            sync_url = sync_url.replace('??', '?').rstrip('?')
+        
         if sync_url.startswith("postgresql://"):
             sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://")
         self.sync_engine = create_engine(sync_url, echo=False, future=True)

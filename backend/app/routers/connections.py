@@ -12,6 +12,7 @@ from app.models.database import User
 from app.services.connection_service import connection_service
 from app.core.error_handler import DatabaseErrorHandler
 from .auth import get_current_user_dependency
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -136,84 +137,85 @@ async def test_connection(connection_id: str, current_user: User = Depends(get_c
 
 # MCP-specific endpoints
 
-@router.post("/connections/mcp/test", response_model=ConnectionTestResult)
-async def test_mcp_connection(
-    request: MCPTestRequest,
-    _current_user: User = Depends(get_current_user_dependency)
-):
-    """Test MCP server connection without storing it"""
-    try:
-        result = await connection_service.test_mcp_connection(
-            request.server_url, 
-            request.server_config
-        )
-        return result
-    except Exception as e:
-        return ConnectionTestResult(
-            success=False,
-            message=f"MCP connection test failed: {str(e)}"
-        )
+if settings.enable_mcp:
+    @router.post("/connections/mcp/test", response_model=ConnectionTestResult)
+    async def test_mcp_connection(
+        request: MCPTestRequest,
+        _current_user: User = Depends(get_current_user_dependency)
+    ):
+        """Test MCP server connection without storing it"""
+        try:
+            result = await connection_service.test_mcp_connection(
+                request.server_url, 
+                request.server_config
+            )
+            return result
+        except Exception as e:
+            return ConnectionTestResult(
+                success=False,
+                message=f"MCP connection test failed: {str(e)}"
+            )
 
 
-@router.get("/connections/mcp", response_model=List[ConnectionResponse])
-async def get_mcp_connections(current_user: User = Depends(get_current_user_dependency)):
-    """Get all MCP connections"""
-    try:
-        connections = connection_service.get_mcp_connections(current_user.id)
-        return connections
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get MCP connections: {str(e)}"
-        )
+    @router.get("/connections/mcp", response_model=List[ConnectionResponse])
+    async def get_mcp_connections(current_user: User = Depends(get_current_user_dependency)):
+        """Get all MCP connections"""
+        try:
+            connections = connection_service.get_mcp_connections(current_user.id)
+            return connections
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to get MCP connections: {str(e)}"
+            )
 
 
-@router.get("/connections/{connection_id}/mcp/tools", response_model=MCPToolsResponse)
-async def get_mcp_tools(
-    connection_id: str, 
-    current_user: User = Depends(get_current_user_dependency)
-):
-    """Get available MCP tools for a connection"""
-    try:
-        tools = connection_service.get_mcp_tools(connection_id, current_user.id)
-        return MCPToolsResponse(tools=tools)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get MCP tools: {str(e)}"
-        )
+    @router.get("/connections/{connection_id}/mcp/tools", response_model=MCPToolsResponse)
+    async def get_mcp_tools(
+        connection_id: str, 
+        current_user: User = Depends(get_current_user_dependency)
+    ):
+        """Get available MCP tools for a connection"""
+        try:
+            tools = connection_service.get_mcp_tools(connection_id, current_user.id)
+            return MCPToolsResponse(tools=tools)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to get MCP tools: {str(e)}"
+            )
 
 
-@router.post("/connections/{connection_id}/mcp/discover", response_model=MCPCapabilitiesResponse)
-async def discover_mcp_capabilities(
-    connection_id: str,
-    current_user: User = Depends(get_current_user_dependency)
-):
-    """Discover and cache MCP server capabilities"""
-    try:
-        capabilities = await connection_service.update_mcp_capabilities(connection_id, current_user.id)
-        return MCPCapabilitiesResponse(
-            success=True,
-            capabilities=capabilities
-        )
-    except Exception as e:
-        return MCPCapabilitiesResponse(
-            success=False,
-            error=str(e)
-        )
+    @router.post("/connections/{connection_id}/mcp/discover", response_model=MCPCapabilitiesResponse)
+    async def discover_mcp_capabilities(
+        connection_id: str,
+        current_user: User = Depends(get_current_user_dependency)
+    ):
+        """Discover and cache MCP server capabilities"""
+        try:
+            capabilities = await connection_service.update_mcp_capabilities(connection_id, current_user.id)
+            return MCPCapabilitiesResponse(
+                success=True,
+                capabilities=capabilities
+            )
+        except Exception as e:
+            return MCPCapabilitiesResponse(
+                success=False,
+                error=str(e)
+            )
 
 
-@router.post("/connections/{connection_id}/mcp/tools/discover", response_model=MCPToolsResponse)
-async def discover_mcp_tools(
-    connection_id: str,
-    current_user: User = Depends(get_current_user_dependency)
-):
-    """Discover and cache MCP server tools"""
-    try:
-        tools = await connection_service.discover_mcp_tools(connection_id, current_user.id)
-        return MCPToolsResponse(tools=tools)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to discover MCP tools: {str(e)}"
-        )
+    @router.post("/connections/{connection_id}/mcp/tools/discover", response_model=MCPToolsResponse)
+    async def discover_mcp_tools(
+        connection_id: str,
+        current_user: User = Depends(get_current_user_dependency)
+    ):
+        """Discover and cache MCP server tools"""
+        try:
+            tools = await connection_service.discover_mcp_tools(connection_id, current_user.id)
+            return MCPToolsResponse(tools=tools)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to discover MCP tools: {str(e)}"
+            )

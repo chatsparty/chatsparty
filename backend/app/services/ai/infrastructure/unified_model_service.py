@@ -12,6 +12,7 @@ from .model_fetchers import (
     fetch_openai_models_async,
     fetch_openrouter_models_async,
 )
+from ....core.config import settings
 
 
 class UnifiedModelService:
@@ -137,7 +138,13 @@ class UnifiedModelService:
 
     def get_available_providers(self) -> Dict[str, Dict]:
         """Get all available providers and their models"""
-        return self.SUPPORTED_PROVIDERS
+        providers = self.SUPPORTED_PROVIDERS.copy()
+        
+        # Filter out MCP if feature is disabled
+        if not settings.enable_mcp and 'mcp' in providers:
+            providers = {k: v for k, v in providers.items() if k != 'mcp'}
+        
+        return providers
 
     def get_models_for_provider(self, provider: str) -> List[str]:
         """Get available models for a specific provider"""

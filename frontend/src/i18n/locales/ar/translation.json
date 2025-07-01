@@ -316,7 +316,12 @@
     "saving": "جارٍ الحفظ...",
     "updateAgent": "تحديث الوكيل",
     "deleteConfirmation": "حذف \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء.",
-    "deleting": "جارٍ الحذف..."
+    "deleting": "جارٍ الحذف...",
+    "voiceConfiguration": "إعدادات الصوت",
+    "voiceConfigurationDescription": "تفعيل تخليق الصوت لهذا الوكيل",
+    "voiceConnection": "اتصال الصوت",
+    "selectVoiceConnection": "اختر اتصال الصوت",
+    "addVoiceConnection": "+ إضافة اتصال صوتي"
   },
   "chat": {
     "title": "المحادثة",
@@ -465,7 +470,9 @@
     "noAgentsFound": "لم يتم العثور على وكلاء مطابقين لـ \"{{query}}\"",
     "podcastProgress": "{{percent}}% مكتمل",
     "selectAgentsToContinue": "اختر الوكلاء للمتابعة...",
-    "addAgents": "إضافة وكلاء"
+    "addAgents": "إضافة وكلاء",
+    "downloadPodcast": "تحميل البودكاست",
+    "retryPodcast": "إعادة محاولة البودكاست"
   },
   "conversations": {
     "title": "المحادثات",
