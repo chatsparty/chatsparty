@@ -112,11 +112,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   : "bg-blue-500 text-white rounded-ee-md"
                 : isCreditError
                 ? isRTL
-                  ? "bg-yellow-50 border border-yellow-200 text-gray-900 rounded-ee-md"
-                  : "bg-yellow-50 border border-yellow-200 text-gray-900 rounded-es-md"
+                  ? "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-gray-900 dark:text-gray-100 rounded-ee-md"
+                  : "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-gray-900 dark:text-gray-100 rounded-es-md"
                 : isRTL
-                  ? "bg-gray-100 text-gray-900 rounded-ee-md"
-                  : "bg-gray-100 text-gray-900 rounded-es-md"
+                  ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-ee-md"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-es-md"
             }`}
             style={{
               backgroundColor:
@@ -138,7 +138,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div
                   className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
-                    backgroundColor: message.speaker === "user" ? "#ffffff" : "#666666",
+                    backgroundColor: message.speaker === "user" ? "#ffffff" : "currentColor",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0s",
                   }}
@@ -146,7 +146,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div
                   className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
-                    backgroundColor: message.speaker === "user" ? "#ffffff" : "#666666",
+                    backgroundColor: message.speaker === "user" ? "#ffffff" : "currentColor",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0.2s",
                   }}
@@ -154,7 +154,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div
                   className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
-                    backgroundColor: message.speaker === "user" ? "#ffffff" : "#666666",
+                    backgroundColor: message.speaker === "user" ? "#ffffff" : "currentColor",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0.4s",
                   }}
@@ -163,23 +163,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             </div>
           ) : isCreditError ? (
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900 mb-1">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                   Insufficient Credits
                 </p>
-                <p className="text-sm text-gray-600 mb-3">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                   You don't have enough credits to continue this conversation.
                 </p>
                 {creditErrorMatch && (
-                  <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 mb-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Required credits:</span>
-                      <span className="font-medium text-gray-900">{creditErrorMatch[1]}</span>
+                      <span className="text-gray-600 dark:text-gray-300">Required credits:</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{creditErrorMatch[1]}</span>
                     </div>
                     <div className="flex justify-between text-sm mt-1">
-                      <span className="text-gray-600">Available credits:</span>
-                      <span className="font-medium text-gray-900">{creditErrorMatch[2]}</span>
+                      <span className="text-gray-600 dark:text-gray-300">Available credits:</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{creditErrorMatch[2]}</span>
                     </div>
                   </div>
                 )}
@@ -207,8 +207,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     return (
                       <code
                         {...props}
+                        className={inline ? "" : "bg-gray-100 dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"}
                         style={{
-                          background: inline ? "none" : "#f5f5f5",
                           padding: inline ? 0 : "0.2em 0.4em",
                           borderRadius: 4,
                         }}
@@ -234,7 +234,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     <h3 className="text-sm font-bold mb-1">{children}</h3>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote className="border-s-4 border-gray-300 dark:border-gray-600 ps-4 italic">
+                    <blockquote className="border-s-4 border-gray-400 dark:border-gray-500 ps-4 italic opacity-90">
                       {children}
                     </blockquote>
                   ),

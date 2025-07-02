@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
     
+    # CORS and development settings
+    cors_allow_all_origins: bool = True  # Set to False in production
+    development_mode: bool = True  # Set to False in production
+    
     chatsparty_default_enabled: bool = True
     chatsparty_default_model: str = "gemini-2.5-flash"
     chatsparty_default_api_key: Optional[str] = None
@@ -101,8 +105,15 @@ settings = Settings()
 
 def create_app(lifespan=None) -> FastAPI:
     app = FastAPI(title="ChatsParty API", version="1.0.0", lifespan=lifespan)
-    allowed_origins = [
-        settings.frontend_url] if settings.frontend_url else ["http://localhost:5173", "http://localhost:3000"]
+    
+    # Configure CORS based on environment
+    if settings.cors_allow_all_origins or settings.development_mode:
+        # Allow all origins in development
+        allowed_origins = ["*"]
+    else:
+        # Restrict origins in production
+        allowed_origins = [
+            settings.frontend_url] if settings.frontend_url else ["http://localhost:5173", "http://localhost:3000"]
 
     app.add_middleware(
         CORSMiddleware,
