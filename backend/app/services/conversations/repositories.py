@@ -1,10 +1,24 @@
-from typing import List, Optional
+from typing import List, Dict, Optional
+from datetime import datetime
 from sqlalchemy.orm import Session, selectinload
 
-from ....models.database import Conversation as ConversationModel, Message as MessageModel
-from ..domain.entities import Message
-from ..domain.interfaces import ConversationRepositoryInterface
-from .base_repository import BaseRepository
+from ..ai_core.entities import Message
+from ..ai_core.interfaces import ConversationRepositoryInterface
+from ...models.database import Conversation as ConversationModel, Message as MessageModel
+
+
+class BaseRepository:
+    def __init__(self, db_session: Session):
+        self.db_session = db_session
+
+    def safe_execute(self, operation):
+        try:
+            result = operation()
+            self.db_session.commit()
+            return result
+        except Exception as e:
+            self.db_session.rollback()
+            raise e
 
 
 class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInterface):
@@ -12,13 +26,21 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         super().__init__(db_session)
     
     def create_conversation(self, conversation_id: str, user_id: str, is_shared: bool = False) -> List[Message]:
-        db_conversation = ConversationModel(
-            id=conversation_id,
-            user_id=user_id,
-            participants=[],
-            is_shared=is_shared,
-        )
-        self.db_session.add(db_conversation)
+        # Check if conversation already exists
+        existing = self.db_session.query(ConversationModel).filter(
+            ConversationModel.id == conversation_id
+        ).first()
+        
+        if not existing:
+            db_conversation = ConversationModel(
+                id=conversation_id,
+                user_id=user_id,
+                participants=[],
+                is_shared=is_shared,
+            )
+            self.db_session.add(db_conversation)
+            # Commit immediately to ensure conversation is created
+            self.db_session.commit()
         return []
     
     def get_conversation(self, conversation_id: str, user_id: str = None) -> List[Message]:
@@ -44,11 +66,13 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 role=msg.role,
                 content=msg.content,
                 timestamp=msg.created_at,
+                agent_id=msg.agent_id,
+                speaker=msg.speaker
             )
             for msg in db_conversation.messages
         ]
     
-    def add_message(self, conversation_id: str, message: Message, language: Optional[str] = None) -> None:
+    def add_message(self, conversation_id: str, message: Message) -> None:
         db_message = MessageModel(
             conversation_id=conversation_id,
             role=message.role,
@@ -56,14 +80,17 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             created_at=message.timestamp,
             agent_id=message.agent_id,
             speaker=message.speaker,
-            language=language,
         )
         self.db_session.add(db_message)
+        # Commit immediately to ensure message persistence
+        self.db_session.commit()
     
     def clear_conversation(self, conversation_id: str) -> None:
         self.db_session.query(MessageModel).filter(
             MessageModel.conversation_id == conversation_id
         ).delete()
+        # Commit the deletion
+        self.db_session.commit()
     
     def get_all_conversations(self, user_id: str = None) -> List[dict]:
         """Get all conversations from database with their messages"""
@@ -91,7 +118,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                     if msg.role == "user":
                         speaker_name = "user"
                     elif msg.agent_id:
-                        from ....models.database import Agent as AgentModel
+                        from ...models.database import Agent as AgentModel
                         agent = self.db_session.query(AgentModel).filter(AgentModel.id == msg.agent_id).first()
                         speaker_name = agent.name if agent else msg.agent_id
                     else:
@@ -149,7 +176,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 if msg.role == "user":
                     speaker_name = "user"
                 elif msg.agent_id:
-                    from ....models.database import Agent as AgentModel
+                    from ...models.database import Agent as AgentModel
                     agent = self.db_session.query(AgentModel).filter(AgentModel.id == msg.agent_id).first()
                     speaker_name = agent.name if agent else msg.agent_id
                 else:

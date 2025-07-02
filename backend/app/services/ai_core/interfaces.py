@@ -74,18 +74,9 @@ class AIServiceInterface(ABC):
         self, 
         agent_id: str, 
         message: str, 
-        conversation_id: str
+        conversation_id: str = "default",
+        user_id: str = None
     ) -> str:
-        pass
-    
-    @abstractmethod
-    async def multi_agent_conversation(
-        self,
-        conversation_id: str,
-        agent_ids: List[str],
-        initial_message: str,
-        max_turns: int
-    ) -> List[ConversationMessage]:
         pass
     
     @abstractmethod
@@ -94,6 +85,9 @@ class AIServiceInterface(ABC):
         conversation_id: str,
         agent_ids: List[str],
         initial_message: str,
-        max_turns: int
+        max_turns: int = 20,
+        user_id: str = None,
+        file_attachments: List[Dict[str, str]] = None,
+        project_id: str = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         pass

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import logging
-from ..services.ai import get_ai_service
+from ..services.ai_service import get_ai_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

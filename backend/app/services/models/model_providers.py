@@ -1,11 +1,11 @@
 from typing import List, Optional
-from ..domain.entities import Message, ModelConfiguration
-from ..domain.interfaces import ModelProviderInterface
+from ..ai_core.entities import Message, ModelConfiguration
+from ..ai_core.interfaces import ModelProviderInterface
 from .unified_model_service import get_initialized_unified_model_service
-from ....core.config import settings
-from ....models.credit import CreditConsumptionRequest, CreditConsumptionReason
-from ....middleware.credit_middleware import get_credit_service
-from ...credit.application.credit_service import InsufficientCreditsError
+from ...core.config import settings
+from ...models.credit import CreditConsumptionRequest, CreditConsumptionReason
+from ...middleware.credit_middleware import get_credit_service
+from ..credit.application.credit_service import InsufficientCreditsError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -73,5 +73,3 @@ class UnifiedModelProvider(ModelProviderInterface):
         except Exception as e:
             logger.error(f"Error in chat_completion: {e}")
             return f"I apologize, but I encountered an error: {str(e)}"
-
-

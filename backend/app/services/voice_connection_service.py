@@ -15,7 +15,7 @@ from ..models.voice import (
 )
 from ..services.voice.voice_service import VoiceService
 from ..services.voice.domain.entities import VoiceConnection as VoiceConnectionEntity
-from .crypto_service import crypto_service
+from .shared.crypto_service import crypto_service
 from ..core.config import settings
 
 logger = logging.getLogger(__name__)

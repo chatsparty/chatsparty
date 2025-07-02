@@ -4,9 +4,9 @@ import json
 import logging
 from datetime import datetime
 from .chat_service import ChatService
-from ..domain.entities import Message, ConversationMessage, Agent
-from ...mcp.mcp_client_service import get_mcp_client_service
-from ...connection_service import connection_service
+from ..ai_core.entities import Message, ConversationMessage, Agent
+from ..mcp.mcp_client_service import get_mcp_client_service
+from ..connection_service import connection_service
 
 logger = logging.getLogger(__name__)
 
@@ -276,5 +276,3 @@ class EnhancedChatService:
         return "\n".join(response_parts)
     
     # Delegate other methods to base service
-    async def multi_agent_conversation(self, *args, **kwargs):
-        return await self.base_chat_service.multi_agent_conversation(*args, **kwargs)

@@ -5,7 +5,7 @@ import time
 
 from ..models.database import User
 from ..services.file_service import get_file_service, FileService
-from ..services.ai import get_ai_service, AIServiceFacade
+from ..services.ai_service import get_ai_service, AIServiceFacade
 from .auth import get_current_user_dependency
 
 router = APIRouter(prefix="/files", tags=["files"])

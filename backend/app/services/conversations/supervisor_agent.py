@@ -1,47 +1,48 @@
 from typing import List, Dict, Optional
 import logging
-from ..domain.entities import Message, ConversationMessage, ModelConfiguration
-from ..domain.interfaces import ModelProviderInterface, AgentRepositoryInterface
+from ..ai_core.entities import Message, ConversationMessage, ModelConfiguration, Agent
+from ..ai_core.interfaces import ModelProviderInterface
 
 logger = logging.getLogger(__name__)
 
 
 class SupervisorAgent:
     """
-    Invisible coordinator agent that selects the most appropriate agent to respond
-    in multi-agent conversations. Supervisor messages are never shown to users.
+    Invisible coordinator agent that manages multi-agent conversations by
+    determining which agent should speak next and when conversations should end.
     """
     
     def __init__(
         self,
-        model_provider: ModelProviderInterface,
-        agent_repository: AgentRepositoryInterface
+        agents: List[Agent],
+        model_provider: ModelProviderInterface
     ):
+        self._agents = agents
         self._model_provider = model_provider
-        self._agent_repository = agent_repository
         
-    async def select_next_agent(
+    async def determine_next_speaker(
         self,
-        conversation_log: List[ConversationMessage],
-        agent_ids: List[str],
+        current_message: str,
+        conversation_messages: List[ConversationMessage],
         user_id: str = None
-    ) -> Optional[str]:
+    ) -> str:
         """
-        Select the most appropriate agent to respond next based on conversation context.
+        Determine which agent should speak next in the conversation.
         
-        Args:
-            conversation_log: Recent conversation history
-            agent_ids: Available agent IDs
-            user_id: User identifier for agent access
-            
         Returns:
-            Selected agent ID or None if decision fails
+            Agent ID or "CONVERSATION_COMPLETE" if conversation should end
         """
         try:
-            agents_info = self._get_agents_info(agent_ids, user_id)
-            selection_prompt = self._build_selection_prompt(conversation_log, agents_info)
+            # Check if conversation should end first
+            should_end = await self._should_end_conversation(conversation_messages)
+            if should_end:
+                return "CONVERSATION_COMPLETE"
             
-            model_config = self._get_supervisor_model_config(agent_ids, user_id)
+            # Select next agent
+            agents_info = self._get_agents_info()
+            selection_prompt = self._build_selection_prompt(current_message, conversation_messages, agents_info)
+            
+            model_config = self._get_supervisor_model_config()
             
             response = await self._model_provider.chat_completion(
                 messages=[Message(role="user", content=selection_prompt)],
@@ -51,44 +52,29 @@ class SupervisorAgent:
                 is_supervisor_call=True
             )
             
-            selected_agent_id = self._parse_agent_selection(response, agent_ids)
+            selected_agent_id = self._parse_agent_selection(response)
             
             if selected_agent_id:
                 logger.info(f"Supervisor selected agent: {selected_agent_id}")
                 return selected_agent_id
             else:
                 logger.warning("Supervisor failed to select valid agent, using fallback")
-                return self._get_fallback_agent(agent_ids)
+                return self._get_fallback_agent()
                 
         except Exception as e:
             logger.error(f"Supervisor agent selection failed: {e}")
-            return self._get_fallback_agent(agent_ids)
+            return self._get_fallback_agent()
     
-    async def should_end_conversation(
+    async def _should_end_conversation(
         self,
-        conversation_log: List[ConversationMessage],
-        max_turns_reached: bool = False,
-        user_id: str = None
+        conversation_messages: List[ConversationMessage]
     ) -> bool:
-        """
-        Determine if the conversation should naturally end.
-        
-        Args:
-            conversation_log: Recent conversation history
-            max_turns_reached: Whether max turn limit is reached
-            user_id: User identifier
-            
-        Returns:
-            True if conversation should end, False otherwise
-        """
+        """Determine if the conversation should naturally end."""
         try:
-            if max_turns_reached:
-                return True
-                
-            if len(conversation_log) < 3:
+            if len(conversation_messages) < 3:
                 return False
                 
-            termination_prompt = self._build_termination_prompt(conversation_log)
+            termination_prompt = self._build_termination_prompt(conversation_messages)
             
             model_config = ModelConfiguration(
                 provider="ollama",
@@ -99,52 +85,46 @@ class SupervisorAgent:
                 messages=[Message(role="user", content=termination_prompt)],
                 system_prompt=self._get_termination_system_prompt(),
                 model_config=model_config,
-                user_id=user_id,
                 is_supervisor_call=True
             )
             
             should_end = "yes" in response.lower().strip()
             
-            logger.info(f"Supervisor termination decision: {should_end} (raw response: {response[:100]}...)")
-            if should_end:
-                logger.info("Supervisor decided to end conversation naturally")
-            else:
-                logger.info("Supervisor decided to continue conversation")
-            
+            logger.info(f"Supervisor termination decision: {should_end}")
             return should_end
             
         except Exception as e:
             logger.error(f"Supervisor termination decision failed: {e}")
             return False
     
-    def _get_agents_info(self, agent_ids: List[str], user_id: str = None) -> List[Dict[str, str]]:
+    def _get_agents_info(self) -> List[Dict[str, str]]:
         """Get agent information for selection decision."""
-        agents_info = []
-        
-        for agent_id in agent_ids:
-            agent = self._agent_repository.get_agent(agent_id, user_id)
-            if agent:
-                agents_info.append({
-                    "id": agent_id,
-                    "name": agent.name,
-                    "description": agent.characteristics or "General purpose agent",
-                    "expertise": agent.characteristics or "General purpose agent"
-                })
-        
-        return agents_info
+        return [
+            {
+                "id": agent.agent_id,
+                "name": agent.name,
+                "description": agent.characteristics or "General purpose agent",
+                "expertise": agent.characteristics or "General purpose agent"
+            }
+            for agent in self._agents
+        ]
     
     def _build_selection_prompt(
         self,
-        conversation_log: List[ConversationMessage],
+        current_message: str,
+        conversation_messages: List[ConversationMessage],
         agents_info: List[Dict[str, str]]
     ) -> str:
         """Build prompt for agent selection decision."""
-        recent_messages = conversation_log[-5:] if len(conversation_log) > 5 else conversation_log
+        recent_messages = conversation_messages[-5:] if len(conversation_messages) > 5 else conversation_messages
         
         conversation_context = ""
         for msg in recent_messages:
             speaker = msg.speaker if msg.speaker != "user" else "User"
             conversation_context += f"{speaker}: {msg.message}\n"
+        
+        # Add current message
+        conversation_context += f"Current message: {current_message}\n"
         
         agents_list = ""
         for agent in agents_info:
@@ -164,7 +144,7 @@ Consider:
 1. Which agent's expertise is most relevant to the current topic
 2. Which agent hasn't spoken recently (for variety)
 3. Which agent would provide the most valuable response
-4. The selected agent should BUILD ON what {last_speaker} just said, not repeat similar content
+4. The selected agent should BUILD ON the current message, not repeat similar content
 
 IMPORTANT: The last message was from {last_speaker}. Select an agent who can meaningfully continue from that point without repetition.
 
@@ -173,9 +153,9 @@ Respond with only the agent ID (e.g., "agent_1").
         
         return prompt
     
-    def _build_termination_prompt(self, conversation_log: List[ConversationMessage]) -> str:
+    def _build_termination_prompt(self, conversation_messages: List[ConversationMessage]) -> str:
         """Build prompt for conversation termination decision."""
-        recent_messages = conversation_log[-5:] if len(conversation_log) > 5 else conversation_log
+        recent_messages = conversation_messages[-5:] if len(conversation_messages) > 5 else conversation_messages
         
         conversation_context = ""
         for msg in recent_messages:
@@ -223,9 +203,11 @@ Remember: Group chats don't always have clear endings. Sometimes they just natur
 
 Respond only with "yes" or "no"."""
     
-    def _parse_agent_selection(self, response: str, agent_ids: List[str]) -> Optional[str]:
+    def _parse_agent_selection(self, response: str) -> Optional[str]:
         """Parse supervisor response to extract selected agent ID."""
         response = response.strip().lower()
+        
+        agent_ids = [agent.agent_id for agent in self._agents]
         
         for agent_id in agent_ids:
             if agent_id.lower() in response:
@@ -237,11 +219,11 @@ Respond only with "yes" or "no"."""
         
         return None
     
-    def _get_supervisor_model_config(self, agent_ids: List[str], user_id: str = None) -> ModelConfiguration:
+    def _get_supervisor_model_config(self) -> ModelConfiguration:
         """Get model configuration for supervisor calls, preferably from available agents."""
         try:
-            if agent_ids:
-                first_agent = self._agent_repository.get_agent(agent_ids[0], user_id)
+            if self._agents:
+                first_agent = self._agents[0]
                 if first_agent and first_agent.model_config:
                     return first_agent.model_config
         except Exception:
@@ -252,6 +234,6 @@ Respond only with "yes" or "no"."""
             model_name="gemma2:2b"
         )
     
-    def _get_fallback_agent(self, agent_ids: List[str]) -> str:
+    def _get_fallback_agent(self) -> str:
         """Get fallback agent when supervisor decision fails."""
-        return agent_ids[0] if agent_ids else None
+        return self._agents[0].agent_id if self._agents else None

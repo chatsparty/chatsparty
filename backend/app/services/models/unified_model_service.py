@@ -12,7 +12,7 @@ from .model_fetchers import (
     fetch_openai_models_async,
     fetch_openrouter_models_async,
 )
-from ....core.config import settings
+from ...core.config import settings
 
 
 class UnifiedModelService:
@@ -206,7 +206,7 @@ class UnifiedModelService:
                 # ChatsParty default uses Gemini models
                 if not api_key:
                     # Try ChatsParty specific API key first, then fallback to general Gemini API key
-                    from ....core.config import settings
+                    from ...core.config import settings
                     api_key = settings.chatsparty_default_api_key or settings.gemini_api_key or os.getenv('GEMINI_API_KEY')
                 if not api_key:
                     raise ValueError("Gemini API key is required for ChatsParty default connection. Set GEMINI_API_KEY environment variable or configure chatsparty_default_api_key.")

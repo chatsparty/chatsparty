@@ -1,10 +1,24 @@
-from typing import List, Optional
+from typing import List, Dict, Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
 
-from ....models.database import Agent as AgentModel, VoiceConnection as VoiceConnectionModel
-from ..domain.entities import Agent, ModelConfiguration, ChatStyle, VoiceConfig
-from ..domain.interfaces import AgentRepositoryInterface
-from .base_repository import BaseRepository
+from ..ai_core.entities import Agent, ModelConfiguration, ChatStyle, VoiceConfig
+from ..ai_core.interfaces import AgentRepositoryInterface
+from ...models.database import Agent as AgentModel, VoiceConnection as VoiceConnectionModel
+
+
+class BaseRepository:
+    def __init__(self, db_session: Session):
+        self.db_session = db_session
+
+    def safe_execute(self, operation):
+        try:
+            result = operation()
+            self.db_session.commit()
+            return result
+        except Exception as e:
+            self.db_session.rollback()
+            raise e
 
 
 class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):

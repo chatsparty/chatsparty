@@ -57,7 +57,15 @@ async def lifespan(app):
     
     yield
     
+    # Shutdown sequence - cleanup global services
+    try:
+        from .services.mcp.mcp_client_service import get_mcp_client_service
+        await get_mcp_client_service().cleanup_all_connections()
+        print("✅ MCP client connections cleaned up successfully")
+    except Exception as e:
+        print(f"⚠️ MCP client cleanup failed: {e}")
     
+    # WebSocket service will be cleaned up automatically by FastAPI
     try:
         from .services.docker.background_port_service import shutdown_background_port_service
         await shutdown_background_port_service()
@@ -67,6 +75,7 @@ async def lifespan(app):
     
     try:
         await db_manager.close()
+        print("✅ Database connections closed successfully")
     except Exception as e:
         print(f"⚠️ Database cleanup failed: {e}")
 

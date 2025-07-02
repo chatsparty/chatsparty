@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional
 import logging
-from ..services.ai import get_ai_service
+from ..services.ai_service import get_ai_service
 from ..services.websocket_service import websocket_service
 from ..models.database import User
 from .auth import get_current_user_from_token
@@ -97,22 +97,26 @@ async def start_multi_agent_conversation(sid, data):
                 if not websocket_service.active_conversations[conversation_id].get('is_active', False):
                     break
                 
-                if message.get('type') == 'typing':
-                    logger.debug(f"Emitting typing indicator for {message.get('speaker')}")
+                if message.get('type') == 'agent_thinking':
+                    logger.debug(f"Emitting typing indicator for {message.get('agent_name', message.get('speaker', ''))}")
                     await websocket_service.emit_typing_indicator(
                         conversation_id,
                         message.get('agent_id', ''),
-                        message.get('speaker', '')
+                        message.get('agent_name', message.get('speaker', ''))
                     )
-                elif message.get('type') == 'message':
-                    logger.info(f"Emitting message from {message.get('speaker')}: {message.get('message', '')[:100]}...")
+                elif message.get('type') == 'agent_response':
+                    logger.info(f"Emitting message from {message.get('agent_name', message.get('speaker', ''))}: {message.get('message', '')[:100]}...")
                     await websocket_service.emit_agent_message(
                         conversation_id,
                         message.get('agent_id', ''),
-                        message.get('speaker', ''),
+                        message.get('agent_name', message.get('speaker', '')),
                         message.get('message', ''),
                         message.get('timestamp', asyncio.get_event_loop().time())
                     )
+                elif message.get('type') == 'conversation_complete':
+                    logger.info(f"Conversation {conversation_id} completed via AI service")
+                    await websocket_service.emit_conversation_complete(conversation_id)
+                    break
                 elif message.get('error'):
                     await websocket_service.emit_error(
                         conversation_id,
@@ -189,6 +193,15 @@ async def send_message(sid, data):
             'status': 'resumed'
         }, room=conversation_id)
         
+        # Emit the user's message
+        await websocket_service.emit_agent_message(
+            conversation_id,
+            'user',
+            'User',
+            message,
+            asyncio.get_event_loop().time()
+        )
+        
         ai_service = get_ai_service()
         
         try:
@@ -207,20 +220,23 @@ async def send_message(sid, data):
                 if not websocket_service.active_conversations[conversation_id].get('is_active', False):
                     break
                 
-                if response_message.get('type') == 'typing':
+                if response_message.get('type') == 'agent_thinking':
                     await websocket_service.emit_typing_indicator(
                         conversation_id,
                         response_message.get('agent_id', ''),
-                        response_message.get('speaker', '')
+                        response_message.get('agent_name', response_message.get('speaker', ''))
                     )
-                elif response_message.get('type') == 'message':
+                elif response_message.get('type') == 'agent_response':
                     await websocket_service.emit_agent_message(
                         conversation_id,
                         response_message.get('agent_id', ''),
-                        response_message.get('speaker', ''),
+                        response_message.get('agent_name', response_message.get('speaker', '')),
                         response_message.get('message', ''),
                         response_message.get('timestamp', asyncio.get_event_loop().time())
                     )
+                elif response_message.get('type') == 'conversation_complete':
+                    await websocket_service.emit_conversation_complete(conversation_id)
+                    break
                 elif response_message.get('error'):
                     await websocket_service.emit_error(
                         conversation_id,

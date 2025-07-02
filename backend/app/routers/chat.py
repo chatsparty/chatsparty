@@ -17,8 +17,8 @@ from ..models.chat import (
     MultiAgentConversationRequest,
 )
 from ..models.database import User
-from ..services.ai import AIServiceFacade, get_ai_service
-from ..services.ai.infrastructure.unified_model_service import get_initialized_unified_model_service
+from ..services.ai_service import AIServiceFacade, get_ai_service
+from ..services.models import get_initialized_unified_model_service
 from ..services.connection_service import connection_service
 from ..services.websocket_service import websocket_service
 from ..core.config import settings
@@ -258,42 +258,6 @@ async def chat_with_agent(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Agent chat error: {str(e)}")
-
-
-@router.post("/agents/conversation", response_model=List[ConversationMessage])
-async def start_multi_agent_conversation(
-    conversation_request: MultiAgentConversationRequest,
-    current_user: User = Depends(get_current_user_dependency),
-    ai_service: AIServiceFacade = Depends(get_ai_service)
-):
-    try:
-        
-        file_attachments = None
-        if conversation_request.file_attachments:
-            file_attachments = [
-                {
-                    "filename": attachment.filename,
-                    "content": attachment.content,
-                    "file_type": attachment.file_type
-                }
-                for attachment in conversation_request.file_attachments
-            ]
-
-        conversation_log = await ai_service.multi_agent_conversation(
-            conversation_request.conversation_id,
-            conversation_request.agent_ids,
-            conversation_request.initial_message,
-            conversation_request.max_turns or 20,
-            current_user.id,
-            file_attachments,
-            conversation_request.project_id
-        )
-        return [ConversationMessage(**msg) for msg in conversation_log]
-    except InsufficientCreditsError as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Multi-agent conversation error: {str(e)}")
 
 
 @router.post("/agents/conversation/stream")

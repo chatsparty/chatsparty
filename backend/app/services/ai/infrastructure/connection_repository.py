@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from ....models.database import Connection as ConnectionModel
 from .base_repository import BaseRepository
-from ...crypto_service import crypto_service
+from ...shared.crypto_service import crypto_service
 
 
 class DatabaseConnectionRepository(BaseRepository):

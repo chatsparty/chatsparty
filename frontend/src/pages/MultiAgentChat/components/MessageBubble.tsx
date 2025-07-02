@@ -75,11 +75,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         className={`flex items-end message-bubble ${
           // In RTL mode, swap the alignment
           isRTL
-            ? (message.speaker === "user" ? "justify-start" : "justify-end")
-            : (message.speaker === "user" ? "justify-end" : "justify-start")
+            ? (message.speaker.toLowerCase() === "user" ? "justify-start" : "justify-end")
+            : (message.speaker.toLowerCase() === "user" ? "justify-end" : "justify-start")
         } group`}
       >
-        {message.speaker !== "user" && !isRTL && (
+        {message.speaker.toLowerCase() !== "user" && !isRTL && (
           <div className="flex items-end me-2 mb-1">
             <div className="w-8 h-8 rounded-full overflow-hidden shadow-sm">
               <Avatar
@@ -100,13 +100,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div className="flex flex-col max-w-[70%]">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-muted-foreground mb-1 px-3">
             <span className="font-medium">
-              {message.speaker === "user" ? "You" : message.speaker}
+              {message.speaker.toLowerCase() === "user" ? "You" : message.speaker}
             </span>
             <span className="ms-2">{formatTime(message.timestamp)}</span>
           </div>
           <div
             className={`px-3 py-2 rounded-2xl relative ${
-              message.speaker === "user"
+              message.speaker.toLowerCase() === "user"
                 ? isRTL
                   ? "bg-blue-500 text-white rounded-es-md"
                   : "bg-blue-500 text-white rounded-ee-md"
@@ -120,7 +120,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             }`}
             style={{
               backgroundColor:
-                message.speaker === "user"
+                message.speaker.toLowerCase() === "user"
                   ? "#0084ff"
                   : isCreditError
                   ? undefined
@@ -138,7 +138,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div
                   className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
-                    backgroundColor: message.speaker === "user" ? "#ffffff" : "currentColor",
+                    backgroundColor: message.speaker.toLowerCase() === "user" ? "#ffffff" : "currentColor",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0s",
                   }}
@@ -146,7 +146,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div
                   className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
-                    backgroundColor: message.speaker === "user" ? "#ffffff" : "currentColor",
+                    backgroundColor: message.speaker.toLowerCase() === "user" ? "#ffffff" : "currentColor",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0.2s",
                   }}
@@ -154,7 +154,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div
                   className="w-1.5 h-1.5 rounded-full opacity-60"
                   style={{
-                    backgroundColor: message.speaker === "user" ? "#ffffff" : "currentColor",
+                    backgroundColor: message.speaker.toLowerCase() === "user" ? "#ffffff" : "currentColor",
                     animation: "typing 1.4s infinite ease-in-out",
                     animationDelay: "0.4s",
                   }}
@@ -250,7 +250,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           )}
           </div>
         </div>
-        {message.speaker !== "user" && isRTL && (
+        {message.speaker.toLowerCase() !== "user" && isRTL && (
           <div className="flex items-end ms-2 mb-1">
             <div className="w-8 h-8 rounded-full overflow-hidden shadow-sm">
               <Avatar

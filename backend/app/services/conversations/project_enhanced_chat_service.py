@@ -6,10 +6,8 @@ import logging
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from ....models.database import Conversation as ConversationModel
-from ...project.application.services import ProjectService
-from ...project.domain.entities import Project
-from ..domain.entities import Agent, ConversationMessage, Message
+from ...models.database import Conversation as ConversationModel
+from ..ai_core.entities import Agent, ConversationMessage, Message
 from .chat_service import ChatService
 from .enhanced_chat_service import EnhancedChatService
 
@@ -33,7 +31,7 @@ class ProjectEnhancedChatService(EnhancedChatService):
     def __init__(
         self,
         base_chat_service: ChatService,
-        project_service: ProjectService
+        project_service
     ):
         super().__init__(base_chat_service)
         self.project_service = project_service
@@ -55,34 +53,6 @@ class ProjectEnhancedChatService(EnhancedChatService):
             )
         else:
             return await super().agent_chat(agent_id, message, conversation_id, user_id)
-
-    async def multi_agent_conversation(
-        self,
-        conversation_id: str,
-        agent_ids: List[str],
-        initial_message: str,
-        max_turns: int = 10,
-        user_id: str = None,
-        file_attachments: List[Dict[str, str]] = None,
-        project_id: Optional[str] = None
-    ) -> List[ConversationMessage]:
-        """Multi-agent conversation with optional project workspace access"""
-
-        if project_id:
-            await self._link_conversation_to_project(conversation_id, project_id, user_id)
-
-        project_context = await self._get_project_context(conversation_id, user_id)
-
-        if project_context:
-            return await self._project_aware_multi_agent_conversation(
-                conversation_id, agent_ids, initial_message, max_turns,
-                user_id, file_attachments, project_context
-            )
-        else:
-            return await self.base_chat_service.multi_agent_conversation(
-                conversation_id, agent_ids, initial_message, max_turns,
-                user_id, file_attachments
-            )
 
     async def multi_agent_conversation_stream(
         self,
@@ -108,7 +78,7 @@ class ProjectEnhancedChatService(EnhancedChatService):
             ):
                 yield message
         else:
-            async for message in self.base_chat_service.multi_agent_conversation_stream(
+            async for message in self.base_chat_service._multi_agent_conversation_stream_supervised(
                 conversation_id, agent_ids, initial_message, max_turns,
                 user_id, file_attachments
             ):
@@ -124,7 +94,7 @@ class ProjectEnhancedChatService(EnhancedChatService):
         try:
             from sqlalchemy.orm import Session
 
-            from ....core.database import get_db
+            from ...core.database import get_db
 
             session = next(get_db())
             try:
@@ -173,7 +143,7 @@ class ProjectEnhancedChatService(EnhancedChatService):
         try:
             from sqlalchemy.orm import Session
 
-            from ....core.database import get_db
+            from ...core.database import get_db
 
             session = next(get_db())
             try:
@@ -240,103 +210,6 @@ class ProjectEnhancedChatService(EnhancedChatService):
             logger.error(f"Error in project-aware chat: {str(e)}")
             return await super().agent_chat(agent_id, message, conversation_id, user_id)
 
-    async def _project_aware_multi_agent_conversation(
-        self,
-        conversation_id: str,
-        agent_ids: List[str],
-        initial_message: str,
-        max_turns: int,
-        user_id: str,
-        file_attachments: List[Dict[str, str]],
-        project_context: Dict[str, Any]
-    ) -> List[ConversationMessage]:
-        """Multi-agent conversation with full project workspace access"""
-
-        enhanced_initial_message = self._create_project_context_message(
-            initial_message, project_context, file_attachments
-        )
-
-        conversation_log = []
-
-        conversation_log.append(ConversationMessage(
-            speaker="user",
-            message=initial_message,
-            timestamp=datetime.now().timestamp()
-        ))
-
-        if not self.base_chat_service._conversation_repository.get_conversation(conversation_id, user_id):
-            self.base_chat_service._conversation_repository.create_conversation(
-                conversation_id, user_id or "default")
-
-        user_message = Message(
-            role="user",
-            content=enhanced_initial_message,
-            timestamp=datetime.now(),
-            speaker="user"
-        )
-        self.base_chat_service._conversation_repository.add_message(
-            conversation_id, user_message)
-
-        current_agent_index = 0
-
-        for turn in range(max_turns):
-            current_agent_id = agent_ids[current_agent_index]
-            current_agent = self.base_chat_service._agent_repository.get_agent(
-                current_agent_id, user_id)
-
-            if not current_agent:
-                break
-
-            enhanced_agent = self._enhance_agent_with_project_context(
-                current_agent, project_context)
-
-            context_messages = self._build_conversation_context(
-                conversation_log, enhanced_initial_message, file_attachments, project_context
-            )
-
-            response = await self.base_chat_service._model_provider.chat_completion(
-                context_messages,
-                enhanced_agent.get_system_prompt(),
-                enhanced_agent.model_config,
-                user_id=user_id
-            )
-
-            vm_commands = self._extract_vm_commands(response)
-            if vm_commands and project_context["has_vm_access"]:
-                vm_results = await self._execute_project_vm_commands(
-                    project_context, vm_commands
-                )
-
-                response += f"\n\n🔧 **VM Execution Results:**\n```\n{vm_results}\n```"
-
-            agent_message = Message(
-                role="assistant",
-                content=response,
-                timestamp=datetime.now(),
-                agent_id=current_agent_id,
-                speaker=current_agent.name
-            )
-            self.base_chat_service._conversation_repository.add_message(
-                conversation_id, agent_message)
-
-            conversation_log.append(ConversationMessage(
-                speaker=current_agent.name,
-                agent_id=current_agent_id,
-                message=response,
-                timestamp=datetime.now().timestamp()
-            ))
-
-            # Check if this is a credit error message and stop the conversation
-            if "I'm sorry, but you don't have enough credits" in response:
-                break
-
-            current_agent_index = (current_agent_index + 1) % len(agent_ids)
-
-            if "goodbye" in response.lower() or "end conversation" in response.lower():
-                break
-
-        return conversation_log
-
     async def _project_aware_multi_agent_conversation_stream(
         self,
         conversation_id: str,
@@ -357,19 +230,12 @@ class ProjectEnhancedChatService(EnhancedChatService):
             "message": f"🚀 Project workspace '{project_context['project'].name}' is active with full VM access"
         }
 
-        messages = await self._project_aware_multi_agent_conversation(
+        # Use the streaming version directly
+        async for message in self._project_aware_multi_agent_conversation_stream(
             conversation_id, agent_ids, initial_message, max_turns,
             user_id, file_attachments, project_context
-        )
-
-        for msg in messages:
-            yield {
-                "type": "message",
-                "speaker": msg.speaker,
-                "agent_id": getattr(msg, 'agent_id', None),
-                "message": msg.message,
-                "timestamp": msg.timestamp
-            }
+        ):
+            yield message
 
 
     def _enhance_agent_with_project_context(
@@ -428,7 +294,12 @@ Be collaborative and document your work for the team.
             prompt=agent.prompt + "\n\n" + project_prompt,
             characteristics=agent.characteristics,
             model_config=agent.model_config,
-            connection_id=agent.connection_id
+            chat_style=agent.chat_style,
+            connection_id=agent.connection_id,
+            gender=agent.gender,
+            voice_config=agent.voice_config,
+            selected_mcp_tools=agent.selected_mcp_tools,
+            mcp_tool_config=agent.mcp_tool_config
         )
 
         return enhanced_agent

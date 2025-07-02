@@ -1,23 +1,88 @@
+"""
+Refactored AI Service - Main coordinator for all AI-related operations
+
+This service coordinates between the specialized modules:
+- ai_core: Shared domain entities and interfaces
+- agents: Agent management and configuration
+- conversations: Chat services and conversation orchestration  
+- models: Model providers and configurations
+"""
+
 import os
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from .application.agent_service import AgentService
-from .application.chat_service import ChatService
-from .application.enhanced_chat_service import EnhancedChatService
-from .application.project_enhanced_chat_service import ProjectEnhancedChatService
-from .domain.entities import Agent, ChatStyle, ModelConfiguration, VoiceConfig
-from .domain.interfaces import AIServiceInterface
-from .infrastructure.model_providers import UnifiedModelProvider
-from .infrastructure.repositories import InMemoryConversationRepository
-from .infrastructure.session_manager import SessionManager
+from .ai_core import (
+    Agent, ChatStyle, ModelConfiguration, VoiceConfig,
+    AIServiceInterface
+)
+
+from .shared import SessionManager
+
+from .agents import AgentService
+from .conversations import (
+    ChatService, 
+    EnhancedChatService,
+    ProjectEnhancedChatService
+)
+from .models import UnifiedModelProvider
+
 
 
 class AIServiceFacade(AIServiceInterface):
-    """AI Service Facade with proper session management"""
+    """
+    Main AI Service Facade - coordinates between specialized modules
+    
+    This facade maintains backward compatibility while delegating to 
+    the new modular architecture.
+    """
 
     def __init__(self, model_name: str = None):
         self.model_name = model_name or os.getenv("OLLAMA_MODEL", "gemma2:2b")
         self._model_provider = UnifiedModelProvider()
+        
+        # Initialize core services lazily
+        self._agent_service = None
+        self._chat_service = None
+        self._enhanced_chat_service = None
+        self._project_enhanced_chat_service = None
+
+    def _get_agent_service(self) -> AgentService:
+        """Get or create agent service"""
+        if self._agent_service is None:
+            with SessionManager.get_agent_repository() as agent_repo:
+                self._agent_service = AgentService(agent_repo)
+        return self._agent_service
+
+    def _get_chat_service(self) -> ChatService:
+        """Get or create chat service"""
+        if self._chat_service is None:
+            with SessionManager.get_agent_repository() as agent_repo, \
+                    SessionManager.get_conversation_repository() as conv_repo:
+                self._chat_service = ChatService(
+                    self._model_provider,
+                    agent_repo,
+                    conv_repo
+                )
+        return self._chat_service
+
+    def _get_enhanced_chat_service(self) -> EnhancedChatService:
+        """Get or create enhanced chat service"""
+        if self._enhanced_chat_service is None:
+            base_chat_service = self._get_chat_service()
+            self._enhanced_chat_service = EnhancedChatService(base_chat_service)
+        return self._enhanced_chat_service
+
+    def _get_project_enhanced_chat_service(self) -> ProjectEnhancedChatService:
+        """Get or create project enhanced chat service"""
+        if self._project_enhanced_chat_service is None:
+            from .project.application.services import ProjectService
+            
+            base_chat_service = self._get_chat_service()
+            project_service = ProjectService()  # This should be properly initialized
+            self._project_enhanced_chat_service = ProjectEnhancedChatService(
+                base_chat_service, project_service
+            )
+        return self._project_enhanced_chat_service
 
     def create_agent(
         self,
@@ -33,21 +98,25 @@ class AIServiceFacade(AIServiceInterface):
         mcp_tools: List[str] = None,
         mcp_tool_config: dict = None
     ):
+        """Create a new agent"""
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
             return agent_service.create_agent(
-                name, prompt, characteristics, user_id, gender, model_config, chat_style, connection_id, voice_config, mcp_tools, mcp_tool_config
+                name, prompt, characteristics, user_id, gender, 
+                model_config, chat_style, connection_id, voice_config, 
+                mcp_tools, mcp_tool_config
             )
 
     def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
+        """Get an agent by ID - direct repository access"""
         with SessionManager.get_agent_repository() as agent_repo:
-            agent_service = AgentService(agent_repo)
-            return agent_service.get_agent(agent_id, user_id)
+            return agent_repo.get_agent(agent_id, user_id)
 
     def list_agents(self, user_id: str = None) -> List[Dict[str, Any]]:
+        """List all agents for a user"""
         with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
-            return agent_service.list_agents(user_id)
+            return agent_service.list_agents_formatted(user_id)
 
     def update_agent(
         self,
@@ -63,10 +132,9 @@ class AIServiceFacade(AIServiceInterface):
         mcp_tools: List[str] = None,
         mcp_tool_config: dict = None
     ):
+        """Update an existing agent"""
         with SessionManager.get_agent_repository() as agent_repo:
-            agent_service = AgentService(agent_repo)
-
-            existing_agent = agent_service.get_agent(agent_id)
+            existing_agent = agent_repo.get_agent(agent_id)
             if not existing_agent:
                 return None
 
@@ -94,14 +162,12 @@ class AIServiceFacade(AIServiceInterface):
             if voice_config and not isinstance(voice_config, dict):
                 raise TypeError(f"voice_config must be a dict, got {type(voice_config)}")
                 
-            print(f"Updating agent with voice_config: {voice_config}")
             voice_config_obj = VoiceConfig(
                 voice_enabled=voice_config.get("voice_enabled", False),
                 voice_connection_id=voice_config.get("voice_connection_id"),
                 selected_voice_id=voice_config.get("selected_voice_id"),
                 podcast_settings=voice_config.get("podcast_settings")
             ) if voice_config else existing_agent.voice_config
-            print(f"Created voice_config_obj for update: {voice_config_obj}")
 
             updated_agent = Agent(
                 agent_id=agent_id,
@@ -119,12 +185,12 @@ class AIServiceFacade(AIServiceInterface):
                     existing_agent, 'mcp_tool_config', None)
             )
 
-            return agent_service.update_agent(updated_agent)
+            return agent_repo.update_agent(updated_agent)
 
     def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
+        """Delete an agent - direct repository access"""
         with SessionManager.get_agent_repository() as agent_repo:
-            agent_service = AgentService(agent_repo)
-            return agent_service.delete_agent(agent_id, user_id)
+            return agent_repo.delete_agent(agent_id, user_id)
 
     async def agent_chat(
         self,
@@ -133,64 +199,17 @@ class AIServiceFacade(AIServiceInterface):
         conversation_id: str = "default",
         user_id: str = None
     ) -> str:
+        """Single agent chat"""
+        # Use fresh session for each chat to avoid session issues
         with SessionManager.get_agent_repository() as agent_repo, \
                 SessionManager.get_conversation_repository() as conv_repo:
-            base_chat_service = ChatService(
+            chat_service = ChatService(
                 self._model_provider,
                 agent_repo,
                 conv_repo
             )
-            enhanced_chat_service = EnhancedChatService(base_chat_service)
+            enhanced_chat_service = EnhancedChatService(chat_service)
             return await enhanced_chat_service.agent_chat(agent_id, message, conversation_id, user_id)
-
-    async def multi_agent_conversation(
-        self,
-        conversation_id: str,
-        agent_ids: List[str],
-        initial_message: str,
-        max_turns: int = 20,
-        user_id: str = None,
-        file_attachments: List[Dict[str, str]] = None,
-        project_id: str = None
-    ) -> List[Dict[str, Any]]:
-        """Multi-agent conversation managed by an invisible supervisor agent"""
-        return await self._multi_agent_conversation_supervised(
-            conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments, project_id
-        )
-    
-    async def _multi_agent_conversation_supervised(
-        self,
-        conversation_id: str,
-        agent_ids: List[str],
-        initial_message: str,
-        max_turns: int = 20,
-        user_id: str = None,
-        file_attachments: List[Dict[str, str]] = None,
-        project_id: str = None
-    ) -> List[Dict[str, Any]]:
-        """Multi-agent conversation managed by an invisible supervisor agent"""
-        with SessionManager.get_agent_repository() as agent_repo, \
-                SessionManager.get_conversation_repository() as conv_repo:
-            base_chat_service = ChatService(
-                self._model_provider,
-                agent_repo,
-                conv_repo
-            )
-            
-            conversation_messages = await base_chat_service._multi_agent_conversation_supervised(
-                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
-            )
-            
-            return [
-                {
-                    "speaker": msg.speaker,
-                    "message": msg.message,
-                    "timestamp": msg.timestamp,
-                    "agent_id": msg.agent_id,
-                    "type": getattr(msg, 'message_type', 'message')
-                }
-                for msg in conversation_messages
-            ]
 
     async def multi_agent_conversation_stream(
         self,
@@ -202,65 +221,50 @@ class AIServiceFacade(AIServiceInterface):
         file_attachments: List[Dict[str, str]] = None,
         project_id: str = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        """Streaming multi-agent conversation managed by an invisible supervisor agent"""
-        async for message in self._multi_agent_conversation_stream_supervised(
-            conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments, project_id
-        ):
-            yield message
-            
-    async def _multi_agent_conversation_stream_supervised(
-        self,
-        conversation_id: str,
-        agent_ids: List[str],
-        initial_message: str,
-        max_turns: int = 20,
-        user_id: str = None,
-        file_attachments: List[Dict[str, str]] = None,
-        project_id: str = None
-    ) -> AsyncGenerator[Dict[str, Any], None]:
-        """Streaming multi-agent conversation managed by an invisible supervisor agent"""
-        from app.core.database import db_manager
-        from app.services.ai.infrastructure.agent_repository import DatabaseAgentRepository
-        from app.services.ai.infrastructure.conversation_repository import DatabaseConversationRepository
-        
-        agent_session = db_manager.sync_session_maker()
-        conv_session = db_manager.sync_session_maker()
-        
-        try:
-            agent_repo = DatabaseAgentRepository(agent_session)
-            conv_repo = DatabaseConversationRepository(conv_session)
-            
-            base_chat_service = ChatService(
-                self._model_provider,
-                agent_repo,
-                conv_repo
-            )
-            
-            async for message in base_chat_service._multi_agent_conversation_stream_supervised(
-                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
+        """Streaming multi-agent conversation"""
+        if project_id:
+            # Use project-enhanced service for project conversations
+            project_chat_service = self._get_project_enhanced_chat_service()
+            async for message in project_chat_service.multi_agent_conversation_stream(
+                conversation_id, agent_ids, initial_message, max_turns,
+                user_id, file_attachments, project_id
             ):
-                conv_session.commit()
                 yield message
-                    
-            conv_session.commit()
-            agent_session.commit()
+        else:
+            # Create a fresh conversation with proper session management
+            # We need to manage the session manually for the async generator
+            from ..core.database import db_manager
+            from .conversations.repositories import DatabaseConversationRepository
+            from .agents.repositories import DatabaseAgentRepository
             
-        except Exception as e:
-            agent_session.rollback()
-            conv_session.rollback()
-            raise
-        finally:
-            agent_session.close()
-            conv_session.close()
+            session = db_manager.sync_session_maker()
+            try:
+                agent_repo = DatabaseAgentRepository(session)
+                conv_repo = DatabaseConversationRepository(session)
+                
+                chat_service = ChatService(
+                    self._model_provider,
+                    agent_repo,
+                    conv_repo
+                )
+                
+                async for message in chat_service._multi_agent_conversation_stream_supervised(
+                    conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
+                ):
+                    yield message
+                    
+                # Commit after all messages are processed
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                raise e
+            finally:
+                session.close()
 
     def get_conversation_history(self, conversation_id: str, user_id: str = None) -> List[Dict[str, Any]]:
-        with SessionManager.get_conversation_repository() as conv_repo:
-            chat_service = ChatService(
-                self._model_provider,
-                None,
-                conv_repo
-            )
-            return chat_service.get_conversation_history(conversation_id, user_id)
+        """Get conversation history"""
+        chat_service = self._get_chat_service()
+        return chat_service.get_conversation_history(conversation_id, user_id)
 
     def get_all_conversations(self, user_id: str = None) -> List[Dict[str, Any]]:
         """Get all conversations from database"""
@@ -285,7 +289,24 @@ class AIServiceFacade(AIServiceInterface):
     async def simple_chat(self, message: str, user_id: str = None) -> str:
         """Simple chat without agents for utility purposes like content enhancement"""
         try:
-            response = await self._model_provider.chat(message, {})
+            # Create a simple message list and empty system prompt for utility chat
+            from .ai_core.entities import Message, ModelConfiguration
+            messages = [Message(role="user", content=message)]
+            model_config = ModelConfiguration(provider="ollama", model_name=self.model_name)
+            response = await self._model_provider.chat_completion(
+                messages, "", model_config, user_id
+            )
             return response
         except Exception as e:
             return f"Error processing with AI: {str(e)}"
+
+
+# Singleton instance and factory function for backward compatibility
+_ai_service = None
+
+def get_ai_service() -> AIServiceFacade:
+    """Get singleton AI service instance"""
+    global _ai_service
+    if _ai_service is None:
+        _ai_service = AIServiceFacade()
+    return _ai_service

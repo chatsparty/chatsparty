@@ -1,8 +1,8 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
-from ...domain.entities import Message, ModelConfiguration
-from ...domain.interfaces import ModelProviderInterface
+from ....ai_core.entities import Message, ModelConfiguration
+from ....ai_core.interfaces import ModelProviderInterface
 from ....mcp.mcp_client_service import get_mcp_client_service
 from .....models.database import Connection
 
@@ -33,28 +33,28 @@ class MCPProvider(ModelProviderInterface):
             if not connection_id:
                 return "Error: No MCP connection ID provided"
             
-            # Ensure connection exists
+            
             session = self.mcp_client_service.get_connection(connection_id)
             if not session:
-                # Try to establish connection if not exists
+                
                 await self._ensure_connection(connection_id, model_config)
                 session = self.mcp_client_service.get_connection(connection_id)
                 
                 if not session:
                     return "Error: Could not establish MCP connection"
             
-            # Get the last user message
+            
             last_message = messages[-1] if messages else None
             if not last_message or last_message.role != "user":
                 return "Error: No user message to process"
             
             user_input = last_message.content
             
-            # Parse user input to detect tool requests
+            
             tool_request = self._parse_tool_request(user_input)
             
             if tool_request:
-                # Execute the requested tool
+                
                 result = await self.mcp_client_service.execute_tool(
                     connection_id=connection_id,
                     tool_name=tool_request['tool_name'],
@@ -66,7 +66,7 @@ class MCPProvider(ModelProviderInterface):
                 else:
                     return f"Tool execution failed: {result.get('error', 'Unknown error')}"
             else:
-                # If no specific tool request, list available capabilities
+                
                 try:
                     capabilities = await self.mcp_client_service.discover_capabilities(connection_id)
                     return self._format_capabilities_response(capabilities, user_input)
@@ -84,7 +84,7 @@ class MCPProvider(ModelProviderInterface):
             if not server_url:
                 raise ValueError("MCP server URL is required")
             
-            # Parse server config if available
+            
             server_config = None
             if hasattr(model_config, 'mcp_server_config') and model_config.mcp_server_config:
                 server_config = model_config.mcp_server_config
@@ -101,13 +101,10 @@ class MCPProvider(ModelProviderInterface):
     
     def _parse_tool_request(self, user_input: str) -> Optional[Dict[str, Any]]:
         """Parse user input to detect tool execution requests"""
-        # Simple pattern matching for tool requests
-        # Format: "use tool <tool_name> with <arguments>"
-        # or: "execute <tool_name>(<arguments>)"
         
         user_input_lower = user_input.lower().strip()
         
-        # Pattern 1: "use tool <name> with <args>"
+        
         if user_input_lower.startswith("use tool "):
             parts = user_input[9:].split(" with ", 1)
             if len(parts) == 2:
@@ -116,7 +113,7 @@ class MCPProvider(ModelProviderInterface):
                     arguments = json.loads(parts[1].strip())
                     return {'tool_name': tool_name, 'arguments': arguments}
                 except json.JSONDecodeError:
-                    # Try to parse as simple key=value pairs
+                    
                     args_str = parts[1].strip()
                     arguments = {}
                     for pair in args_str.split(','):
@@ -125,7 +122,7 @@ class MCPProvider(ModelProviderInterface):
                             arguments[key.strip()] = value.strip()
                     return {'tool_name': tool_name, 'arguments': arguments}
         
-        # Pattern 2: "execute <name>(<args>)"
+        
         if user_input_lower.startswith("execute ") and "(" in user_input and ")" in user_input:
             cmd_part = user_input[8:].strip()
             paren_start = cmd_part.find("(")
@@ -168,11 +165,11 @@ class MCPProvider(ModelProviderInterface):
             server_info = capabilities['server_info']
             response_parts.append(f"Connected to MCP server: {server_info.get('name', 'Unknown')} v{server_info.get('version', 'Unknown')}")
         
-        # List available tools
+        
         tools = capabilities.get('tools', [])
         if tools:
             response_parts.append(f"\nAvailable tools ({len(tools)}):")
-            for tool in tools[:10]:  # Limit to first 10 tools
+            for tool in tools[:10]:  
                 response_parts.append(f"  - {tool['name']}: {tool.get('description', 'No description')}")
             
             if len(tools) > 10:
@@ -180,21 +177,21 @@ class MCPProvider(ModelProviderInterface):
             
             response_parts.append(f"\nTo use a tool, try: 'use tool <tool_name> with {{\"arg1\": \"value1\"}}'")
         
-        # List available resources
+        
         resources = capabilities.get('resources', [])
         if resources:
             response_parts.append(f"\nAvailable resources ({len(resources)}):")
-            for resource in resources[:5]:  # Limit to first 5 resources
+            for resource in resources[:5]:  
                 response_parts.append(f"  - {resource.get('name', resource['uri'])}: {resource.get('description', 'No description')}")
             
             if len(resources) > 5:
                 response_parts.append(f"  ... and {len(resources) - 5} more resources")
         
-        # List available prompts
+        
         prompts = capabilities.get('prompts', [])
         if prompts:
             response_parts.append(f"\nAvailable prompts ({len(prompts)}):")
-            for prompt in prompts[:5]:  # Limit to first 5 prompts
+            for prompt in prompts[:5]:  
                 response_parts.append(f"  - {prompt['name']}: {prompt.get('description', 'No description')}")
             
             if len(prompts) > 5:
@@ -215,10 +212,10 @@ class MCPAgentProvider:
     async def create_agent_with_mcp_tools(self, connection_id: str, selected_tools: List[str]) -> Dict[str, Any]:
         """Create an agent configuration with specific MCP tools"""
         try:
-            # Discover available capabilities
+            
             capabilities = await self.mcp_client_service.discover_capabilities(connection_id)
             
-            # Filter tools based on selection
+            
             available_tools = capabilities.get('tools', [])
             selected_tool_configs = [
                 tool for tool in available_tools 

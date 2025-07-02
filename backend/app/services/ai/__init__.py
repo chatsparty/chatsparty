@@ -1,12 +1,15 @@
-from .ai_service_facade import AIServiceFacade
+"""
+AI Services - Legacy Infrastructure Only
 
-# Create a singleton instance with proper session management
-_ai_service_facade = None
+This module only contains legacy infrastructure components.
+For AI services, use: from app.services.ai_service import get_ai_service
 
-def get_ai_service() -> AIServiceFacade:
-    global _ai_service_facade
-    if _ai_service_facade is None:
-        _ai_service_facade = AIServiceFacade()
-    return _ai_service_facade
+This module is kept only for backward compatibility with connection_service
+and other infrastructure that hasn't been migrated yet.
+"""
 
-__all__ = ["AIServiceFacade", "get_ai_service"]
+# This module intentionally does NOT export AIServiceFacade or get_ai_service
+# to avoid circular imports. Use the new ai_service module instead:
+# from app.services.ai_service import AIServiceFacade, get_ai_service
+
+__all__ = []

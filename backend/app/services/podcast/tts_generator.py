@@ -125,7 +125,7 @@ class TTSGenerator:
         """Get decrypted API key from voice connection."""
         api_key = voice_connection.api_key
         if voice_connection.api_key_encrypted and api_key:
-            from ..crypto_service import crypto_service
+            from ..shared.crypto_service import crypto_service
             try:
                 api_key = crypto_service.decrypt(api_key)
             except Exception as e:

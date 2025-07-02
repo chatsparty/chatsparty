@@ -9,7 +9,7 @@ import docx
 from io import BytesIO
 from typing import Optional, Dict, Any
 
-from ..services.ai import AIServiceFacade
+from .ai_service import AIServiceFacade
 from .storage.storage_factory import get_storage_provider
 
 

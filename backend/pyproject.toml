@@ -48,6 +48,9 @@ dependencies = [
     "aiodocker>=0.24.0",
     "yoyo-migrations>=9.0.0",
     "sqlmodel>=0.0.24",
+    "vulture>=2.14",
+    "deptry>=0.23.0",
+    "pyflakes>=3.4.0",
 ]
 
 [tool.uv]
