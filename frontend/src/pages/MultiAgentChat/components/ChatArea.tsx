@@ -15,6 +15,8 @@ import {
   Plus,
   X,
   Search,
+  Download,
+  Mic,
 } from "lucide-react";
 import axios from "axios";
 import Avatar from "boring-avatars";
@@ -704,52 +706,197 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   return (
     <>
-      <div className={`border-b border-border/30 bg-background/80 backdrop-blur-sm ${isMobile ? 'px-4 py-2' : 'px-6 py-3'}`}>
-        <div className="flex items-center gap-2">
-          <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground font-medium`}>
-            {t("chat.to")}:
-          </span>
-          <div className="flex flex-wrap items-center gap-1.5 flex-1">
-            {selectedAgentsForMessage.map(agentId => {
-              const agent = agents.find(a => a.agent_id === agentId);
-              if (!agent) return null;
-              return (
-                <div
-                  key={agentId}
-                  className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-muted/50`}
-                  style={{
-                    backgroundColor: `${getAgentColor(agentId)}10`,
-                    color: getAgentColor(agentId),
-                  }}
-                >
-                  <Avatar
-                    size={14}
-                    name={agent.name}
-                    variant="beam"
-                    colors={[
-                      getAgentColor(agentId),
-                      "#92A1C6",
-                      "#146A7C",
-                      "#F0AB3D",
-                      "#C271B4"
-                    ]}
-                  />
-                  {agent.name}
-                </div>
-              );
-            })}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAgentModal(true)}
-              className="h-6 w-6 p-0 rounded-full hover:bg-muted/50"
-              title={t("chat.addAgents")}
-            >
-              <Plus className="w-3 h-3" />
-            </Button>
+{isMobile ? (
+        // Mobile: Minimal header with just agents
+        <div className="border-b border-border/30 bg-background/80 backdrop-blur-sm px-4 py-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">
+              {t("chat.to")}:
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5 flex-1">
+              {selectedAgentsForMessage.map(agentId => {
+                const agent = agents.find(a => a.agent_id === agentId);
+                if (!agent) return null;
+                return (
+                  <div
+                    key={agentId}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-muted/50"
+                    style={{
+                      backgroundColor: `${getAgentColor(agentId)}10`,
+                      color: getAgentColor(agentId),
+                    }}
+                  >
+                    <Avatar
+                      size={14}
+                      name={agent.name}
+                      variant="beam"
+                      colors={[
+                        getAgentColor(agentId),
+                        "#92A1C6",
+                        "#146A7C",
+                        "#F0AB3D",
+                        "#C271B4"
+                      ]}
+                    />
+                    {agent.name}
+                  </div>
+                );
+              })}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAgentModal(true)}
+                className="h-6 w-6 p-0 rounded-full hover:bg-muted/50"
+                title={t("chat.addAgents")}
+              >
+                <Plus className="w-3 h-3" />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        // Desktop: Full header with all features
+        <div className="border-b border-border bg-card/50 backdrop-blur-sm p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-4">
+              <div className="flex items-center gap-3">
+                <Label className="text-sm font-medium text-foreground">{t("chat.to")}</Label>
+                <div className="flex-1 flex flex-wrap items-center gap-2">
+                  {selectedAgentsForMessage.map(agentId => {
+                    const agent = agents.find(a => a.agent_id === agentId);
+                    if (!agent) return null;
+                    return (
+                      <Badge
+                        key={agentId}
+                        variant="secondary"
+                        className="px-2 py-1 text-xs font-medium cursor-pointer hover:bg-destructive/10 flex items-center gap-2"
+                        style={{
+                          backgroundColor: `${getAgentColor(agentId)}15`,
+                          borderColor: `${getAgentColor(agentId)}30`,
+                          color: getAgentColor(agentId),
+                        }}
+                        onClick={() => toggleAgentSelection(agentId)}
+                      >
+                        <Avatar
+                          size={16}
+                          name={agent.name}
+                          variant="beam"
+                          colors={[
+                            getAgentColor(agentId),
+                            "#92A1C6",
+                            "#146A7C",
+                            "#F0AB3D",
+                            "#C271B4"
+                          ]}
+                        />
+                        {agent.name}
+                        <X className="w-3 h-3 ms-1" />
+                      </Badge>
+                    );
+                  })}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAgentModal(true)}
+                    className="h-7 px-2 text-xs"
+                  >
+                    <Plus className="w-3 h-3 me-1" /> {t("chat.addAgents")}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-foreground">
+                {activeConversation.name}
+              </h3>
+              <div className="flex items-center gap-4">
+                {activeConversation.messages.length > 0 && (
+                  <Button
+                    onClick={handleOpenShareModal}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+                      />
+                    </svg>
+                    {t("common.share")}
+                  </Button>
+                )}
+
+                {activeConversation.messages.length > 0 && (
+                  <>
+                    {podcastStatus === "idle" && (
+                      <Button
+                        onClick={handleGeneratePodcast}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                        disabled={isGeneratingPodcast}
+                      >
+                        <Mic className="w-4 h-4" />
+                        {t("chat.generatePodcast")}
+                      </Button>
+                    )}
+
+                    {podcastStatus === "generating" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                        disabled
+                      >
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {t("chat.podcastProgress", { percent: Math.round(podcastProgress * 100) })}
+                      </Button>
+                    )}
+
+                    {podcastStatus === "completed" && (
+                      <Button
+                        onClick={handleDownloadPodcast}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50"
+                      >
+                        <Download className="w-4 h-4" />
+                        {t("chat.downloadPodcast")}
+                      </Button>
+                    )}
+
+                    {podcastStatus === "failed" && (
+                      <Button
+                        onClick={handleGeneratePodcast}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <Mic className="w-4 h-4" />
+                        {t("chat.retryPodcast")}
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  {activeConversation.messages.length} {t("agents.messages")}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={`flex-1 overflow-y-auto ${isMobile ? 'px-6 py-3' : 'px-8 py-4'} flex flex-col ${isMobile ? 'gap-3' : 'gap-4'} bg-background/50`}>
         <div className={`${isMobile ? '' : 'max-w-4xl mx-auto w-full'} flex flex-col ${isMobile ? 'gap-3' : 'gap-4'}`}>
