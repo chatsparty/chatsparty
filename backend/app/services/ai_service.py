@@ -19,11 +19,7 @@ from .ai_core import (
 from .shared import SessionManager
 
 from .agents import AgentService
-from .conversations import (
-    ChatService, 
-    EnhancedChatService,
-    ProjectEnhancedChatService
-)
+from .conversations import ChatService
 from .models import UnifiedModelProvider
 
 
@@ -40,11 +36,9 @@ class AIServiceFacade(AIServiceInterface):
         self.model_name = model_name or os.getenv("OLLAMA_MODEL", "gemma2:2b")
         self._model_provider = UnifiedModelProvider()
         
-        # Initialize core services lazily
+        
         self._agent_service = None
         self._chat_service = None
-        self._enhanced_chat_service = None
-        self._project_enhanced_chat_service = None
 
     def _get_agent_service(self) -> AgentService:
         """Get or create agent service"""
@@ -65,24 +59,7 @@ class AIServiceFacade(AIServiceInterface):
                 )
         return self._chat_service
 
-    def _get_enhanced_chat_service(self) -> EnhancedChatService:
-        """Get or create enhanced chat service"""
-        if self._enhanced_chat_service is None:
-            base_chat_service = self._get_chat_service()
-            self._enhanced_chat_service = EnhancedChatService(base_chat_service)
-        return self._enhanced_chat_service
 
-    def _get_project_enhanced_chat_service(self) -> ProjectEnhancedChatService:
-        """Get or create project enhanced chat service"""
-        if self._project_enhanced_chat_service is None:
-            from .project.application.services import ProjectService
-            
-            base_chat_service = self._get_chat_service()
-            project_service = ProjectService()  # This should be properly initialized
-            self._project_enhanced_chat_service = ProjectEnhancedChatService(
-                base_chat_service, project_service
-            )
-        return self._project_enhanced_chat_service
 
     def create_agent(
         self,
@@ -192,7 +169,7 @@ class AIServiceFacade(AIServiceInterface):
         user_id: str = None
     ) -> str:
         """Single agent chat"""
-        # Use fresh session for each chat to avoid session issues
+        
         with SessionManager.get_agent_repository() as agent_repo, \
                 SessionManager.get_conversation_repository() as conv_repo:
             chat_service = ChatService(
@@ -200,8 +177,7 @@ class AIServiceFacade(AIServiceInterface):
                 agent_repo,
                 conv_repo
             )
-            enhanced_chat_service = EnhancedChatService(chat_service)
-            return await enhanced_chat_service.agent_chat(agent_id, message, conversation_id, user_id)
+            return await chat_service.agent_chat(agent_id, message, conversation_id, user_id)
 
     async def multi_agent_conversation_stream(
         self,
@@ -214,44 +190,18 @@ class AIServiceFacade(AIServiceInterface):
         project_id: str = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Streaming multi-agent conversation"""
-        if project_id:
-            # Use project-enhanced service for project conversations
-            project_chat_service = self._get_project_enhanced_chat_service()
-            async for message in project_chat_service.multi_agent_conversation_stream(
-                conversation_id, agent_ids, initial_message, max_turns,
-                user_id, file_attachments, project_id
+        with SessionManager.get_agent_repository() as agent_repo, \
+                SessionManager.get_conversation_repository() as conv_repo:
+            chat_service = ChatService(
+                self._model_provider,
+                agent_repo,
+                conv_repo
+            )
+            
+            async for message in chat_service._multi_agent_conversation_stream_supervised(
+                conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
             ):
                 yield message
-        else:
-            # Create a fresh conversation with proper session management
-            # We need to manage the session manually for the async generator
-            from ..core.database import db_manager
-            from .conversations.repositories import DatabaseConversationRepository
-            from .agents.repositories import DatabaseAgentRepository
-            
-            session = db_manager.sync_session_maker()
-            try:
-                agent_repo = DatabaseAgentRepository(session)
-                conv_repo = DatabaseConversationRepository(session)
-                
-                chat_service = ChatService(
-                    self._model_provider,
-                    agent_repo,
-                    conv_repo
-                )
-                
-                async for message in chat_service._multi_agent_conversation_stream_supervised(
-                    conversation_id, agent_ids, initial_message, max_turns, user_id, file_attachments
-                ):
-                    yield message
-                    
-                # Commit after all messages are processed
-                session.commit()
-            except Exception as e:
-                session.rollback()
-                raise e
-            finally:
-                session.close()
 
     def get_conversation_history(self, conversation_id: str, user_id: str = None) -> List[Dict[str, Any]]:
         """Get conversation history"""
@@ -281,7 +231,7 @@ class AIServiceFacade(AIServiceInterface):
     async def simple_chat(self, message: str, user_id: str = None) -> str:
         """Simple chat without agents for utility purposes like content enhancement"""
         try:
-            # Create a simple message list and empty system prompt for utility chat
+            
             from .ai_core.entities import Message, ModelConfiguration
             messages = [Message(role="user", content=message)]
             model_config = ModelConfiguration(provider="ollama", model_name=self.model_name)
@@ -291,9 +241,10 @@ class AIServiceFacade(AIServiceInterface):
             return response
         except Exception as e:
             return f"Error processing with AI: {str(e)}"
+    
 
 
-# Singleton instance and factory function for backward compatibility
+
 _ai_service = None
 
 def get_ai_service() -> AIServiceFacade:

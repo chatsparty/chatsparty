@@ -47,6 +47,14 @@ async def start_multi_agent_conversation(sid, data):
                 }, room=sid)
                 return
         
+        # Multi-agent conversations require authentication
+        if not user_id:
+            await sio.emit('conversation_error', {
+                'conversation_id': conversation_id,
+                'error': 'Authentication required for multi-agent conversations'
+            }, room=sid)
+            return
+        
         websocket_service.active_conversations[conversation_id] = {
             'sid': sid,
             'agent_ids': agent_ids,
@@ -177,6 +185,14 @@ async def send_message(sid, data):
                     'error': 'Authentication failed'
                 }, room=sid)
                 return
+        
+        # Multi-agent conversations require authentication
+        if not user_id:
+            await sio.emit('conversation_error', {
+                'conversation_id': conversation_id,
+                'error': 'Authentication required for multi-agent conversations'
+            }, room=sid)
+            return
         
         websocket_service.active_conversations[conversation_id] = {
             'sid': sid,

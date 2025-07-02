@@ -44,19 +44,24 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         return []
     
     def get_conversation(self, conversation_id: str, user_id: str = None) -> List[Message]:
-        query = (
-            self.db_session.query(ConversationModel)
-            .options(selectinload(ConversationModel.messages))
-            .filter(ConversationModel.id == conversation_id)
-        )
-        
-        if user_id:
-            query = query.filter(
-                (ConversationModel.user_id == user_id) | 
-                (ConversationModel.is_shared == True)
+        try:
+            query = (
+                self.db_session.query(ConversationModel)
+                .options(selectinload(ConversationModel.messages))
+                .filter(ConversationModel.id == conversation_id)
             )
-        
-        db_conversation = query.first()
+            
+            if user_id:
+                query = query.filter(
+                    (ConversationModel.user_id == user_id) | 
+                    (ConversationModel.is_shared == True)
+                )
+            
+            db_conversation = query.first()
+        except Exception as e:
+            # If session is in a bad state, try to recover
+            self.db_session.rollback()
+            raise e
         
         if not db_conversation:
             return []
@@ -73,17 +78,21 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         ]
     
     def add_message(self, conversation_id: str, message: Message) -> None:
-        db_message = MessageModel(
-            conversation_id=conversation_id,
-            role=message.role,
-            content=message.content,
-            created_at=message.timestamp,
-            agent_id=message.agent_id,
-            speaker=message.speaker,
-        )
-        self.db_session.add(db_message)
-        # Commit immediately to ensure message persistence
-        self.db_session.commit()
+        try:
+            db_message = MessageModel(
+                conversation_id=conversation_id,
+                role=message.role,
+                content=message.content,
+                created_at=message.timestamp,
+                agent_id=message.agent_id,
+                speaker=message.speaker,
+            )
+            self.db_session.add(db_message)
+            # Commit immediately to ensure message persistence
+            self.db_session.commit()
+        except Exception as e:
+            self.db_session.rollback()
+            raise e
     
     def clear_conversation(self, conversation_id: str) -> None:
         self.db_session.query(MessageModel).filter(

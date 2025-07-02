@@ -1,5 +1,4 @@
 from typing import List, Dict, Any, AsyncGenerator
-import asyncio
 import logging
 from datetime import datetime
 from ..ai_core.entities import Message, ConversationMessage
@@ -90,8 +89,20 @@ class ChatService:
         
         for turn in range(max_turns):
             try:
+                # Get full conversation history for supervisor
+                full_history = self._conversation_repository.get_conversation(conversation_id, user_id)
+                supervisor_messages = [
+                    ConversationMessage(
+                        speaker=msg.speaker,
+                        message=msg.content,
+                        timestamp=msg.timestamp.timestamp() if msg.timestamp else None,
+                        agent_id=getattr(msg, 'agent_id', None)
+                    )
+                    for msg in full_history
+                ]
+                
                 next_agent_id = await supervisor_agent.determine_next_speaker(
-                    current_message, conversation_messages, user_id
+                    current_message, supervisor_messages + conversation_messages, user_id
                 )
                 
                 if next_agent_id == "CONVERSATION_COMPLETE":
@@ -113,7 +124,7 @@ class ChatService:
                 conversation_history = self._conversation_repository.get_conversation(conversation_id, user_id)
                 
                 response = await self._model_provider.chat_completion(
-                    conversation_history + [Message(role="user", content=current_message)],
+                    conversation_history,
                     next_agent.get_system_prompt(),
                     next_agent.model_config,
                     user_id=user_id
