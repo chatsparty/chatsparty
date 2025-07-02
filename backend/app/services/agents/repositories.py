@@ -155,10 +155,6 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
         db_agent.voice_connection_id = voice_connection_id
         db_agent.podcast_settings = podcast_settings if podcast_settings else None
         
-        if hasattr(agent, 'selected_mcp_tools'):
-            db_agent.selected_mcp_tools = agent.selected_mcp_tools
-        if hasattr(agent, 'mcp_tool_config'):
-            db_agent.mcp_tool_config = agent.mcp_tool_config
         
         self.db_session.commit()
         self.db_session.refresh(db_agent)
@@ -219,6 +215,4 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             connection_id=db_agent.connection_id,
             gender=getattr(db_agent, 'gender', 'neutral'),
             voice_config=voice_config,
-            selected_mcp_tools=getattr(db_agent, 'selected_mcp_tools', None),
-            mcp_tool_config=getattr(db_agent, 'mcp_tool_config', None)
         )

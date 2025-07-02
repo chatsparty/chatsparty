@@ -49,14 +49,6 @@ class UnifiedModelService:
             'requires_api_key': True,
             'base_url_required': False
         },
-        'mcp': {
-            'models': [],
-            'requires_api_key': False,
-            'base_url_required': True,
-            'supports_tools': True,
-            'supports_resources': True,
-            'connection_type': 'mcp_server'
-        },
         'chatsparty': {
             'models': ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
             'requires_api_key': True,
@@ -140,9 +132,6 @@ class UnifiedModelService:
         """Get all available providers and their models"""
         providers = self.SUPPORTED_PROVIDERS.copy()
         
-        # Filter out MCP if feature is disabled
-        if not settings.enable_mcp and 'mcp' in providers:
-            providers = {k: v for k, v in providers.items() if k != 'mcp'}
         
         return providers
 

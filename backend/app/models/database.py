@@ -73,11 +73,6 @@ class Agent(Base):
     podcast_settings: Mapped[Optional[dict]
                              ] = mapped_column(JSON, nullable=True)
 
-    # MCP tool configuration
-    selected_mcp_tools: Mapped[Optional[List[str]]
-                               ] = mapped_column(JSON, nullable=True)
-    mcp_tool_config: Mapped[Optional[dict]
-                            ] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now())
@@ -170,15 +165,6 @@ class Connection(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # Indicates if this is a default platform connection
 
-    # MCP-specific fields
-    mcp_server_url: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True)
-    mcp_server_config: Mapped[Optional[dict]
-                              ] = mapped_column(JSON, nullable=True)
-    available_tools: Mapped[Optional[List[dict]]
-                            ] = mapped_column(JSON, nullable=True)
-    mcp_capabilities: Mapped[Optional[dict]
-                             ] = mapped_column(JSON, nullable=True)
 
     # User relationship
     user_id: Mapped[str] = mapped_column(

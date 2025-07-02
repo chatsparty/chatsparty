@@ -19,7 +19,7 @@ import Avatar from "boring-avatars";
 import { useTranslation } from "react-i18next";
 import { getDirection } from "./i18n/config";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
-import { PROJECTS_ENABLED, MCP_ENABLED } from "./config/features";
+import { PROJECTS_ENABLED } from "./config/features";
 import {
   AgentManagerPage,
   LandingPage,
@@ -242,9 +242,6 @@ const Layout = () => {
               path="/settings/voice-connections"
               element={<SettingsPage />}
             />
-            {MCP_ENABLED && (
-              <Route path="/settings/mcp-servers" element={<SettingsPage />} />
-            )}
             <Route path="/settings/credits" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to={PROJECTS_ENABLED ? "/projects" : "/agents"} replace />} />
           </Routes>

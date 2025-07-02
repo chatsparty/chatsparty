@@ -9,7 +9,7 @@ class ModelConfiguration:
     model_name: str
     api_key: Optional[str] = None
     base_url: Optional[str] = None
-    connection_id: Optional[str] = None  # For MCP integration
+    connection_id: Optional[str] = None
 
 
 @dataclass
@@ -40,9 +40,6 @@ class Agent:
     connection_id: str
     gender: str = "neutral"
     voice_config: Optional[VoiceConfig] = None
-    # MCP tool configuration
-    selected_mcp_tools: Optional[List[str]] = None
-    mcp_tool_config: Optional[dict] = None
     
     def get_system_prompt(self) -> str:
         style_instructions = []
@@ -84,19 +81,7 @@ class Agent:
         
         style_text = " ".join(style_instructions)
         
-        # Add MCP tools information if available
         tools_text = ""
-        if self.selected_mcp_tools and len(self.selected_mcp_tools) > 0:
-            tools_text = f"""
-
-Available Tools: You have access to the following tools that you can use to help users:
-{', '.join(self.selected_mcp_tools)}
-
-To use a tool, respond with a command in this format:
-- "use tool <tool_name> with {{"param1": "value1", "param2": "value2"}}"
-- "execute <tool_name>({{"param1": "value1"}})"
-
-You should suggest and use these tools when they would be helpful for completing user tasks."""
         
         return f"""You are {self.name}. 
 
@@ -104,7 +89,7 @@ Your role and characteristics: {self.characteristics}
 
 Your specific instructions: {self.prompt}
 
-Communication style: {style_text}{tools_text}
+Communication style: {style_text}
 
 Please respond in character according to your role, characteristics, and communication style."""
 

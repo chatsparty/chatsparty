@@ -20,8 +20,6 @@ class AgentService:
         chat_style: Optional[Dict] = None,
         connection_id: Optional[str] = None,
         voice_config: Optional[Dict] = None,
-        mcp_tools: Optional[List[str]] = None,
-        mcp_tool_config: Optional[Dict] = None
     ) -> Agent:
         """Create agent with business logic validations and defaults"""
         # Apply business rules for model configuration
@@ -46,8 +44,6 @@ class AgentService:
             connection_id=connection_id or "default",
             gender=gender,
             voice_config=voice_config_obj,
-            selected_mcp_tools=mcp_tools,
-            mcp_tool_config=mcp_tool_config
         )
         
         return self._agent_repository.create_agent(agent, user_id)
@@ -122,6 +118,4 @@ class AgentService:
                 "selected_voice_id": agent.voice_config.selected_voice_id if agent.voice_config else None,
                 "podcast_settings": agent.voice_config.podcast_settings if agent.voice_config else None
             } if agent.voice_config else None,
-            "selected_mcp_tools": agent.selected_mcp_tools,
-            "mcp_tool_config": agent.mcp_tool_config
         }

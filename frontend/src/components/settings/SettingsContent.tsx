@@ -3,8 +3,7 @@ import { Menu } from "lucide-react";
 import { ConnectionsManagement } from "./ConnectionsManagement";
 import { CreditsManagement } from "./CreditsManagement";
 import { VoiceConnectionList } from "../voice/VoiceConnectionList";
-import MCPServersPage from "../../pages/MCPServers";
-import { CREDITS_ENABLED, MCP_ENABLED } from "@/config/features";
+import { CREDITS_ENABLED } from "@/config/features";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcherWithLabel } from "../LanguageSwitcher";
 
@@ -44,8 +43,6 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
         return <ConnectionsManagement />;
       case "voice-connections":
         return <VoiceConnectionList />;
-      case "mcp-servers":
-        return MCP_ENABLED ? <MCPServersPage /> : null;
       case "credits":
         return CREDITS_ENABLED ? <CreditsManagement /> : null;
       default:

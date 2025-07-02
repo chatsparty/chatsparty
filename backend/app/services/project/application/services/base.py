@@ -6,7 +6,10 @@ import logging
 from typing import Dict
 
 from ....vm_factory import get_vm_service
-from ....mcp.vm_tools import ProjectVMTools
+# MCP integration removed - ProjectVMTools functionality disabled
+class ProjectVMTools:
+    def __init__(self, *args, **kwargs):
+        pass
 from ....storage.storage_factory import get_storage_provider
 from ...domain.interfaces import (
     ProjectFileRepositoryInterface,

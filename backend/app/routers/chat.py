@@ -103,8 +103,8 @@ async def create_agent(
             chat_style_dict,
             agent_request.connection_id,
             voice_config_dict,
-            agent_request.mcp_tools,
-            agent_request.mcp_tool_config
+            None,
+            None
         )
         return AgentResponse(
             agent_id=agent.agent_id,
@@ -115,9 +115,6 @@ async def create_agent(
             connection_id=agent_request.connection_id,
             chat_style=agent_request.chat_style,
             voice_config=agent_request.voice_config,
-            mcp_server_id=agent_request.mcp_server_id,
-            selected_mcp_tools=agent_request.mcp_tools,
-            mcp_tool_config=agent_request.mcp_tool_config
         )
     except HTTPException:
         raise
@@ -179,8 +176,8 @@ async def update_agent(
             chat_style=chat_style_dict,
             connection_id=agent_request.connection_id,
             voice_config=voice_config_dict,
-            mcp_tools=agent_request.mcp_tools,
-            mcp_tool_config=agent_request.mcp_tool_config
+            mcp_tools=None,
+            mcp_tool_config=None
         )
 
         if not agent:
@@ -196,9 +193,6 @@ async def update_agent(
             connection_id=agent_request.connection_id,
             chat_style=agent_request.chat_style,
             voice_config=agent_request.voice_config,
-            mcp_server_id=agent_request.mcp_server_id,
-            selected_mcp_tools=agent_request.mcp_tools,
-            mcp_tool_config=agent_request.mcp_tool_config
         )
     except HTTPException:
         raise

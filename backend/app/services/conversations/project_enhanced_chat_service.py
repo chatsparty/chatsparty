@@ -298,8 +298,6 @@ Be collaborative and document your work for the team.
             connection_id=agent.connection_id,
             gender=agent.gender,
             voice_config=agent.voice_config,
-            selected_mcp_tools=agent.selected_mcp_tools,
-            mcp_tool_config=agent.mcp_tool_config
         )
 
         return enhanced_agent

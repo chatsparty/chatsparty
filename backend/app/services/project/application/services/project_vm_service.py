@@ -6,7 +6,10 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-from ....mcp.vm_tools import ProjectVMTools
+# MCP integration removed - ProjectVMTools functionality disabled
+class ProjectVMTools:
+    def __init__(self, *args, **kwargs):
+        pass
 from ...domain.entities import Project
 from .base import BaseProjectService
 
