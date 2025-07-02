@@ -125,7 +125,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingAgent ? t("agents.editAgent") : t("agents.createNewAgent")}
@@ -133,7 +133,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
         </DialogHeader>
         
         <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="space-y-4">
               <div>
                 <Label htmlFor="name" className="text-sm font-medium">

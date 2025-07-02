@@ -110,7 +110,7 @@ const Layout = () => {
   return (
     <div className="App h-screen w-screen bg-background overflow-hidden">
       <div className="flex flex-col h-full">
-        <div className="bg-card border-b border-border px-6 py-2 shadow-sm flex-shrink-0">
+        <div className="bg-card border-b border-border px-4 md:px-6 py-2 shadow-sm flex-shrink-0">
           <div className="flex items-center justify-between">
             <Link
               to="/"
@@ -122,10 +122,10 @@ const Layout = () => {
                 variant="beam"
                 colors={["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"]}
               />
-              <span>{t("common.appName")}</span>
+              <span className="hidden sm:block">{t("common.appName")}</span>
             </Link>
             <div className="flex items-center">
-              <nav className="flex items-center gap-8 me-6">
+              <nav className="hidden md:flex items-center gap-4 lg:gap-8 me-4 lg:me-6">
                 {tabs.map((tab) => (
                   <Link
                     key={tab.path}
@@ -140,8 +140,10 @@ const Layout = () => {
                   </Link>
                 ))}
               </nav>
-              <div className="flex items-center gap-4">
-                <LanguageSwitcher />
+              <div className="flex items-center gap-2 md:gap-4">
+                <div className="hidden sm:block">
+                  <LanguageSwitcher />
+                </div>
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -150,17 +152,33 @@ const Layout = () => {
                     <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
                       <FaUser className="w-3 h-3 text-primary" />
                     </div>
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="hidden md:block text-sm font-medium text-foreground">
                       {user?.email?.split("@")[0] || t("navigation.userMenu")}
                     </span>
                     <ChevronDown className="w-3 h-3 text-muted-foreground" />
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className="absolute end-0 top-full mt-1 w-40 bg-card border border-border rounded-md shadow-lg z-50">
+                    <div className="absolute end-0 top-full mt-1 w-48 bg-card border border-border rounded-md shadow-lg z-50">
                       <div className="py-1">
                         <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border">
                           {user?.email}
+                        </div>
+                        <div className="md:hidden border-b border-border">
+                          {tabs.map((tab) => (
+                            <Link
+                              key={tab.path}
+                              to={tab.path}
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className={`flex items-center px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+                                location.pathname === tab.path
+                                  ? "text-primary font-medium"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {tab.label}
+                            </Link>
+                          ))}
                         </div>
                         <Link
                           to="/settings"
@@ -182,7 +200,15 @@ const Layout = () => {
                         </button>
                         <div className="border-t border-border mt-1 pt-1">
                           <div className="px-3 py-1.5">
-                            <ThemeToggle />
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-foreground">{t("common.theme")}</span>
+                              <ThemeToggle />
+                            </div>
+                          </div>
+                          <div className="sm:hidden border-t border-border pt-1">
+                            <div className="px-3 py-1.5">
+                              <LanguageSwitcher />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -229,7 +255,7 @@ const Layout = () => {
 };
 
 const MainApp = () => {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
   const { t } = useTranslation();
 
@@ -283,6 +309,11 @@ const MainApp = () => {
   }
 
   if (location.pathname === "/") {
+    // If user is authenticated, redirect to main app
+    if (user) {
+      return <Navigate to={PROJECTS_ENABLED ? "/projects" : "/agents"} replace />;
+    }
+    // If not authenticated, show landing page
     return (
       <div className="App h-screen w-screen bg-background overflow-auto">
         <LandingPage onGetStarted={() => {}} />

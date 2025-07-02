@@ -20,7 +20,7 @@ const MultiAgentChatPage: React.FC = () => {
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFileSidebarOpen, setIsFileSidebarOpen] = useState(false);
-  const [isDesktopFileSidebarOpen, setIsDesktopFileSidebarOpen] = useState(true);
+  const [isDesktopFileSidebarOpen, setIsDesktopFileSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState<'chat' | 'conversations' | 'files'>('chat');
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [creditsError, setCreditsError] = useState<{ required: number; available: number } | null>(null);
@@ -141,7 +141,9 @@ const MultiAgentChatPage: React.FC = () => {
               <MessageCircle className="w-5 h-5" />
               <span className="sr-only">Toggle conversations</span>
             </Button>
-            <h1 className="text-lg font-bold text-foreground tracking-tight">{t("chat.multiAgentChat")}</h1>
+            <h1 className="text-lg font-bold text-foreground tracking-tight">
+              {activeConv ? activeConv.name : t("chat.multiAgentChat")}
+            </h1>
           </div>
           <Button
             variant="ghost"
@@ -302,7 +304,7 @@ const MultiAgentChatPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col bg-gradient-to-br from-background via-background/95 to-muted/30 pt-8">
+        <div className="flex-1 flex flex-col bg-gradient-to-br from-background via-background/95 to-muted/30 pt-8 min-h-0">
           <ChatArea
             activeConversation={activeConv}
             agents={agents}
