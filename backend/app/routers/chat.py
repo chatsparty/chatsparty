@@ -19,7 +19,7 @@ from ..models.chat import (
 from ..models.database import User
 from ..services.ai_service import AIServiceFacade, get_ai_service
 from ..services.models import get_initialized_unified_model_service
-from ..services.connection_service import connection_service
+from ..services.connections import connection_service
 from ..services.websocket_service import websocket_service
 from ..core.config import settings
 

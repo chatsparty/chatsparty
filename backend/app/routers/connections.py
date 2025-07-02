@@ -9,7 +9,7 @@ from app.models.chat import (
     ConnectionTestResult
 )
 from app.models.database import User
-from app.services.connection_service import connection_service
+from app.services.connections import connection_service
 from app.core.error_handler import DatabaseErrorHandler
 from .auth import get_current_user_dependency
 from app.core.config import settings
