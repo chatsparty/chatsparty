@@ -65,7 +65,7 @@ class ConnectionService:
                 connection_responses = [ConnectionResponse(**conn.to_dict()) for conn in connections]
                 
                 # Add virtual default connection if enabled
-                from ...core.config import settings
+                from app.core.config import settings
                 if settings.chatsparty_default_enabled:
                     default_connection = self._create_virtual_default_connection()
                     connection_responses.insert(0, default_connection)
@@ -79,7 +79,7 @@ class ConnectionService:
     
     def get_connection(self, connection_id: str, user_id: str = None) -> Optional[ConnectionResponse]:
         """Get a specific connection."""
-        from ...core.config import settings
+        from app.core.config import settings
         
         # Handle virtual default connection
         if connection_id == "chatsparty-default" and settings.chatsparty_default_enabled:
@@ -206,7 +206,7 @@ class ConnectionService:
                 connection_responses = [ConnectionResponse(**conn.to_dict()) for conn in connections]
                 
                 # Add virtual default connection if enabled
-                from ...core.config import settings
+                from app.core.config import settings
                 if settings.chatsparty_default_enabled:
                     default_connection = self._create_virtual_default_connection()
                     connection_responses.insert(0, default_connection)
@@ -236,7 +236,7 @@ class ConnectionService:
     
     def _create_virtual_default_connection(self) -> ConnectionResponse:
         """Create a virtual default ChatsParty connection."""
-        from ...core.config import settings
+        from app.core.config import settings
         
         return ConnectionResponse(
             id="chatsparty-default",
@@ -254,7 +254,7 @@ class ConnectionService:
     
     def create_default_connections_for_user(self, user_id: str):
         """Create default connections for a new user."""
-        from ...core.config import settings
+        from app.core.config import settings
         
         default_connections = []
         

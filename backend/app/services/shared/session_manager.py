@@ -11,6 +11,20 @@ class SessionManager:
     
     @staticmethod
     @contextmanager
+    def create_session():
+        """Create a database session with proper management"""
+        session = db_manager.sync_session_maker()
+        try:
+            yield session
+            session.commit()
+        except SQLAlchemyError:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+    
+    @staticmethod
+    @contextmanager
     def get_agent_repository():
         """Get an agent repository with proper session management"""
         from ..agents.repositories import DatabaseAgentRepository
