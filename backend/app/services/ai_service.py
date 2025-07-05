@@ -78,8 +78,7 @@ class AIServiceFacade(AIServiceInterface):
             agent_service = AgentService(agent_repo)
             return agent_service.create_agent(
                 name, prompt, characteristics, user_id, gender, 
-                model_config, chat_style, connection_id, voice_config, 
-                None, None
+                model_config, chat_style, connection_id, voice_config
             )
 
     def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:

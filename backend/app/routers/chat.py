@@ -102,9 +102,7 @@ async def create_agent(
             model_config_dict,
             chat_style_dict,
             agent_request.connection_id,
-            voice_config_dict,
-            None,
-            None
+            voice_config_dict
         )
         return AgentResponse(
             agent_id=agent.agent_id,

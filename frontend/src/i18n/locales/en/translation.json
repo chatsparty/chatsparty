@@ -853,7 +853,27 @@
     "cookiesDisabled": "Cookies disabled",
     "javascriptDisabled": "JavaScript disabled",
     "popupsBlocked": "Popups blocked",
-    "adBlockerDetected": "Ad blocker detected"
+    "adBlockerDetected": "Ad blocker detected",
+    "createFailed": "Failed to create agent. Please try again.",
+    "updateFailed": "Failed to update agent. Please try again.",
+    "deleteFailed": "Failed to delete agent. Please try again.",
+    "pleaseCheckFields": "Please check the highlighted fields and try again.",
+    "name": {
+      "tooShort": "Name must be at least {{min}} characters long",
+      "tooLong": "Name must be no more than {{max}} characters long",
+      "invalidCharacters": "Name can only contain letters, numbers, spaces, hyphens, and underscores"
+    },
+    "characteristics": {
+      "tooShort": "Characteristics must be at least {{min}} characters long",
+      "tooLong": "Characteristics must be no more than {{max}} characters long"
+    },
+    "connection": {
+      "notFound": "Selected connection not found",
+      "inactive": "Selected connection is not active"
+    },
+    "voice": {
+      "connectionRequired": "Voice connection is required when voice is enabled"
+    }
   },
   "success": {
     "generic": "Operation successful",
