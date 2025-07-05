@@ -40,10 +40,19 @@ interface FormData {
   voice_config?: AgentVoiceConfig;
 }
 
+interface FormErrors {
+  name?: string;
+  characteristics?: string;
+  gender?: string;
+  connection_id?: string;
+  voice_config?: string;
+}
+
 interface AgentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   formData: FormData;
+  formErrors: FormErrors;
   editingAgent: Agent | null;
   isLoading: boolean;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -54,6 +63,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
   open,
   onOpenChange,
   formData,
+  formErrors,
   editingAgent,
   isLoading,
   onInputChange,
@@ -146,8 +156,11 @@ const AgentModal: React.FC<AgentModalProps> = ({
                   onChange={onInputChange}
                   placeholder={t("agents.namePlaceholder")}
                   required
-                  className="mt-1"
+                  className={`mt-1 ${formErrors.name ? 'border-red-500 focus:border-red-500' : ''}`}
                 />
+                {formErrors.name && (
+                  <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>
+                )}
               </div>
 
               <div>
@@ -161,9 +174,12 @@ const AgentModal: React.FC<AgentModalProps> = ({
                   onChange={onInputChange}
                   rows={3}
                   placeholder={t("agents.characteristicsPlaceholder")}
-                  className="resize-none mt-1"
+                  className={`resize-none mt-1 ${formErrors.characteristics ? 'border-red-500 focus:border-red-500' : ''}`}
                   required
                 />
+                {formErrors.characteristics && (
+                  <p className="text-sm text-red-500 mt-1">{formErrors.characteristics}</p>
+                )}
               </div>
 
               <div>
@@ -179,7 +195,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
                     onInputChange(event);
                   }}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className={`mt-1 ${formErrors.gender ? 'border-red-500 focus:border-red-500' : ''}`}>
                     <SelectValue placeholder={t("agents.selectGender")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -188,9 +204,13 @@ const AgentModal: React.FC<AgentModalProps> = ({
                     <SelectItem value="neutral">{t("agents.neutral")}</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("agents.genderDescription")}
-                </p>
+                {formErrors.gender ? (
+                  <p className="text-sm text-red-500 mt-1">{formErrors.gender}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("agents.genderDescription")}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -202,7 +222,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
                   onValueChange={handleConnectionChange}
                   disabled={connectionsLoading}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className={`mt-1 ${formErrors.connection_id ? 'border-red-500 focus:border-red-500' : ''}`}>
                     <SelectValue placeholder={t("agents.selectModelConnection")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -215,6 +235,9 @@ const AgentModal: React.FC<AgentModalProps> = ({
                     <SelectItem value="add-new">{t("agents.addNewConnection")}</SelectItem>
                   </SelectContent>
                 </Select>
+                {formErrors.connection_id && (
+                  <p className="text-sm text-red-500 mt-1">{formErrors.connection_id}</p>
+                )}
               </div>
             </div>
 
@@ -247,7 +270,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
                         onValueChange={handleVoiceConnectionChange}
                         disabled={voiceConnectionsLoading}
                       >
-                        <SelectTrigger className="mt-1">
+                        <SelectTrigger className={`mt-1 ${formErrors.voice_config ? 'border-red-500 focus:border-red-500' : ''}`}>
                           <SelectValue placeholder={t("agents.selectVoiceConnection")} />
                         </SelectTrigger>
                         <SelectContent>
@@ -260,12 +283,26 @@ const AgentModal: React.FC<AgentModalProps> = ({
                           <SelectItem value="add-new">{t("agents.addVoiceConnection")}</SelectItem>
                         </SelectContent>
                       </Select>
+                      {formErrors.voice_config && (
+                        <p className="text-sm text-red-500 mt-1">{formErrors.voice_config}</p>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
             </div>
           </div>
+
+          {Object.keys(formErrors).length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+              <p className="text-sm text-red-700 font-medium">
+                {t('errors.invalidInput')}
+              </p>
+              <p className="text-xs text-red-600 mt-1">
+                {t('errors.pleaseCheckFields')}
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button

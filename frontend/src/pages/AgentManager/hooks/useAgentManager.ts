@@ -1,206 +1,100 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useTracking } from '../../../hooks/useTracking';
+import { useEffect, useCallback } from 'react';
 import { useConnections } from '../../../hooks/useConnections';
-import type { AgentVoiceConfig } from '@/types/voice';
-
-interface Agent {
-  agent_id: string;
-  name: string;
-  characteristics?: string;
-  gender?: string;
-  connection_id?: string;
-  voice_config?: AgentVoiceConfig;
-}
-
-interface FormData {
-  name: string;
-  characteristics: string;
-  gender: string;
-  connection_id: string;
-  voice_config?: AgentVoiceConfig;
-}
+import { useAgentValidation, type FormData } from './useAgentValidation';
+import { useAgentForm } from './useAgentForm';
+import { useAgentApi } from './useAgentApi';
+import { useDeleteConfirmation } from './useDeleteConfirmation';
 
 export const useAgentManager = () => {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
-  const { trackAgentCreated, trackAgentUpdated, trackAgentDeleted, trackError } = useTracking();
   const { connections } = useConnections();
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    characteristics: '',
-    gender: 'neutral',
-    connection_id: '',
-    voice_config: {
-      voice_enabled: false,
-      voice_connection_id: undefined
-    }
-  });
-
-  const fetchAgents = async () => {
-    try {
-      const response = await axios.get('/chat/agents');
-      setAgents(response.data);
-    } catch (error) {
-      console.error('Failed to fetch agents:', error);
-    }
-  };
+  const { agents, isLoading, fetchAgents, createAgent, updateAgent, deleteAgent } = useAgentApi();
+  const {
+    formData,
+    editingAgent,
+    isModalOpen,
+    handleInputChange,
+    openCreateModal,
+    openEditModal,
+    closeModal,
+    isEditing
+  } = useAgentForm(connections);
+  const { errors, validateForm, validateFieldRealtime, clearErrors } = useAgentValidation(connections);
+  const {
+    isOpen: deleteModalOpen,
+    agentToDelete,
+    openConfirmation: openDeleteConfirmation,
+    closeConfirmation: closeDeleteConfirmation,
+    confirmDelete
+  } = useDeleteConfirmation();
 
   useEffect(() => {
     fetchAgents();
-  }, []);
+  }, [fetchAgents]);
 
-  const handleCreateAgent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    console.log("Saving agent with formData:", formData);
-    console.log("Voice config being sent:", formData.voice_config);
-    
-    try {
-      const payload = {
-        name: formData.name,
-        characteristics: formData.characteristics,
-        gender: formData.gender,
-        connection_id: formData.connection_id,
-        voice_config: formData.voice_config
-      };
-      
-      console.log("Full payload:", payload);
-      
-      if (editingAgent) {
-        await axios.put(`/chat/agents/${editingAgent.agent_id}`, payload);
-      } else {
-        await axios.post('/chat/agents', payload);
-      }
-      
-      const connection = connections.find(conn => conn.id === formData.connection_id);
-      
-      if (editingAgent) {
-        trackAgentUpdated(editingAgent.agent_id, formData.name);
-      } else {
-        trackAgentCreated({
-          agent_name: formData.name,
-          agent_type: 'simple',
-          provider: connection?.provider || 'unknown',
-          model_name: connection?.model_name || 'unknown',
-          chat_style_friendliness: 'friendly',
-          chat_style_response_length: 'medium',
-          chat_style_personality: 'balanced',
-          chat_style_humor: 'light',
-          chat_style_expertise_level: 'expert'
-        });
-      }
-      
-      await fetchAgents();
-      resetForm();
-    } catch (error) {
-      console.error('Failed to create agent:', error);
-      trackError('agent_creation_error', error instanceof Error ? error.message : 'Unknown error', 'agent_manager');
-      alert('Failed to create agent. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleEditAgent = (agent: Agent) => {
-    setEditingAgent(agent);
-    setFormData({
-      name: agent.name,
-      characteristics: agent.characteristics || '',
-      gender: agent.gender || 'neutral',
-      connection_id: agent.connection_id || '',
-      voice_config: agent.voice_config || {
-        voice_enabled: false,
-        voice_connection_id: undefined
-      }
-    });
-    setShowCreateForm(true);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any) => {
+  const handleInputChangeWithValidation = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any) => {
     const { name, value } = e.target;
+    handleInputChange(e);
     
-    // Handle voice_config updates specially
-    if (name === 'voice_config') {
-      setFormData({
-        ...formData,
-        voice_config: value
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+    setTimeout(() => {
+      validateFieldRealtime(name as keyof FormData, value);
+    }, 300);
+  }, [handleInputChange, validateFieldRealtime]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm(formData)) {
+      return;
     }
-  };
 
-  const resetForm = () => {
-    setShowCreateForm(false);
-    setEditingAgent(null);
-    setFormData({
-      name: '',
-      characteristics: '',
-      gender: 'neutral',
-      connection_id: '',
-      voice_config: {
-        voice_enabled: false,
-        voice_connection_id: undefined
-      }
-    });
-  };
+    const success = isEditing
+      ? await updateAgent(editingAgent!.agent_id, formData)
+      : await createAgent(formData);
 
-  const handleDeleteAgent = (agentId: string) => {
+    if (success) {
+      closeModal();
+      clearErrors();
+    }
+  }, [validateForm, formData, isEditing, updateAgent, editingAgent, createAgent, closeModal, clearErrors]);
+
+  const handleDeleteByAgentId = useCallback((agentId: string) => {
     const agent = agents.find(a => a.agent_id === agentId);
     if (agent) {
-      setAgentToDelete(agent);
-      setDeleteModalOpen(true);
+      openDeleteConfirmation(agent);
     }
-  };
+  }, [agents, openDeleteConfirmation]);
 
-  const confirmDeleteAgent = async () => {
-    if (!agentToDelete) return;
-    
-    setIsLoading(true);
-    try {
-      await axios.delete(`/chat/agents/${agentToDelete.agent_id}`);
-      trackAgentDeleted(agentToDelete.agent_id, agentToDelete.name);
-      await fetchAgents();
-      setDeleteModalOpen(false);
-      setAgentToDelete(null);
-    } catch (error) {
-      console.error('Failed to delete agent:', error);
-      trackError('agent_deletion_error', error instanceof Error ? error.message : 'Unknown error', 'agent_manager');
-      alert('Failed to delete agent. Please try again.');
-    } finally {
-      setIsLoading(false);
+  const handleDeleteConfirm = useCallback(() => {
+    return confirmDelete(deleteAgent);
+  }, [confirmDelete, deleteAgent]);
+
+  const handleModalClose = useCallback((open: boolean) => {
+    if (!open) {
+      closeModal();
+      clearErrors();
     }
-  };
-
-  const cancelDeleteAgent = () => {
-    setDeleteModalOpen(false);
-    setAgentToDelete(null);
-  };
+  }, [closeModal, clearErrors]);
 
   return {
     agents,
     isLoading,
-    showCreateForm,
-    editingAgent,
     formData,
+    formErrors: errors,
+    editingAgent,
+    
+    showCreateForm: isModalOpen,
     deleteModalOpen,
     agentToDelete,
-    setShowCreateForm,
-    handleCreateAgent,
-    handleEditAgent,
-    handleInputChange,
-    resetForm,
-    handleDeleteAgent,
-    confirmDeleteAgent,
-    cancelDeleteAgent
+    
+    setShowCreateForm: (open: boolean) => open ? openCreateModal() : closeModal(),
+    handleCreateAgent: handleSubmit,
+    handleEditAgent: openEditModal,
+    handleInputChange: handleInputChangeWithValidation,
+    resetForm: () => { closeModal(); clearErrors(); },
+    handleDeleteAgent: handleDeleteByAgentId,
+    confirmDeleteAgent: handleDeleteConfirm,
+    cancelDeleteAgent: closeDeleteConfirmation,
+    
+    onModalOpenChange: handleModalClose
   };
 };
