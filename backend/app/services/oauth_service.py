@@ -4,7 +4,7 @@ from typing import Optional
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.config import settings
 from ..models.database import User

@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlmodel import select
+from sqlmodel import Session
 
 from ....models.database import Project as ProjectModel
 from ...ai.infrastructure.base_repository import BaseRepository
@@ -124,7 +124,7 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         # Update VM fields
         db_project.vm_container_id = vm_info.get('container_id')
         db_project.vm_url = vm_info.get('vm_url')
-        db_project.vm_config = vm_info.get('vm_config', {})
+        db_project.vm_configuration = vm_info.get('vm_config', {})
         db_project.last_vm_activity = datetime.now()
         db_project.updated_at = datetime.now()
 
@@ -190,7 +190,7 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         
         db_project.vm_container_id = sandbox_id
         db_project.vm_status = vm_status
-        db_project.vm_config = vm_config
+        db_project.vm_configuration = vm_config
         db_project.last_vm_activity = datetime.now()
         db_project.updated_at = datetime.now()
 
@@ -232,7 +232,7 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
             user_id=db_project.user_id,
             vm_container_id=db_project.vm_container_id,
             vm_status=db_project.vm_status,
-            vm_config=db_project.vm_config,
+            vm_configuration=db_project.vm_configuration,
             vm_url=db_project.vm_url,
             storage_mount_path=db_project.storage_mount_path,
             storage_config=db_project.storage_config,

@@ -20,11 +20,17 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
     
+    # Google Vertex AI Configuration
+    google_cloud_project: Optional[str] = None
+    vertex_ai_location: str = "us-central1"
+    google_application_credentials: Optional[str] = None
+    
     # CORS and development settings
     cors_allow_all_origins: bool = True  # Set to False in production
     development_mode: bool = True  # Set to False in production
     
     chatsparty_default_enabled: bool = True
+    chatsparty_default_provider: str = "vertex_ai"  # Can be: chatsparty, vertex_ai, gemini, etc.
     chatsparty_default_model: str = "gemini-2.5-flash"
     chatsparty_default_api_key: Optional[str] = None
     chatsparty_default_base_url: Optional[str] = None

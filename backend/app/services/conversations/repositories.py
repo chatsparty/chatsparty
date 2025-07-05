@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session, selectinload
+from sqlmodel import Session, select
 
 from ..ai_core.entities import Message
 from ..ai_core.interfaces import ConversationRepositoryInterface
@@ -27,8 +27,8 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
     
     def create_conversation(self, conversation_id: str, user_id: str, is_shared: bool = False) -> List[Message]:
         # Check if conversation already exists
-        existing = self.db_session.query(ConversationModel).filter(
-            ConversationModel.id == conversation_id
+        existing = self.db_session.exec(
+            select(ConversationModel).where(ConversationModel.id == conversation_id)
         ).first()
         
         if not existing:
@@ -45,26 +45,31 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
     
     def get_conversation(self, conversation_id: str, user_id: str = None) -> List[Message]:
         try:
-            query = (
-                self.db_session.query(ConversationModel)
-                .options(selectinload(ConversationModel.messages))
-                .filter(ConversationModel.id == conversation_id)
-            )
+            # First get the conversation to check permissions
+            stmt = select(ConversationModel).where(ConversationModel.id == conversation_id)
             
             if user_id:
-                query = query.filter(
+                stmt = stmt.where(
                     (ConversationModel.user_id == user_id) | 
                     (ConversationModel.is_shared == True)
                 )
             
-            db_conversation = query.first()
+            db_conversation = self.db_session.exec(stmt).first()
+            
+            if not db_conversation:
+                return []
+            
+            # Then get all messages for this conversation
+            messages_stmt = select(MessageModel).where(
+                MessageModel.conversation_id == conversation_id
+            ).order_by(MessageModel.created_at)
+            
+            messages = self.db_session.exec(messages_stmt).all()
+            
         except Exception as e:
             # If session is in a bad state, try to recover
             self.db_session.rollback()
             raise e
-        
-        if not db_conversation:
-            return []
         
         return [
             Message(
@@ -74,7 +79,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 agent_id=msg.agent_id,
                 speaker=msg.speaker
             )
-            for msg in db_conversation.messages
+            for msg in messages
         ]
     
     def add_message(self, conversation_id: str, message: Message) -> None:
@@ -95,30 +100,67 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             raise e
     
     def clear_conversation(self, conversation_id: str) -> None:
-        self.db_session.query(MessageModel).filter(
-            MessageModel.conversation_id == conversation_id
-        ).delete()
+        # Get all messages to delete
+        messages = self.db_session.exec(
+            select(MessageModel).where(MessageModel.conversation_id == conversation_id)
+        ).all()
+        
+        # Delete each message
+        for msg in messages:
+            self.db_session.delete(msg)
+        
         # Commit the deletion
         self.db_session.commit()
     
     def get_all_conversations(self, user_id: str = None) -> List[dict]:
         """Get all conversations from database with their messages"""
-        query = (
-            self.db_session.query(ConversationModel)
-            .options(selectinload(ConversationModel.messages))
-        )
-        
+        # Get all conversations
+        conv_stmt = select(ConversationModel)
         if user_id:
-            query = query.filter(ConversationModel.user_id == user_id)
+            conv_stmt = conv_stmt.where(ConversationModel.user_id == user_id)
         
-        db_conversations = query.all()
+        db_conversations = self.db_session.exec(conv_stmt).all()
+        
+        # Get all messages for these conversations in one query
+        conversation_ids = [conv.id for conv in db_conversations]
+        if not conversation_ids:
+            return []
+        
+        messages_stmt = select(MessageModel).where(
+            MessageModel.conversation_id.in_(conversation_ids)
+        ).order_by(MessageModel.conversation_id, MessageModel.created_at)
+        
+        all_messages = self.db_session.exec(messages_stmt).all()
+        
+        # Group messages by conversation_id
+        messages_by_conv = {}
+        for msg in all_messages:
+            if msg.conversation_id not in messages_by_conv:
+                messages_by_conv[msg.conversation_id] = []
+            messages_by_conv[msg.conversation_id].append(msg)
+        
+        # Get all unique agent IDs for batch loading
+        agent_ids_to_load = set()
+        for msgs in messages_by_conv.values():
+            for msg in msgs:
+                if msg.agent_id and not msg.speaker:
+                    agent_ids_to_load.add(msg.agent_id)
+        
+        # Load all agents in one query
+        agents_map = {}
+        if agent_ids_to_load:
+            from ...models.database import Agent as AgentModel
+            agents_stmt = select(AgentModel).where(AgentModel.id.in_(list(agent_ids_to_load)))
+            agents = self.db_session.exec(agents_stmt).all()
+            agents_map = {agent.id: agent.name for agent in agents}
         
         conversations = []
         for conv in db_conversations:
             agent_ids = set()
             messages = []
             
-            for msg in conv.messages:
+            conv_messages = messages_by_conv.get(conv.id, [])
+            for msg in conv_messages:
                 if msg.role == "assistant" and msg.agent_id:
                     agent_ids.add(msg.agent_id)
                 
@@ -127,9 +169,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                     if msg.role == "user":
                         speaker_name = "user"
                     elif msg.agent_id:
-                        from ...models.database import Agent as AgentModel
-                        agent = self.db_session.query(AgentModel).filter(AgentModel.id == msg.agent_id).first()
-                        speaker_name = agent.name if agent else msg.agent_id
+                        speaker_name = agents_map.get(msg.agent_id, msg.agent_id)
                     else:
                         speaker_name = "assistant"
                 
@@ -156,27 +196,45 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
     
     def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> dict:
         """Get a specific conversation by ID, including shared conversations"""
-        query = (
-            self.db_session.query(ConversationModel)
-            .options(selectinload(ConversationModel.messages))
-            .filter(ConversationModel.id == conversation_id)
-        )
+        # Get the conversation
+        conv_stmt = select(ConversationModel).where(ConversationModel.id == conversation_id)
         
         if user_id:
-            query = query.filter(
+            conv_stmt = conv_stmt.where(
                 (ConversationModel.user_id == user_id) | 
                 (ConversationModel.is_shared == True)
             )
         
-        conv = query.first()
+        conv = self.db_session.exec(conv_stmt).first()
         
         if not conv:
             return None
         
+        # Get all messages for this conversation
+        messages_stmt = select(MessageModel).where(
+            MessageModel.conversation_id == conversation_id
+        ).order_by(MessageModel.created_at)
+        
+        conv_messages = self.db_session.exec(messages_stmt).all()
+        
+        # Get unique agent IDs that need names
+        agent_ids_to_load = set()
+        for msg in conv_messages:
+            if msg.agent_id and not msg.speaker:
+                agent_ids_to_load.add(msg.agent_id)
+        
+        # Load all agents in one query
+        agents_map = {}
+        if agent_ids_to_load:
+            from ...models.database import Agent as AgentModel
+            agents_stmt = select(AgentModel).where(AgentModel.id.in_(list(agent_ids_to_load)))
+            agents = self.db_session.exec(agents_stmt).all()
+            agents_map = {agent.id: agent.name for agent in agents}
+        
         agent_ids = set()
         messages = []
         
-        for msg in conv.messages:
+        for msg in conv_messages:
             if msg.role == "assistant" and msg.agent_id:
                 agent_ids.add(msg.agent_id)
             
@@ -185,9 +243,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 if msg.role == "user":
                     speaker_name = "user"
                 elif msg.agent_id:
-                    from ...models.database import Agent as AgentModel
-                    agent = self.db_session.query(AgentModel).filter(AgentModel.id == msg.agent_id).first()
-                    speaker_name = agent.name if agent else msg.agent_id
+                    speaker_name = agents_map.get(msg.agent_id, msg.agent_id)
                 else:
                     speaker_name = "assistant"
             
@@ -213,12 +269,11 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
     
     def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
         """Update the sharing status of a conversation"""
-        conversation = (
-            self.db_session.query(ConversationModel)
-            .filter(ConversationModel.id == conversation_id)
-            .filter(ConversationModel.user_id == user_id)
-            .first()
-        )
+        conversation = self.db_session.exec(
+            select(ConversationModel)
+            .where(ConversationModel.id == conversation_id)
+            .where(ConversationModel.user_id == user_id)
+        ).first()
         
         if not conversation:
             return False
@@ -229,19 +284,23 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
     
     def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
         """Delete a conversation and all its messages"""
-        conversation = (
-            self.db_session.query(ConversationModel)
-            .filter(ConversationModel.id == conversation_id)
-            .filter(ConversationModel.user_id == user_id)
-            .first()
-        )
+        conversation = self.db_session.exec(
+            select(ConversationModel)
+            .where(ConversationModel.id == conversation_id)
+            .where(ConversationModel.user_id == user_id)
+        ).first()
         
         if not conversation:
             return False
         
-        self.db_session.query(MessageModel).filter(
-            MessageModel.conversation_id == conversation_id
-        ).delete()
+        # Get all messages to delete
+        messages = self.db_session.exec(
+            select(MessageModel).where(MessageModel.conversation_id == conversation_id)
+        ).all()
+        
+        # Delete each message
+        for msg in messages:
+            self.db_session.delete(msg)
         
         self.db_session.delete(conversation)
         self.db_session.commit()

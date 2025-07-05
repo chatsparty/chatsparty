@@ -39,7 +39,7 @@ class AgentService:
             name=name,
             prompt=prompt,
             characteristics=characteristics,
-            model_config=model_configuration,
+            ai_config=model_configuration,
             chat_style=chat_style_obj,
             connection_id=connection_id or "default",
             gender=gender,
@@ -100,10 +100,10 @@ class AgentService:
             "gender": getattr(agent, 'gender', 'neutral'),
             "connection_id": agent.connection_id,
             "model_configuration": {
-                "provider": agent.model_config.provider,
-                "model_name": agent.model_config.model_name,
-                "api_key": agent.model_config.api_key,
-                "base_url": agent.model_config.base_url
+                "provider": agent.ai_config.provider,
+                "model_name": agent.ai_config.model_name,
+                "api_key": agent.ai_config.api_key,
+                "base_url": agent.ai_config.base_url
             },
             "chat_style": {
                 "friendliness": agent.chat_style.friendliness,

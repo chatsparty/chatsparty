@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 
 from .....models.database import Connection as ConnectionModel
 from ....shared.base_repository import BaseRepository

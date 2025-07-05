@@ -1,422 +1,359 @@
 from datetime import datetime
 from typing import List, Optional
-
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
-
-from ..core.database import Base
+from sqlmodel import Field, SQLModel, Relationship, Column
+from sqlalchemy import DateTime, func, Text, JSON
 
 
-class User(Base):
+class User(SQLModel, table=True):
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    email: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, index=True)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    first_name: Mapped[Optional[str]] = mapped_column(
-        String(100), nullable=True)
-    last_name: Mapped[Optional[str]] = mapped_column(
-        String(100), nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    id: str = Field(primary_key=True)
+    email: str = Field(max_length=255, sa_column_kwargs={"unique": True, "nullable": False, "index": True})
+    hashed_password: str = Field(max_length=255)
+    first_name: Optional[str] = Field(max_length=100, default=None)
+    last_name: Optional[str] = Field(max_length=100, default=None)
+    is_active: bool = Field(default=True)
+    is_verified: bool = Field(default=False)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))
 
     # Credit system fields
-    credits_balance: Mapped[int] = mapped_column(Integer, default=10000)
-    credits_used: Mapped[int] = mapped_column(Integer, default=0)
-    credits_purchased: Mapped[int] = mapped_column(Integer, default=0)
-    credit_plan: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    last_credit_refill_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True)
+    credits_balance: int = Field(default=10000)
+    credits_used: int = Field(default=0)
+    credits_purchased: int = Field(default=0)
+    credit_plan: Optional[str] = Field(max_length=50, default=None)
+    last_credit_refill_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True), default=None)
 
     # Relationships
-    agents: Mapped[List["Agent"]] = relationship(
-        "Agent", back_populates="user")
-    conversations: Mapped[List["Conversation"]] = relationship(
-        "Conversation", back_populates="user")
-    connections: Mapped[List["Connection"]] = relationship(
-        "Connection", back_populates="user")
-    voice_connections: Mapped[List["VoiceConnection"]] = relationship(
-        "VoiceConnection", back_populates="user")
-    projects: Mapped[List["Project"]] = relationship(
-        "Project", back_populates="user")
+    agents: List["Agent"] = Relationship(back_populates="user")
+    conversations: List["Conversation"] = Relationship(back_populates="user")
+    connections: List["Connection"] = Relationship(back_populates="user")
+    voice_connections: List["VoiceConnection"] = Relationship(back_populates="user")
+    projects: List["Project"] = Relationship(back_populates="user")
 
 
-class Agent(Base):
+class Agent(SQLModel, table=True):
     __tablename__ = "agents"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    prompt: Mapped[str] = mapped_column(Text, nullable=False)
-    characteristics: Mapped[str] = mapped_column(Text, nullable=False)
-    connection_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    id: str = Field(primary_key=True)
+    name: str = Field(max_length=255)
+    prompt: str = Field(sa_column=Column(Text, nullable=False))
+    characteristics: str = Field(sa_column=Column(Text, nullable=False))
+    connection_id: str = Field(max_length=255)
 
-    # Model configuration as JSON
-    model_config: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # Model configuration as JSON - renamed to avoid conflict
+    ai_config: dict = Field(sa_column=Column(JSON, nullable=False))
 
     # Chat style as JSON
-    chat_style: Mapped[dict] = mapped_column(JSON, nullable=False)
+    chat_style: dict = Field(sa_column=Column(JSON, nullable=False))
     
     # Gender for voice assignment ('male', 'female', 'neutral')
-    gender: Mapped[str] = mapped_column(String(20), default='neutral', nullable=False)
+    gender: str = Field(max_length=20, default='neutral')
 
     # Voice configuration
-    voice_connection_id: Mapped[Optional[str]] = mapped_column(
-        String, ForeignKey("voice_connections.id"), nullable=True)
-    voice_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    podcast_settings: Mapped[Optional[dict]
-                             ] = mapped_column(JSON, nullable=True)
+    voice_connection_id: Optional[str] = Field(foreign_key="voice_connections.id", default=None)
+    voice_enabled: bool = Field(default=False)
+    podcast_settings: Optional[dict] = Field(sa_column=Column(JSON, nullable=True), default=None)
 
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))
 
     # User relationship
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id"), nullable=False)
+    user_id: str = Field(foreign_key="users.id")
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="agents")
-    voice_connection: Mapped[Optional["VoiceConnection"]] = relationship(
-        "VoiceConnection", back_populates="agents")
-    conversations: Mapped[List["Conversation"]] = relationship(
-        "Conversation", back_populates="agent")
-    messages: Mapped[List["Message"]] = relationship(
-        "Message", back_populates="agent")
+    user: "User" = Relationship(back_populates="agents")
+    voice_connection: Optional["VoiceConnection"] = Relationship(back_populates="agents")
+    conversations: List["Conversation"] = Relationship(back_populates="agent")
+    messages: List["Message"] = Relationship(back_populates="agent")
 
 
-class Conversation(Base):
+class Conversation(SQLModel, table=True):
     __tablename__ = "conversations"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    agent_id: Mapped[Optional[str]] = mapped_column(
-        String, ForeignKey("agents.id"), nullable=True)
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id"), nullable=False)
-    project_id: Mapped[Optional[str]] = mapped_column(
-        String, ForeignKey("projects.id"), nullable=True)
-    participants: Mapped[List[str]] = mapped_column(JSON, nullable=False)
-    is_shared: Mapped[bool] = mapped_column(Boolean, default=False)
+    id: str = Field(primary_key=True)
+    agent_id: Optional[str] = Field(foreign_key="agents.id", default=None)
+    user_id: str = Field(foreign_key="users.id")
+    project_id: Optional[str] = Field(foreign_key="projects.id", default=None)
+    participants: List[str] = Field(sa_column=Column(JSON, nullable=False))
+    is_shared: bool = Field(default=False)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))
 
     # Relationships
-    agent: Mapped[Optional["Agent"]] = relationship(
-        "Agent", back_populates="conversations")
-    user: Mapped["User"] = relationship("User", back_populates="conversations")
-    project: Mapped[Optional["Project"]] = relationship(
-        "Project", back_populates="conversations")
-    messages: Mapped[List["Message"]] = relationship(
-        "Message", back_populates="conversation", cascade="all, delete-orphan")
+    agent: Optional["Agent"] = Relationship(back_populates="conversations")
+    user: "User" = Relationship(back_populates="conversations")
+    project: Optional["Project"] = Relationship(back_populates="conversations")
+    messages: List["Message"] = Relationship(
+        back_populates="conversation", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 
-class Message(Base):
+class Message(SQLModel, table=True):
     __tablename__ = "messages"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True)
-    conversation_id: Mapped[str] = mapped_column(
-        String, ForeignKey("conversations.id"), nullable=False)
-    agent_id: Mapped[Optional[str]] = mapped_column(
-        String, ForeignKey("agents.id"), nullable=True)
+    id: Optional[int] = Field(primary_key=True, default=None)
+    conversation_id: str = Field(foreign_key="conversations.id")
+    agent_id: Optional[str] = Field(foreign_key="agents.id", default=None)
 
-    role: Mapped[str] = mapped_column(String(50), nullable=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    speaker: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    message_type: Mapped[str] = mapped_column(String(50), default="message")
+    role: str = Field(max_length=50)
+    content: str = Field(sa_column=Column(Text, nullable=False))
+    speaker: Optional[str] = Field(max_length=255, default=None)
+    message_type: str = Field(max_length=50, default="message")
     
     # Detected language code (e.g., 'en', 'es', 'fr')
-    language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    language: Optional[str] = Field(max_length=10, default=None)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now())
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()))
 
     # Relationships
-    conversation: Mapped["Conversation"] = relationship(
-        "Conversation", back_populates="messages")
-    agent: Mapped[Optional["Agent"]] = relationship(
-        "Agent", back_populates="messages")
+    conversation: "Conversation" = Relationship(back_populates="messages")
+    agent: Optional["Agent"] = Relationship(back_populates="messages")
 
 
-class Connection(Base):
+class Connection(SQLModel, table=True):
     __tablename__ = "connections"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    provider: Mapped[str] = mapped_column(String(100), nullable=False)
-    model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    api_key: Mapped[Optional[str]] = mapped_column(
-        String(1000), nullable=True)
-    api_key_encrypted: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False)
-    base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # Indicates if this is a default platform connection
-
+    id: str = Field(primary_key=True)
+    name: str = Field(max_length=255)
+    description: Optional[str] = Field(sa_column=Column(Text, nullable=True), default=None)
+    provider: str = Field(max_length=100)
+    model_name: str = Field(max_length=255)
+    api_key: Optional[str] = Field(max_length=1000, default=None)
+    api_key_encrypted: bool = Field(default=False)
+    base_url: Optional[str] = Field(max_length=500, default=None)
+    is_active: bool = Field(default=True)
+    is_default: bool = Field(default=False)  # Indicates if this is a default platform connection
 
     # User relationship
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id"), nullable=False)
+    user_id: str = Field(foreign_key="users.id")
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="connections")
+    user: "User" = Relationship(back_populates="connections")
 
 
-class VoiceConnection(Base):
+class VoiceConnection(SQLModel, table=True):
     __tablename__ = "voice_connections"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    id: str = Field(primary_key=True)
+    name: str = Field(max_length=255)
+    description: Optional[str] = Field(sa_column=Column(Text, nullable=True), default=None)
     # 'elevenlabs', 'openai', 'google', etc.
-    provider: Mapped[str] = mapped_column(String(100), nullable=False)
-    provider_type: Mapped[str] = mapped_column(
-        String(50), nullable=False)  # 'tts', 'stt', 'both'
+    provider: str = Field(max_length=100)
+    provider_type: str = Field(max_length=50)  # 'tts', 'stt', 'both'
 
     # Voice settings
-    voice_id: Mapped[Optional[str]] = mapped_column(
-        String(255), nullable=True)
-    speed: Mapped[float] = mapped_column(Float, default=1.0)
-    pitch: Mapped[float] = mapped_column(Float, default=1.0)
-    stability: Mapped[float] = mapped_column(Float, default=0.75)
-    clarity: Mapped[float] = mapped_column(Float, default=0.8)
+    voice_id: Optional[str] = Field(max_length=255, default=None)
+    speed: float = Field(default=1.0)
+    pitch: float = Field(default=1.0)
+    stability: float = Field(default=0.75)
+    clarity: float = Field(default=0.8)
     # conversational, podcast, professional
-    style: Mapped[str] = mapped_column(String(100), default='conversational')
+    style: str = Field(max_length=100, default='conversational')
 
     # Authentication & Configuration
-    api_key: Mapped[Optional[str]] = mapped_column(
-        String(1000), nullable=True)
-    api_key_encrypted: Mapped[bool] = mapped_column(Boolean, default=False)
-    base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_cloud_proxy: Mapped[bool] = mapped_column(
-        Boolean, default=False)  # for ChatsParty cloud
+    api_key: Optional[str] = Field(max_length=1000, default=None)
+    api_key_encrypted: bool = Field(default=False)
+    base_url: Optional[str] = Field(max_length=500, default=None)
+    is_active: bool = Field(default=True)
+    is_cloud_proxy: bool = Field(default=False)  # for ChatsParty cloud
 
     # User relationship
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id"), nullable=False)
+    user_id: str = Field(foreign_key="users.id")
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))
 
     # Relationships
-    user: Mapped["User"] = relationship(
-        "User", back_populates="voice_connections")
-    agents: Mapped[List["Agent"]] = relationship(
-        "Agent", back_populates="voice_connection")
+    user: "User" = Relationship(back_populates="voice_connections")
+    agents: List["Agent"] = Relationship(back_populates="voice_connection")
 
 
-class PodcastJob(Base):
+class PodcastJob(SQLModel, table=True):
     __tablename__ = "podcast_jobs"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    conversation_id: Mapped[str] = mapped_column(
-        String, ForeignKey("conversations.id"), nullable=False)
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id"), nullable=False)
+    id: str = Field(primary_key=True)
+    conversation_id: str = Field(foreign_key="conversations.id")
+    user_id: str = Field(foreign_key="users.id")
 
     # Job status and tracking
     # queued, processing, completed, failed
-    status: Mapped[str] = mapped_column(String(50), default='queued')
-    audio_path: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True)
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: str = Field(max_length=50, default='queued')
+    audio_path: Optional[str] = Field(max_length=500, default=None)
+    error_message: Optional[str] = Field(sa_column=Column(Text, nullable=True), default=None)
 
     # Job metadata
-    total_messages: Mapped[Optional[int]] = mapped_column(
-        Integer, nullable=True)
-    processed_messages: Mapped[Optional[int]
-                               ] = mapped_column(Integer, default=0)
-    duration_seconds: Mapped[Optional[float]
-                             ] = mapped_column(Float, nullable=True)
-    file_size_bytes: Mapped[Optional[int]
-                            ] = mapped_column(Integer, nullable=True)
+    total_messages: Optional[int] = Field(default=None)
+    processed_messages: Optional[int] = Field(default=0)
+    duration_seconds: Optional[float] = Field(default=None)
+    file_size_bytes: Optional[int] = Field(default=None)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now())
-    completed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    completed_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True), default=None)
 
     # Relationships
-    conversation: Mapped["Conversation"] = relationship("Conversation")
-    user: Mapped["User"] = relationship("User")
+    conversation: "Conversation" = Relationship()
+    user: "User" = Relationship()
 
 
-class Project(Base):
+class Project(SQLModel, table=True):
     __tablename__ = "projects"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    id: str = Field(primary_key=True)
+    name: str = Field(max_length=255)
+    description: Optional[str] = Field(sa_column=Column(Text, nullable=True), default=None)
 
     # VM Integration
-    vm_container_id: Mapped[Optional[str]] = mapped_column(
-        String(255), nullable=True)
+    vm_container_id: Optional[str] = Field(max_length=255, default=None)
     # inactive, starting, active, error, stopped
-    vm_status: Mapped[str] = mapped_column(String(50), default='inactive')
-    vm_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    vm_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    vm_status: str = Field(max_length=50, default='inactive')
+    vm_configuration: Optional[dict] = Field(sa_column=Column(JSON, nullable=True), default=None)
+    vm_url: Optional[str] = Field(max_length=500, default=None)
 
     # Storage & Files
-    storage_mount_path: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True)
-    storage_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    storage_mount_path: Optional[str] = Field(max_length=500, default=None)
+    storage_config: Optional[dict] = Field(sa_column=Column(JSON, nullable=True), default=None)
 
     # Project settings
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    auto_sync_files: Mapped[bool] = mapped_column(Boolean, default=True)
-    instructions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: bool = Field(default=True)
+    auto_sync_files: bool = Field(default=True)
+    instructions: Optional[str] = Field(sa_column=Column(Text, nullable=True), default=None)
 
     # User relationship
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id"), nullable=False)
+    user_id: str = Field(foreign_key="users.id")
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_vm_activity: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow))
+    last_vm_activity: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True), default=None)
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="projects")
-    project_files: Mapped[List["ProjectFile"]] = relationship(
-        "ProjectFile", back_populates="project", cascade="all, delete-orphan")
-    conversations: Mapped[List["Conversation"]] = relationship(
-        "Conversation", back_populates="project")
-    vm_services: Mapped[List["ProjectVMService"]] = relationship(
-        "ProjectVMService", back_populates="project", cascade="all, delete-orphan")
+    user: "User" = Relationship(back_populates="projects")
+    project_files: List["ProjectFile"] = Relationship(
+        back_populates="project", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    conversations: List["Conversation"] = Relationship(back_populates="project")
+    vm_services: List["ProjectVMService"] = Relationship(
+        back_populates="project", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 
-class ProjectFile(Base):
+class ProjectFile(SQLModel, table=True):
     __tablename__ = "project_files"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    project_id: Mapped[str] = mapped_column(
-        String, ForeignKey("projects.id"), nullable=False)
-    filename: Mapped[str] = mapped_column(String(255), nullable=False)
-    file_path: Mapped[str] = mapped_column(
-        String(500), nullable=False)  # Path in storage
-    vm_path: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True)  # Path in VM
-    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
-    checksum: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    id: str = Field(primary_key=True)
+    project_id: str = Field(foreign_key="projects.id")
+    filename: str = Field(max_length=255)
+    file_path: str = Field(max_length=500)  # Path in storage
+    vm_path: Optional[str] = Field(max_length=500, default=None)  # Path in VM
+    content_type: str = Field(max_length=100)
+    file_size: int = Field()
+    checksum: Optional[str] = Field(max_length=64, default=None)
 
     # File metadata
-    is_synced_to_vm: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_sync_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True)
-    last_modified_in_vm: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True)
+    is_synced_to_vm: bool = Field(default=False)
+    last_sync_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True), default=None)
+    last_modified_in_vm: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True), default=None)
 
     # File permissions and access
-    is_executable: Mapped[bool] = mapped_column(Boolean, default=False)
-    file_permissions: Mapped[Optional[str]] = mapped_column(
-        String(10), nullable=True)  # e.g., "755", "644"
+    is_executable: bool = Field(default=False)
+    file_permissions: Optional[str] = Field(max_length=10, default=None)  # e.g., "755", "644"
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow))
 
     # Relationships
-    project: Mapped["Project"] = relationship(
-        "Project", back_populates="project_files")
+    project: "Project" = Relationship(back_populates="project_files")
 
 
-class ProjectVMService(Base):
+class ProjectVMService(SQLModel, table=True):
     __tablename__ = "project_vm_services"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    project_id: Mapped[str] = mapped_column(
-        String, ForeignKey("projects.id"), nullable=False)
+    id: str = Field(primary_key=True)
+    project_id: str = Field(foreign_key="projects.id")
     # e.g., "jupyter", "webapp", "database"
-    service_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    service_type: Mapped[str] = mapped_column(
-        String(50), nullable=False)  # e.g., "web", "database", "notebook"
+    service_name: str = Field(max_length=100)
+    service_type: str = Field(max_length=50)  # e.g., "web", "database", "notebook"
 
     # Service configuration
-    port: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    command: Mapped[str] = mapped_column(Text, nullable=False)
-    working_directory: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True)
-    environment_vars: Mapped[Optional[dict]
-                             ] = mapped_column(JSON, nullable=True)
+    port: Optional[int] = Field(default=None)
+    command: str = Field(sa_column=Column(Text, nullable=False))
+    working_directory: Optional[str] = Field(max_length=500, default=None)
+    environment_vars: Optional[dict] = Field(sa_column=Column(JSON, nullable=True), default=None)
 
     # Service status
     # stopped, starting, running, failed
-    status: Mapped[str] = mapped_column(String(20), default='stopped')
-    process_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    service_url: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True)
+    status: str = Field(max_length=20, default='stopped')
+    process_id: Optional[int] = Field(default=None)
+    service_url: Optional[str] = Field(max_length=500, default=None)
 
     # Service metadata
-    auto_start: Mapped[bool] = mapped_column(Boolean, default=False)
-    restart_policy: Mapped[str] = mapped_column(
-        String(20), default='no')  # no, always, on-failure
+    auto_start: bool = Field(default=False)
+    restart_policy: str = Field(max_length=20, default='no')  # no, always, on-failure
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_started_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow))
+    last_started_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True), default=None)
 
     # Relationships
-    project: Mapped["Project"] = relationship(
-        "Project", back_populates="vm_services")
+    project: "Project" = Relationship(back_populates="vm_services")
 
 
-class CreditTransaction(Base):
+class CreditTransaction(SQLModel, table=True):
     __tablename__ = "credit_transactions"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
-    amount: Mapped[int] = mapped_column(Integer, nullable=False)
-    transaction_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    reason: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    transaction_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    balance_after: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+    id: str = Field(primary_key=True)
+    user_id: str = Field(foreign_key="users.id", sa_column_kwargs={"index": True})
+    amount: int = Field()
+    transaction_type: str = Field(max_length=20)
+    reason: str = Field(max_length=100)
+    description: Optional[str] = Field(sa_column=Column(Text, nullable=True), default=None)
+    transaction_metadata: Optional[dict] = Field(sa_column=Column(JSON, nullable=True), default=None)
+    balance_after: int = Field()
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True))
 
     # Relationships
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: "User" = Relationship()
 
 
-class ModelCreditCost(Base):
+class ModelCreditCost(SQLModel, table=True):
     __tablename__ = "model_credit_costs"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    provider: Mapped[str] = mapped_column(String(100), nullable=False)
-    model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    cost_per_message: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    cost_per_1k_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    is_default_model: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    id: str = Field(primary_key=True)
+    provider: str = Field(max_length=100)
+    model_name: str = Field(max_length=255)
+    cost_per_message: int = Field(default=1)
+    cost_per_1k_tokens: Optional[int] = Field(default=None)
+    is_default_model: bool = Field(default=False)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now()))
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()))

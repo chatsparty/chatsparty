@@ -6,7 +6,7 @@ import logging
 from typing import Dict
 
 from fastapi import Depends
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 
 from ...core.database import get_sync_db_session
 from ...services.vm_factory import get_vm_service
@@ -26,7 +26,7 @@ def project_to_dict(project) -> Dict:
         "user_id": project.user_id,
         "vm_container_id": project.vm_container_id,
         "vm_status": project.vm_status,
-        "vm_config": project.vm_config,
+        "vm_config": project.vm_configuration,
         "vm_url": project.vm_url,
         "storage_mount_path": project.storage_mount_path,
         "storage_config": project.storage_config,

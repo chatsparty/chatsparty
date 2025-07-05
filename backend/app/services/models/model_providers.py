@@ -1,7 +1,7 @@
 from typing import List, Optional
 from ..ai_core.entities import Message, ModelConfiguration
 from ..ai_core.interfaces import ModelProviderInterface
-from .unified_model_service import get_initialized_unified_model_service
+from .langchain_model_service import get_initialized_langchain_model_service
 from ...core.config import settings
 from ...models.credit import CreditConsumptionRequest, CreditConsumptionReason
 from ...middleware.credit_middleware import get_credit_service
@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 
 class UnifiedModelProvider(ModelProviderInterface):
     def __init__(self):
-        self._unified_service = None
+        self._langchain_service = None
     
     async def _get_service(self):
-        """Get or initialize the unified service"""
-        if self._unified_service is None:
-            self._unified_service = await get_initialized_unified_model_service()
-        return self._unified_service
+        """Get or initialize the LangChain service"""
+        if self._langchain_service is None:
+            self._langchain_service = await get_initialized_langchain_model_service()
+        return self._langchain_service
     
     async def chat_completion(
         self, 
@@ -53,14 +53,18 @@ class UnifiedModelProvider(ModelProviderInterface):
                 except InsufficientCreditsError as e:
                     return f"I'm sorry, but you don't have enough credits to continue this conversation. {str(e.detail)}"
             
-            unified_service = await self._get_service()
+            langchain_service = await self._get_service()
             
-            message_dicts = [
-                {"role": msg.role, "content": msg.content} 
-                for msg in messages
-            ]
+            message_dicts = []
+            for msg in messages:
+                content = msg.content
+                # Add speaker information in a way that doesn't trigger pattern completion
+                if msg.role == "assistant" and hasattr(msg, 'speaker') and msg.speaker:
+                    content = f"{msg.speaker} said: {msg.content}"
+                
+                message_dicts.append({"role": msg.role, "content": content})
             
-            return await unified_service.chat_completion(
+            return await langchain_service.chat_completion(
                 messages=message_dicts,
                 system_prompt=system_prompt or "",
                 provider=model_config.provider,

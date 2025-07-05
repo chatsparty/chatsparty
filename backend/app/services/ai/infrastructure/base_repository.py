@@ -1,5 +1,5 @@
 from abc import ABC
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 

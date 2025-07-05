@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 from fastapi import HTTPException, status
 
 from ..models.database import User

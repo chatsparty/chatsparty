@@ -12,8 +12,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...core.config import settings
 from ...core.database import get_db_session

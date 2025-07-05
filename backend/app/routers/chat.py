@@ -18,7 +18,7 @@ from ..models.chat import (
 )
 from ..models.database import User
 from ..services.ai_service import AIServiceFacade, get_ai_service
-from ..services.models import get_initialized_unified_model_service
+from ..services.models import get_initialized_langchain_model_service
 from ..services.connections import connection_service
 from ..services.websocket_service import websocket_service
 from ..core.config import settings
@@ -170,7 +170,7 @@ async def update_agent(
             prompt=agent_request.prompt,
             characteristics=agent_request.characteristics,
             gender=agent_request.gender,
-            model_config=model_config_dict,
+            ai_config=model_config_dict,
             chat_style=chat_style_dict,
             connection_id=agent_request.connection_id,
             voice_config=voice_config_dict,
@@ -470,7 +470,7 @@ async def list_available_models():
 async def get_available_providers():
     """Get all available AI providers and their models"""
     try:
-        unified_service = await get_initialized_unified_model_service()
+        unified_service = await get_initialized_langchain_model_service()
         providers = unified_service.get_available_providers()
         return {"providers": providers}
     except Exception as e:
@@ -481,7 +481,7 @@ async def get_available_providers():
 async def get_provider_models(provider: str):
     """Get available models for a specific provider"""
     try:
-        unified_service = await get_initialized_unified_model_service()
+        unified_service = await get_initialized_langchain_model_service()
         models = unified_service.get_models_for_provider(provider)
         return {"provider": provider, "models": models}
     except Exception as e:

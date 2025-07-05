@@ -7,7 +7,7 @@ from ..services.credit.application.credit_service import CreditService
 from ..services.credit.infrastructure.credit_repository import CreditRepository
 from ..core.database import get_sync_db_session
 from .auth import get_current_user_dependency
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 
 router = APIRouter(prefix="/credits", tags=["credits"])
 

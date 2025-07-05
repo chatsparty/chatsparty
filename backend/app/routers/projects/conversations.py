@@ -8,8 +8,8 @@ from typing import List, Optional
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select, func
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...core.database import get_db_session
 from ...models.database import User, Project, Conversation, Message

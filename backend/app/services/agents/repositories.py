@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 
 from ..ai_core.entities import Agent, ModelConfiguration, ChatStyle, VoiceConfig
 from ..ai_core.interfaces import AgentRepositoryInterface
@@ -59,11 +59,11 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
                 gender=agent.gender,
                 connection_id=agent.connection_id,
                 user_id=user_id,
-                model_config={
-                    "provider": agent.model_config.provider,
-                    "model_name": agent.model_config.model_name,
-                    "api_key": agent.model_config.api_key,
-                    "base_url": agent.model_config.base_url,
+                ai_config={
+                    "provider": agent.ai_config.provider,
+                    "model_name": agent.ai_config.model_name,
+                    "api_key": agent.ai_config.api_key,
+                    "base_url": agent.ai_config.base_url,
                 },
                 chat_style={
                     "friendliness": agent.chat_style.friendliness,
@@ -113,11 +113,11 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
         db_agent.characteristics = agent.characteristics
         db_agent.gender = agent.gender
         db_agent.connection_id = agent.connection_id
-        db_agent.model_config = {
-            "provider": agent.model_config.provider,
-            "model_name": agent.model_config.model_name,
-            "api_key": agent.model_config.api_key,
-            "base_url": agent.model_config.base_url,
+        db_agent.ai_config = {
+            "provider": agent.ai_config.provider,
+            "model_name": agent.ai_config.model_name,
+            "api_key": agent.ai_config.api_key,
+            "base_url": agent.ai_config.base_url,
         }
         db_agent.chat_style = {
             "friendliness": agent.chat_style.friendliness,
@@ -176,10 +176,10 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
     
     def _to_domain_entity(self, db_agent: AgentModel) -> Agent:
         model_config = ModelConfiguration(
-            provider=db_agent.model_config["provider"],
-            model_name=db_agent.model_config["model_name"],
-            api_key=db_agent.model_config.get("api_key"),
-            base_url=db_agent.model_config.get("base_url"),
+            provider=db_agent.ai_config["provider"],
+            model_name=db_agent.ai_config["model_name"],
+            api_key=db_agent.ai_config.get("api_key"),
+            base_url=db_agent.ai_config.get("base_url"),
         )
         
         chat_style = ChatStyle(
@@ -210,7 +210,7 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             name=db_agent.name,
             prompt=db_agent.prompt,
             characteristics=db_agent.characteristics,
-            model_config=model_config,
+            ai_config=model_config,
             chat_style=chat_style,
             connection_id=db_agent.connection_id,
             gender=getattr(db_agent, 'gender', 'neutral'),

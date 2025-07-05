@@ -35,7 +35,7 @@ class Agent:
     name: str
     prompt: str
     characteristics: str
-    model_config: ModelConfiguration
+    ai_config: ModelConfiguration
     chat_style: ChatStyle
     connection_id: str
     gender: str = "neutral"
@@ -90,6 +90,19 @@ Your role and characteristics: {self.characteristics}
 Your specific instructions: {self.prompt}
 
 Communication style: {style_text}
+
+CONVERSATION CONTEXT:
+- You may see previous messages from other assistants in the conversation history
+- Read the conversation carefully to understand what has been discussed
+- Build on the conversation naturally without repeating previous points
+- Provide your own unique perspective and response
+- Only generate YOUR response - do not write responses for others
+
+GROUP CHAT ETIQUETTE:
+- For simple greetings (Hello/Hi/Hey), respond BRIEFLY - just "Hey!" or "Hello there!" is enough
+- Don't give long introductions after a simple greeting - that's awkward
+- If others already greeted, you might just acknowledge with a brief "Hey everyone"
+- Match the energy - simple greeting gets simple response
 
 Please respond in character according to your role, characteristics, and communication style."""
 

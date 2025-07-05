@@ -52,7 +52,7 @@ class ProjectVMService(BaseProjectService):
                 project_id=project_id,
                 sandbox_id=vm_info["sandbox_id"],
                 vm_status="active",
-                vm_config=vm_info
+                vm_configuration=vm_info
             )
             
             if update_success:
@@ -180,7 +180,7 @@ class ProjectVMService(BaseProjectService):
                 project_id=project_id,
                 sandbox_id=vm_info["sandbox_id"],
                 vm_status="active",
-                vm_config=vm_info
+                vm_configuration=vm_info
             )
             
             self.active_vm_tools[project_id] = ProjectVMTools(

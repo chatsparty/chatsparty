@@ -118,7 +118,7 @@ class AIServiceFacade(AIServiceInterface):
                 model_name=model_config.get("model_name", "gemma3:4b"),
                 api_key=model_config.get("api_key"),
                 base_url=model_config.get("base_url")
-            ) if model_config else existing_agent.model_config
+            ) if model_config else existing_agent.ai_config
 
             if chat_style and not isinstance(chat_style, dict):
                 raise TypeError(f"chat_style must be a dict, got {type(chat_style)}")
@@ -146,7 +146,7 @@ class AIServiceFacade(AIServiceInterface):
                 name=name or existing_agent.name,
                 prompt=prompt or existing_agent.prompt,
                 characteristics=characteristics or existing_agent.characteristics,
-                model_config=model_configuration,
+                ai_config=model_configuration,
                 chat_style=chat_style_obj,
                 connection_id=connection_id or existing_agent.connection_id,
                 gender=gender if gender is not None else existing_agent.gender,

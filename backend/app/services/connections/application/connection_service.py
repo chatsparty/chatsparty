@@ -235,14 +235,24 @@ class ConnectionService:
         pass
     
     def _create_virtual_default_connection(self) -> ConnectionResponse:
-        """Create a virtual default ChatsParty connection."""
+        """Create a virtual default connection."""
         from app.core.config import settings
+        
+        # Use configurable provider (defaults to vertex_ai for better rate limits)
+        provider = settings.chatsparty_default_provider
+        provider_name = {
+            "vertex_ai": "Vertex AI",
+            "chatsparty": "ChatsParty",
+            "gemini": "Gemini",
+            "openai": "OpenAI",
+            "anthropic": "Anthropic"
+        }.get(provider, provider.title())
         
         return ConnectionResponse(
             id="chatsparty-default",
-            name="ChatsParty Default",
-            description=f"Default ChatsParty platform connection with {settings.chatsparty_default_model}",
-            provider="chatsparty",
+            name=f"{provider_name} Default",
+            description=f"Default {provider_name} connection with {settings.chatsparty_default_model}",
+            provider=provider,
             model_name=settings.chatsparty_default_model,
             api_key=settings.chatsparty_default_api_key,
             base_url=settings.chatsparty_default_base_url,

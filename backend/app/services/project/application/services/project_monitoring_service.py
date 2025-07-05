@@ -100,7 +100,7 @@ class ProjectMonitoringService(BaseProjectService):
                 project.id, 
                 container_id or "", 
                 actual_vm_status, 
-                project.vm_config or {}
+                project.vm_configuration or {}
             )
             project.vm_status = actual_vm_status
             if container_id != project.vm_container_id:

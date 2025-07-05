@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlmodel import select
+from sqlmodel import Session
 
 from ....models.database import ProjectFile as ProjectFileModel
 from ...ai.infrastructure.base_repository import BaseRepository

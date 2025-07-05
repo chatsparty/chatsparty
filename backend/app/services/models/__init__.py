@@ -2,7 +2,7 @@
 Models Module
 
 This module handles all AI model provider integrations, configurations,
-and model-related services.
+and model-related services using LangChain.
 """
 
 from .model_fetchers import (
@@ -13,7 +13,7 @@ from .model_fetchers import (
 )
 
 from .model_providers import UnifiedModelProvider
-from .unified_model_service import UnifiedModelService, get_initialized_unified_model_service
+from .langchain_model_service import LangChainModelService, get_initialized_langchain_model_service
 
 __all__ = [
     "fetch_openai_models_async",
@@ -21,6 +21,6 @@ __all__ = [
     "fetch_groq_models_async",
     "fetch_openrouter_models_async",
     "UnifiedModelProvider",
-    "UnifiedModelService",
-    "get_initialized_unified_model_service"
+    "LangChainModelService",
+    "get_initialized_langchain_model_service"
 ]

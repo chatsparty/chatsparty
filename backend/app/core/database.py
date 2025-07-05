@@ -1,22 +1,25 @@
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
+from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from contextlib import asynccontextmanager, contextmanager
 from typing import AsyncGenerator, Generator
 
 from .config import settings
 
 
-class Base(DeclarativeBase):
-    pass
-
-
 class DatabaseManager:
     def __init__(self):
+        # Create async engine for SQLModel
         self.async_engine = create_async_engine(
             settings.database_url_computed,
             echo=False,
-            future=True
+            future=True,
+            pool_size=20,
+            max_overflow=10,
+            pool_pre_ping=True,
+            pool_recycle=3600
         )
         self.async_session_maker = async_sessionmaker(
             bind=self.async_engine,
@@ -24,6 +27,7 @@ class DatabaseManager:
             expire_on_commit=False
         )
         
+        # Create sync engine for SQLModel
         sync_url = settings.database_url_computed.replace("+aiosqlite", "").replace("+asyncpg", "")
         
         if "prepared_statement_cache_size" in sync_url:
@@ -33,7 +37,15 @@ class DatabaseManager:
         
         if sync_url.startswith("postgresql://"):
             sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://")
-        self.sync_engine = create_engine(sync_url, echo=False, future=True)
+        
+        self.sync_engine = create_engine(
+            sync_url,
+            echo=False,
+            pool_size=20,
+            max_overflow=10,
+            pool_pre_ping=True,
+            pool_recycle=3600
+        )
         self.sync_session_maker = sessionmaker(
             bind=self.sync_engine,
             class_=Session,
@@ -41,8 +53,9 @@ class DatabaseManager:
         )
     
     async def create_tables(self):
+        # SQLModel uses metadata from SQLModel base
         async with self.async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(SQLModel.metadata.create_all)
     
     async def close(self):
         await self.async_engine.dispose()

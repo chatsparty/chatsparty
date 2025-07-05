@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional, List
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlmodel import Session
+from sqlmodel import select
 
 from ...ai.infrastructure.base_repository import BaseRepository
 from ..domain.interfaces import UserRepositoryInterface
