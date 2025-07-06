@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlmodel import Field, SQLModel, Relationship, Column
-from sqlalchemy import DateTime, func, Text, JSON
+from sqlmodel import Field, SQLModel, Relationship, Column, DateTime, func, Text, JSON
 
 
 class User(SQLModel, table=True):

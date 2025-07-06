@@ -9,7 +9,7 @@ class AgentService:
     def __init__(self, agent_repository: AgentRepositoryInterface):
         self._agent_repository = agent_repository
     
-    def create_agent(
+    async def create_agent(
         self, 
         name: str, 
         prompt: str, 
@@ -46,11 +46,11 @@ class AgentService:
             voice_config=voice_config_obj,
         )
         
-        return self._agent_repository.create_agent(agent, user_id)
+        return await self._agent_repository.create_agent(agent, user_id)
     
-    def list_agents_formatted(self, user_id: str = None) -> List[Dict[str, Any]]:
+    async def list_agents_formatted(self, user_id: str = None) -> List[Dict[str, Any]]:
         """List agents with formatted output for API responses"""
-        agents = self._agent_repository.list_agents(user_id)
+        agents = await self._agent_repository.list_agents(user_id)
         return [self._format_agent_response(agent) for agent in agents]
     
     def _build_model_configuration(self, model_config: Optional[Dict]) -> ModelConfiguration:

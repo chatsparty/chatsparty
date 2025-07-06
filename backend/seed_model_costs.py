@@ -5,11 +5,13 @@ This replaces the previously hardcoded model costs.
 """
 
 import uuid
-from app.core.database import get_sync_db_session
+import asyncio
+from sqlmodel import select
+from app.core.database import db_manager
 from app.models.database import ModelCreditCost
 
 
-def seed_model_costs():
+async def seed_model_costs():
     """Seed the database with default model credit costs"""
     default_costs = [
         {
@@ -46,35 +48,35 @@ def seed_model_costs():
         }
     ]
     
-    db = next(get_sync_db_session())
-    try:
-        for cost_data in default_costs:
-            # Check if this cost entry already exists
-            existing = db.query(ModelCreditCost).filter(
-                ModelCreditCost.provider == cost_data["provider"],
-                ModelCreditCost.model_name == cost_data["model_name"]
-            ).first()
-            
-            if not existing:
-                model_cost = ModelCreditCost(
-                    id=str(uuid.uuid4()),
-                    **cost_data
+    async with db_manager.get_session() as db:
+        try:
+            for cost_data in default_costs:
+                # Check if this cost entry already exists
+                stmt = select(ModelCreditCost).where(
+                    ModelCreditCost.provider == cost_data["provider"],
+                    ModelCreditCost.model_name == cost_data["model_name"]
                 )
-                db.add(model_cost)
-                print(f"Added cost for {cost_data['provider']}:{cost_data['model_name']}")
-            else:
-                print(f"Cost for {cost_data['provider']}:{cost_data['model_name']} already exists")
-        
-        db.commit()
-        print("✅ Model costs seeded successfully")
-        
-    except Exception as e:
-        db.rollback()
-        print(f"❌ Error seeding model costs: {e}")
-        raise
-    finally:
-        db.close()
+                result = await db.exec(stmt)
+                existing = result.first()
+                
+                if not existing:
+                    model_cost = ModelCreditCost(
+                        id=str(uuid.uuid4()),
+                        **cost_data
+                    )
+                    db.add(model_cost)
+                    print(f"Added cost for {cost_data['provider']}:{cost_data['model_name']}")
+                else:
+                    print(f"Cost for {cost_data['provider']}:{cost_data['model_name']} already exists")
+            
+            await db.commit()
+            print("✅ Model costs seeded successfully")
+            
+        except Exception as e:
+            await db.rollback()
+            print(f"❌ Error seeding model costs: {e}")
+            raise
 
 
 if __name__ == "__main__":
-    seed_model_costs()
+    asyncio.run(seed_model_costs())

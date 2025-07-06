@@ -33,7 +33,6 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         )
 
         self.session.add(db_project)
-        self.session.commit()
         self.session.refresh(db_project)
 
         return self._to_entity(db_project)
@@ -90,7 +89,6 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
 
         db_project.updated_at = datetime.now()
 
-        self.session.commit()
         self.session.refresh(db_project)
 
         return self._to_entity(db_project)
@@ -108,7 +106,6 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
             return False
 
         self.session.delete(db_project)
-        self.session.commit()
 
         return True
 
@@ -127,8 +124,6 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         db_project.vm_configuration = vm_info.get('vm_config', {})
         db_project.last_vm_activity = datetime.now()
         db_project.updated_at = datetime.now()
-
-        self.session.commit()
 
         return True
 
@@ -152,14 +147,8 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         db_project.last_vm_activity = datetime.now()
         db_project.updated_at = datetime.now()
 
-        try:
-            self.session.commit()
-            logger.info(f"[REPO] ✅ VM status updated successfully: {old_status} -> {status}")
-            return True
-        except Exception as e:
-            logger.error(f"[REPO] ❌ Failed to commit VM status update: {e}")
-            self.session.rollback()
-            return False
+        logger.info(f"[REPO] ✅ VM status updated successfully: {old_status} -> {status}")
+        return True
 
     def update_vm_info_detailed(
         self,
@@ -194,16 +183,10 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         db_project.last_vm_activity = datetime.now()
         db_project.updated_at = datetime.now()
 
-        try:
-            self.session.commit()
-            logger.info(f"[REPO] ✅ Detailed VM info updated successfully")
-            logger.info(f"[REPO] Container: {old_container_id} -> {sandbox_id}")
-            logger.info(f"[REPO] Status: {old_status} -> {vm_status}")
-            return True
-        except Exception as e:
-            logger.error(f"[REPO] ❌ Failed to commit detailed VM info update: {e}")
-            self.session.rollback()
-            return False
+        logger.info(f"[REPO] ✅ Detailed VM info updated successfully")
+        logger.info(f"[REPO] Container: {old_container_id} -> {sandbox_id}")
+        logger.info(f"[REPO] Status: {old_status} -> {vm_status}")
+        return True
 
     def update_vm_status_secondary(self, project_id: str, status: str) -> bool:
         """Update VM status (secondary method)"""
@@ -220,7 +203,6 @@ class ProjectRepository(BaseRepository, ProjectRepositoryInterface):
         db_project.last_vm_activity = datetime.now()
         db_project.updated_at = datetime.now()
 
-        self.session.commit()
         return True
 
     def _to_entity(self, db_project: ProjectModel) -> Project:

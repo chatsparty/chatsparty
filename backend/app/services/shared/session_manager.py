@@ -1,8 +1,7 @@
 """
 Session management utilities for handling database sessions properly
 """
-from contextlib import contextmanager
-from sqlalchemy.exc import SQLAlchemyError
+from contextlib import asynccontextmanager
 from ...core.database import db_manager
 
 
@@ -10,49 +9,28 @@ class SessionManager:
     """Manages database sessions for repositories"""
     
     @staticmethod
-    @contextmanager
-    def create_session():
+    @asynccontextmanager
+    async def create_session():
         """Create a database session with proper management"""
-        session = db_manager.sync_session_maker()
-        try:
+        async with db_manager.get_session() as session:
             yield session
-            session.commit()
-        except SQLAlchemyError:
-            session.rollback()
-            raise
-        finally:
-            session.close()
     
     @staticmethod
-    @contextmanager
-    def get_agent_repository():
+    @asynccontextmanager
+    async def get_agent_repository():
         """Get an agent repository with proper session management"""
         from ..agents.repositories import DatabaseAgentRepository
         
-        session = db_manager.sync_session_maker()
-        repository = DatabaseAgentRepository(session)
-        try:
+        async with db_manager.get_session() as session:
+            repository = DatabaseAgentRepository(session)
             yield repository
-            session.commit()
-        except SQLAlchemyError:
-            session.rollback()
-            raise
-        finally:
-            session.close()
     
     @staticmethod
-    @contextmanager
-    def get_conversation_repository():
+    @asynccontextmanager
+    async def get_conversation_repository():
         """Get a conversation repository with proper session management"""
         from ..conversations.repositories import DatabaseConversationRepository
         
-        session = db_manager.sync_session_maker()
-        repository = DatabaseConversationRepository(session)
-        try:
+        async with db_manager.get_session() as session:
+            repository = DatabaseConversationRepository(session)
             yield repository
-            session.commit()
-        except SQLAlchemyError:
-            session.rollback()
-            raise
-        finally:
-            session.close()

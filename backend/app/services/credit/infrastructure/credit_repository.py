@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional
-from sqlmodel import Session
-from sqlalchemy import desc
+from sqlmodel import select, col, desc
+from sqlmodel.ext.asyncio.session import AsyncSession
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,12 +14,14 @@ from ..domain.interfaces import CreditRepositoryInterface
 class CreditRepository(CreditRepositoryInterface):
     """SQLAlchemy implementation of credit repository"""
     
-    def __init__(self, db_session: Session):
+    def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
     
     async def get_user_balance(self, user_id: str) -> Optional[CreditBalance]:
         """Get user's current credit balance"""
-        user = self.db_session.query(User).filter(User.id == user_id).first()
+        stmt = select(User).where(User.id == user_id)
+        result = await self.db_session.exec(stmt)
+        user = result.first()
         if not user:
             return None
             
@@ -41,7 +43,9 @@ class CreditRepository(CreditRepositoryInterface):
     ) -> bool:
         """Update user's credit balance"""
         try:
-            user = self.db_session.query(User).filter(User.id == user_id).first()
+            stmt = select(User).where(User.id == user_id)
+            result = await self.db_session.exec(stmt)
+            user = result.first()
             if not user:
                 return False
             
@@ -49,12 +53,11 @@ class CreditRepository(CreditRepositoryInterface):
             user.credits_used += credits_used_delta
             user.credits_purchased += credits_purchased_delta
             
-            self.db_session.commit()
+            # Let FastAPI handle commit/rollback
             return True
         except Exception as e:
-            self.db_session.rollback()
             logger.error(f"Error updating user balance: {e}")
-            return False
+            raise
     
     async def create_transaction(self, transaction: CreditTransaction) -> CreditTransaction:
         """Create a new credit transaction record"""
@@ -71,10 +74,9 @@ class CreditRepository(CreditRepositoryInterface):
             )
             
             self.db_session.add(db_transaction)
-            self.db_session.commit()
+            # Let FastAPI handle commit/rollback
             return transaction
         except Exception as e:
-            self.db_session.rollback()
             logger.error(f"Error creating transaction: {e}")
             raise
     
@@ -86,12 +88,13 @@ class CreditRepository(CreditRepositoryInterface):
     ) -> List[CreditTransaction]:
         """Get user's credit transaction history"""
         try:
-            db_transactions = self.db_session.query(CreditTransactionModel)\
-                .filter(CreditTransactionModel.user_id == user_id)\
+            stmt = select(CreditTransactionModel)\
+                .where(CreditTransactionModel.user_id == user_id)\
                 .order_by(desc(CreditTransactionModel.created_at))\
                 .offset(offset)\
-                .limit(limit)\
-                .all()
+                .limit(limit)
+            result = await self.db_session.exec(stmt)
+            db_transactions = result.all()
             
             transactions = []
             for db_tx in db_transactions:

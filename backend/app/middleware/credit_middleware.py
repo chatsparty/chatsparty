@@ -9,24 +9,14 @@ from ..models.database import User
 from ..services.credit.application.credit_service import CreditService, InsufficientCreditsError
 
 
-def get_credit_service() -> CreditService:
+async def get_credit_service() -> CreditService:
     """Dependency to get credit service instance"""
     from ..services.credit.infrastructure.credit_repository import CreditRepository
-    from ..core.database import get_sync_db_session
+    from ..core.database import get_db_session
     
-    def _create_service():
-        db_gen = get_sync_db_session()
-        db = next(db_gen)
-        try:
-            repository = CreditRepository(db)
-            return CreditService(repository)
-        finally:
-            try:
-                next(db_gen)
-            except StopIteration:
-                pass
-    
-    return _create_service()
+    async for db in get_db_session():
+        repository = CreditRepository(db)
+        return CreditService(repository)
 
 
 class CreditCheckDependency:

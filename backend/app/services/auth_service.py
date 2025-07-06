@@ -62,11 +62,13 @@ class AuthService:
             return None
 
     async def get_user_by_email(self, db: AsyncSession, email: str) -> Optional[User]:
-        result = await db.execute(select(User).filter(User.email == email.lower()))
+        stmt = select(User).where(User.email == email.lower())
+        result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_user_by_id(self, db: AsyncSession, user_id: str) -> Optional[User]:
-        result = await db.execute(select(User).filter(User.id == user_id))
+        stmt = select(User).where(User.id == user_id)
+        result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def authenticate_user(self, db: AsyncSession, email: str, password: str) -> Optional[User]:
@@ -100,8 +102,9 @@ class AuthService:
         )
         
         db.add(db_user)
-        await db.commit()
-        await db.refresh(db_user)
+        # Let FastAPI handle commit/rollback
+        # Note: db.refresh() won't work until after commit, 
+        # so we return the object as-is
         return db_user
 
     async def update_user(self, db: AsyncSession, user_id: str, user_update: UserUpdate) -> Optional[User]:
@@ -117,8 +120,8 @@ class AuthService:
         for field, value in update_data.items():
             setattr(user, field, value)
 
-        await db.commit()
-        await db.refresh(user)
+        # Let FastAPI handle commit/rollback
+        db.add(user)  # Ensure the user is tracked
         return user
 
 

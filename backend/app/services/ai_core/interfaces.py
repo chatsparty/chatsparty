@@ -18,53 +18,53 @@ class ModelProviderInterface(ABC):
 
 class AgentRepositoryInterface(ABC):
     @abstractmethod
-    def create_agent(self, agent: Agent, user_id: str) -> Agent:
+    async def create_agent(self, agent: Agent, user_id: str) -> Agent:
         pass
     
     @abstractmethod
-    def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
+    async def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
         pass
     
     @abstractmethod
-    def list_agents(self, user_id: str = None) -> List[Agent]:
+    async def list_agents(self, user_id: str = None) -> List[Agent]:
         pass
     
     @abstractmethod
-    def update_agent(self, agent: Agent) -> Agent:
+    async def update_agent(self, agent: Agent) -> Agent:
         pass
     
     @abstractmethod
-    def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
+    async def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
         pass
 
 
 class ConversationRepositoryInterface(ABC):
     @abstractmethod
-    def create_conversation(self, conversation_id: str, user_id: str, is_shared: bool = False) -> List[Message]:
+    async def create_conversation(self, conversation_id: str, user_id: str, is_shared: bool = False) -> List[Message]:
         pass
     
     @abstractmethod
-    def get_conversation(self, conversation_id: str, user_id: str = None) -> List[Message]:
+    async def get_conversation(self, conversation_id: str, user_id: str = None) -> List[Message]:
         pass
     
     @abstractmethod
-    def add_message(self, conversation_id: str, message: Message) -> None:
+    async def add_message(self, conversation_id: str, message: Message) -> None:
         pass
     
     @abstractmethod
-    def clear_conversation(self, conversation_id: str) -> None:
+    async def clear_conversation(self, conversation_id: str) -> None:
         pass
     
     @abstractmethod
-    def get_all_conversations(self, user_id: str = None) -> List[dict]:
+    async def get_all_conversations(self, user_id: str = None) -> List[dict]:
         pass
     
     @abstractmethod
-    def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> dict:
+    async def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> dict:
         pass
     
     @abstractmethod
-    def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
+    async def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
         pass
 
 

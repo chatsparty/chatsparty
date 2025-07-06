@@ -221,8 +221,9 @@ class OAuthService:
         )
 
         db.add(db_user)
-        await db.commit()
-        await db.refresh(db_user)
+        # Flush to get the ID without committing
+        await db.flush()
+        # Now we can safely return the user
         return db_user
 
 

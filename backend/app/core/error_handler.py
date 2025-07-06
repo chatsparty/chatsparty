@@ -2,7 +2,6 @@
 
 import logging
 from typing import Optional
-from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException, status
 from .config import settings
 
@@ -88,19 +87,24 @@ def safe_db_operation(operation_name: str = "database operation"):
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except SQLAlchemyError as e:
-                raise DatabaseErrorHandler.handle_db_error(e, operation_name)
             except Exception as e:
-                # Handle non-database errors
-                logger.error(f"Unexpected error in {operation_name}: {str(e)}", exc_info=True)
-                if settings.hide_db_errors and not settings.debug_mode:
-                    detail = f"An error occurred during {operation_name}"
+                # Check if it's a database-related error
+                if hasattr(e, '__module__') and 'sqlmodel' in str(e.__module__).lower():
+                    raise DatabaseErrorHandler.handle_db_error(e, operation_name)
+                # For other database errors, check the error message
+                elif any(db_keyword in str(e).lower() for db_keyword in ['database', 'connection', 'transaction', 'sql']):
+                    raise DatabaseErrorHandler.handle_db_error(e, operation_name)
                 else:
-                    detail = f"Unexpected error in {operation_name}: {str(e)}"
-                
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=detail
-                )
+                    # Handle non-database errors
+                    logger.error(f"Unexpected error in {operation_name}: {str(e)}", exc_info=True)
+                    if settings.hide_db_errors and not settings.debug_mode:
+                        detail = f"An error occurred during {operation_name}"
+                    else:
+                        detail = f"Unexpected error in {operation_name}: {str(e)}"
+                    
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=detail
+                    )
         return wrapper
     return decorator

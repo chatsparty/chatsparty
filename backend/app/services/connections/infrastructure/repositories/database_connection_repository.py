@@ -1,8 +1,9 @@
 """Database implementation of connection repository."""
 
 from typing import List, Optional
-from datetime import datetime
-from sqlmodel import Session
+from datetime import datetime, timezone
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from .....models.database import Connection as ConnectionModel
 from ....shared.base_repository import BaseRepository
@@ -15,10 +16,10 @@ from ...domain.value_objects import EncryptedApiKey
 class DatabaseConnectionRepository(BaseRepository, ConnectionRepositoryInterface):
     """Database implementation of connection repository."""
     
-    def __init__(self, db_session: Session):
+    def __init__(self, db_session: AsyncSession):
         super().__init__(db_session)
     
-    def create(self, connection: Connection) -> Connection:
+    async def create(self, connection: Connection) -> Connection:
         """Create a new connection in the database."""
         # Encrypt API key if present
         encrypted_key = EncryptionService.encrypt_api_key(connection.api_key)
@@ -37,53 +38,58 @@ class DatabaseConnectionRepository(BaseRepository, ConnectionRepositoryInterface
         )
         
         self.db_session.add(db_connection)
-        self.db_session.flush()
+        await self.db_session.flush()
         
         return self._to_domain_entity(db_connection)
     
-    def get_by_id(self, connection_id: str, user_id: Optional[str] = None) -> Optional[Connection]:
+    async def get_by_id(self, connection_id: str, user_id: Optional[str] = None) -> Optional[Connection]:
         """Get a connection by ID."""
-        query = self.db_session.query(ConnectionModel).filter(
+        stmt = select(ConnectionModel).where(
             ConnectionModel.id == connection_id
         )
         
         if user_id:
-            query = query.filter(ConnectionModel.user_id == user_id)
+            stmt = stmt.where(ConnectionModel.user_id == user_id)
         
-        db_connection = query.first()
+        result = await self.db_session.exec(stmt)
+        db_connection = result.first()
         
         if not db_connection:
             return None
         
         return self._to_domain_entity(db_connection)
     
-    def get_all(self, user_id: Optional[str] = None) -> List[Connection]:
+    async def get_all(self, user_id: Optional[str] = None) -> List[Connection]:
         """Get all connections."""
-        query = self.db_session.query(ConnectionModel)
+        stmt = select(ConnectionModel)
         
         if user_id:
-            query = query.filter(ConnectionModel.user_id == user_id)
+            stmt = stmt.where(ConnectionModel.user_id == user_id)
         
-        db_connections = query.all()
+        result = await self.db_session.exec(stmt)
+        db_connections = result.all()
         return [self._to_domain_entity(conn) for conn in db_connections]
     
-    def get_active(self, user_id: Optional[str] = None) -> List[Connection]:
+    async def get_active(self, user_id: Optional[str] = None) -> List[Connection]:
         """Get all active connections."""
-        query = self.db_session.query(ConnectionModel).filter(
+        stmt = select(ConnectionModel).where(
             ConnectionModel.is_active == True
         )
         
         if user_id:
-            query = query.filter(ConnectionModel.user_id == user_id)
+            stmt = stmt.where(ConnectionModel.user_id == user_id)
         
-        db_connections = query.all()
+        result = await self.db_session.exec(stmt)
+        db_connections = result.all()
         return [self._to_domain_entity(conn) for conn in db_connections]
     
-    def update(self, connection: Connection) -> Connection:
+    async def update(self, connection: Connection) -> Connection:
         """Update an existing connection."""
-        db_connection = self.db_session.query(ConnectionModel).filter(
+        stmt = select(ConnectionModel).where(
             ConnectionModel.id == connection.id
-        ).first()
+        )
+        result = await self.db_session.exec(stmt)
+        db_connection = result.first()
         
         if not db_connection:
             raise ValueError(f"Connection {connection.id} not found")
@@ -102,32 +108,32 @@ class DatabaseConnectionRepository(BaseRepository, ConnectionRepositoryInterface
             db_connection.api_key = encrypted_key.value
             db_connection.api_key_encrypted = encrypted_key.is_encrypted
         
-        self.db_session.flush()
+        await self.db_session.flush()
         
         return self._to_domain_entity(db_connection)
     
-    def delete(self, connection_id: str, user_id: Optional[str] = None) -> bool:
+    async def delete(self, connection_id: str, user_id: Optional[str] = None) -> bool:
         """Delete a connection."""
-        query = self.db_session.query(ConnectionModel).filter(
+        stmt = select(ConnectionModel).where(
             ConnectionModel.id == connection_id
         )
         
         if user_id:
-            query = query.filter(ConnectionModel.user_id == user_id)
+            stmt = stmt.where(ConnectionModel.user_id == user_id)
         
-        db_connection = query.first()
+        result = await self.db_session.exec(stmt)
+        db_connection = result.first()
         
         if not db_connection:
             return False
         
-        self.db_session.delete(db_connection)
+        await self.db_session.delete(db_connection)
         return True
     
     def _to_domain_entity(self, db_connection: ConnectionModel) -> Connection:
         """Convert database model to domain entity."""
-        # Ensure timestamps are available
-        if not hasattr(db_connection, 'created_at') or db_connection.created_at is None:
-            self.db_session.flush()
+        # Note: Timestamps should already be available from the database
+        # If not, they will use the default values below
         
         # Decrypt API key if needed
         api_key = None
@@ -148,6 +154,6 @@ class DatabaseConnectionRepository(BaseRepository, ConnectionRepositoryInterface
             base_url=db_connection.base_url,
             is_active=db_connection.is_active,
             user_id=db_connection.user_id,
-            created_at=db_connection.created_at or datetime.utcnow(),
-            updated_at=db_connection.updated_at or datetime.utcnow()
+            created_at=db_connection.created_at or datetime.now(timezone.utc),
+            updated_at=db_connection.updated_at or datetime.now(timezone.utc)
         )

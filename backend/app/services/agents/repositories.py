@@ -1,6 +1,7 @@
 from typing import List, Dict, Optional
 from datetime import datetime
-from sqlmodel import Session
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..ai_core.entities import Agent, ModelConfiguration, ChatStyle, VoiceConfig
 from ..ai_core.interfaces import AgentRepositoryInterface
@@ -8,25 +9,25 @@ from ...models.database import Agent as AgentModel, VoiceConnection as VoiceConn
 
 
 class BaseRepository:
-    def __init__(self, db_session: Session):
+    def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    def safe_execute(self, operation):
+    async def safe_execute(self, operation):
         try:
-            result = operation()
-            self.db_session.commit()
+            result = await operation()
+            await self.db_session.commit()
             return result
         except Exception as e:
-            self.db_session.rollback()
+            await self.db_session.rollback()
             raise e
 
 
 class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
-    def __init__(self, db_session: Session):
+    def __init__(self, db_session: AsyncSession):
         super().__init__(db_session)
     
-    def create_agent(self, agent: Agent, user_id: str) -> Agent:
-        def _create():
+    async def create_agent(self, agent: Agent, user_id: str) -> Agent:
+        async def _create():
             voice_connection_id = None
             if (agent.voice_config and 
                 agent.voice_config.voice_enabled and 
@@ -35,11 +36,13 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
                 if agent.voice_config.voice_connection_id == "chatsparty-default-voice":
                     voice_connection_id = agent.voice_config.voice_connection_id
                 else:
-                    voice_conn = self.db_session.query(VoiceConnectionModel).filter(
+                    stmt = select(VoiceConnectionModel).where(
                         VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
                         VoiceConnectionModel.user_id == user_id,
                         VoiceConnectionModel.is_active == True
-                    ).first()
+                    )
+                    result = await self.db_session.exec(stmt)
+                    voice_conn = result.first()
                     
                     if voice_conn:
                         voice_connection_id = agent.voice_config.voice_connection_id
@@ -80,30 +83,34 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             self.db_session.add(db_agent)
             return agent
         
-        return self.safe_execute(_create)
+        return await self.safe_execute(_create)
     
-    def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
-        query = self.db_session.query(AgentModel).filter(AgentModel.id == agent_id)
+    async def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
+        stmt = select(AgentModel).where(AgentModel.id == agent_id)
         if user_id:
-            query = query.filter(AgentModel.user_id == user_id)
+            stmt = stmt.where(AgentModel.user_id == user_id)
         
-        db_agent = query.first()
+        result = await self.db_session.exec(stmt)
+        db_agent = result.first()
         
         if not db_agent:
             return None
         
         return self._to_domain_entity(db_agent)
     
-    def list_agents(self, user_id: str = None) -> List[Agent]:
-        query = self.db_session.query(AgentModel)
+    async def list_agents(self, user_id: str = None) -> List[Agent]:
+        stmt = select(AgentModel)
         if user_id:
-            query = query.filter(AgentModel.user_id == user_id)
+            stmt = stmt.where(AgentModel.user_id == user_id)
         
-        db_agents = query.all()
+        result = await self.db_session.exec(stmt)
+        db_agents = result.all()
         return [self._to_domain_entity(db_agent) for db_agent in db_agents]
     
-    def update_agent(self, agent: Agent) -> Agent:
-        db_agent = self.db_session.query(AgentModel).filter(AgentModel.id == agent.agent_id).first()
+    async def update_agent(self, agent: Agent) -> Agent:
+        stmt = select(AgentModel).where(AgentModel.id == agent.agent_id)
+        result = await self.db_session.exec(stmt)
+        db_agent = result.first()
         
         if not db_agent:
             raise ValueError(f"Agent with id {agent.agent_id} not found")
@@ -135,11 +142,13 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
             if agent.voice_config.voice_connection_id == "chatsparty-default-voice":
                 voice_connection_id = agent.voice_config.voice_connection_id
             else:
-                voice_conn = self.db_session.query(VoiceConnectionModel).filter(
+                stmt = select(VoiceConnectionModel).where(
                     VoiceConnectionModel.id == agent.voice_config.voice_connection_id,
                     VoiceConnectionModel.user_id == db_agent.user_id,
                     VoiceConnectionModel.is_active == True
-                ).first()
+                )
+                result = await self.db_session.exec(stmt)
+                voice_conn = result.first()
                 
                 if voice_conn:
                     voice_connection_id = agent.voice_config.voice_connection_id
@@ -156,22 +165,23 @@ class DatabaseAgentRepository(BaseRepository, AgentRepositoryInterface):
         db_agent.podcast_settings = podcast_settings if podcast_settings else None
         
         
-        self.db_session.commit()
-        self.db_session.refresh(db_agent)
+        # Let FastAPI handle commit/rollback
+        await self.db_session.refresh(db_agent)
         
         return agent
     
-    def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
-        query = self.db_session.query(AgentModel).filter(AgentModel.id == agent_id)
+    async def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
+        stmt = select(AgentModel).where(AgentModel.id == agent_id)
         if user_id:
-            query = query.filter(AgentModel.user_id == user_id)
+            stmt = stmt.where(AgentModel.user_id == user_id)
         
-        db_agent = query.first()
+        result = await self.db_session.exec(stmt)
+        db_agent = result.first()
         
         if not db_agent:
             return False
         
-        self.db_session.delete(db_agent)
+        await self.db_session.delete(db_agent)
         return True
     
     def _to_domain_entity(self, db_agent: AgentModel) -> Agent:

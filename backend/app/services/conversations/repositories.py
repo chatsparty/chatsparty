@@ -1,35 +1,23 @@
 from typing import List, Dict, Optional
 from datetime import datetime
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..ai_core.entities import Message
 from ..ai_core.interfaces import ConversationRepositoryInterface
 from ...models.database import Conversation as ConversationModel, Message as MessageModel
 
 
-class BaseRepository:
-    def __init__(self, db_session: Session):
+class DatabaseConversationRepository(ConversationRepositoryInterface):
+    def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
-
-    def safe_execute(self, operation):
-        try:
-            result = operation()
-            self.db_session.commit()
-            return result
-        except Exception as e:
-            self.db_session.rollback()
-            raise e
-
-
-class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInterface):
-    def __init__(self, db_session: Session):
-        super().__init__(db_session)
     
-    def create_conversation(self, conversation_id: str, user_id: str, is_shared: bool = False) -> List[Message]:
+    async def create_conversation(self, conversation_id: str, user_id: str, is_shared: bool = False) -> List[Message]:
         # Check if conversation already exists
-        existing = self.db_session.exec(
+        result = await self.db_session.exec(
             select(ConversationModel).where(ConversationModel.id == conversation_id)
-        ).first()
+        )
+        existing = result.first()
         
         if not existing:
             db_conversation = ConversationModel(
@@ -39,11 +27,9 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 is_shared=is_shared,
             )
             self.db_session.add(db_conversation)
-            # Commit immediately to ensure conversation is created
-            self.db_session.commit()
         return []
     
-    def get_conversation(self, conversation_id: str, user_id: str = None) -> List[Message]:
+    async def get_conversation(self, conversation_id: str, user_id: str = None) -> List[Message]:
         try:
             # First get the conversation to check permissions
             stmt = select(ConversationModel).where(ConversationModel.id == conversation_id)
@@ -54,7 +40,8 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                     (ConversationModel.is_shared == True)
                 )
             
-            db_conversation = self.db_session.exec(stmt).first()
+            result = await self.db_session.exec(stmt)
+            db_conversation = result.first()
             
             if not db_conversation:
                 return []
@@ -64,11 +51,10 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 MessageModel.conversation_id == conversation_id
             ).order_by(MessageModel.created_at)
             
-            messages = self.db_session.exec(messages_stmt).all()
+            result = await self.db_session.exec(messages_stmt)
+            messages = result.all()
             
         except Exception as e:
-            # If session is in a bad state, try to recover
-            self.db_session.rollback()
             raise e
         
         return [
@@ -82,7 +68,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             for msg in messages
         ]
     
-    def add_message(self, conversation_id: str, message: Message) -> None:
+    async def add_message(self, conversation_id: str, message: Message) -> None:
         try:
             db_message = MessageModel(
                 conversation_id=conversation_id,
@@ -93,33 +79,29 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 speaker=message.speaker,
             )
             self.db_session.add(db_message)
-            # Commit immediately to ensure message persistence
-            self.db_session.commit()
         except Exception as e:
-            self.db_session.rollback()
             raise e
     
-    def clear_conversation(self, conversation_id: str) -> None:
+    async def clear_conversation(self, conversation_id: str) -> None:
         # Get all messages to delete
-        messages = self.db_session.exec(
+        result = await self.db_session.exec(
             select(MessageModel).where(MessageModel.conversation_id == conversation_id)
-        ).all()
+        )
+        messages = result.all()
         
         # Delete each message
         for msg in messages:
-            self.db_session.delete(msg)
-        
-        # Commit the deletion
-        self.db_session.commit()
+            await self.db_session.delete(msg)
     
-    def get_all_conversations(self, user_id: str = None) -> List[dict]:
+    async def get_all_conversations(self, user_id: str = None) -> List[dict]:
         """Get all conversations from database with their messages"""
         # Get all conversations
         conv_stmt = select(ConversationModel)
         if user_id:
             conv_stmt = conv_stmt.where(ConversationModel.user_id == user_id)
         
-        db_conversations = self.db_session.exec(conv_stmt).all()
+        result = await self.db_session.exec(conv_stmt)
+        db_conversations = result.all()
         
         # Get all messages for these conversations in one query
         conversation_ids = [conv.id for conv in db_conversations]
@@ -130,7 +112,8 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             MessageModel.conversation_id.in_(conversation_ids)
         ).order_by(MessageModel.conversation_id, MessageModel.created_at)
         
-        all_messages = self.db_session.exec(messages_stmt).all()
+        result = await self.db_session.exec(messages_stmt)
+        all_messages = result.all()
         
         # Group messages by conversation_id
         messages_by_conv = {}
@@ -151,7 +134,8 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         if agent_ids_to_load:
             from ...models.database import Agent as AgentModel
             agents_stmt = select(AgentModel).where(AgentModel.id.in_(list(agent_ids_to_load)))
-            agents = self.db_session.exec(agents_stmt).all()
+            result = await self.db_session.exec(agents_stmt)
+            agents = result.all()
             agents_map = {agent.id: agent.name for agent in agents}
         
         conversations = []
@@ -194,7 +178,7 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         
         return conversations
     
-    def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> dict:
+    async def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> dict:
         """Get a specific conversation by ID, including shared conversations"""
         # Get the conversation
         conv_stmt = select(ConversationModel).where(ConversationModel.id == conversation_id)
@@ -205,7 +189,8 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
                 (ConversationModel.is_shared == True)
             )
         
-        conv = self.db_session.exec(conv_stmt).first()
+        result = await self.db_session.exec(conv_stmt)
+        conv = result.first()
         
         if not conv:
             return None
@@ -215,7 +200,8 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             MessageModel.conversation_id == conversation_id
         ).order_by(MessageModel.created_at)
         
-        conv_messages = self.db_session.exec(messages_stmt).all()
+        result = await self.db_session.exec(messages_stmt)
+        conv_messages = result.all()
         
         # Get unique agent IDs that need names
         agent_ids_to_load = set()
@@ -228,7 +214,8 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
         if agent_ids_to_load:
             from ...models.database import Agent as AgentModel
             agents_stmt = select(AgentModel).where(AgentModel.id.in_(list(agent_ids_to_load)))
-            agents = self.db_session.exec(agents_stmt).all()
+            result = await self.db_session.exec(agents_stmt)
+            agents = result.all()
             agents_map = {agent.id: agent.name for agent in agents}
         
         agent_ids = set()
@@ -267,43 +254,44 @@ class DatabaseConversationRepository(BaseRepository, ConversationRepositoryInter
             "isActive": False
         }
     
-    def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
+    async def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
         """Update the sharing status of a conversation"""
-        conversation = self.db_session.exec(
+        result = await self.db_session.exec(
             select(ConversationModel)
             .where(ConversationModel.id == conversation_id)
             .where(ConversationModel.user_id == user_id)
-        ).first()
+        )
+        conversation = result.first()
         
         if not conversation:
             return False
         
         conversation.is_shared = is_shared
-        self.db_session.commit()
         return True
     
-    def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
+    async def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
         """Delete a conversation and all its messages"""
-        conversation = self.db_session.exec(
+        result = await self.db_session.exec(
             select(ConversationModel)
             .where(ConversationModel.id == conversation_id)
             .where(ConversationModel.user_id == user_id)
-        ).first()
+        )
+        conversation = result.first()
         
         if not conversation:
             return False
         
         # Get all messages to delete
-        messages = self.db_session.exec(
+        result = await self.db_session.exec(
             select(MessageModel).where(MessageModel.conversation_id == conversation_id)
-        ).all()
+        )
+        messages = result.all()
         
         # Delete each message
         for msg in messages:
-            self.db_session.delete(msg)
+            await self.db_session.delete(msg)
         
-        self.db_session.delete(conversation)
-        self.db_session.commit()
+        await self.db_session.delete(conversation)
         return True
     
     def _clean_message_for_display(self, content: str, role: str) -> str:

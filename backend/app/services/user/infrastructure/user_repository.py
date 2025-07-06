@@ -23,7 +23,6 @@ class UserRepository(BaseRepository, UserRepositoryInterface):
             last_name=user_data.last_name
         )
         self.session.add(db_user)
-        self.session.commit()
         self.session.refresh(db_user)
         return self._to_entity(db_user)
 
@@ -51,7 +50,6 @@ class UserRepository(BaseRepository, UserRepositoryInterface):
         for field, value in update_data.items():
             setattr(db_user, field, value)
 
-        self.session.commit()
         self.session.refresh(db_user)
         return self._to_entity(db_user)
 
@@ -64,7 +62,6 @@ class UserRepository(BaseRepository, UserRepositoryInterface):
             return False
 
         self.session.delete(db_user)
-        self.session.commit()
         return True
 
     async def list_all(self, skip: int = 0, limit: int = 100) -> List[User]:

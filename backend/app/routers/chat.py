@@ -43,7 +43,7 @@ async def consume_credits_for_connection(connection_id: str, user_id: str, reaso
         reason = CreditConsumptionReason.CHAT_MESSAGE
     
     try:
-        connection = connection_service.get_connection(connection_id, user_id)
+        connection = await connection_service.get_connection(connection_id, user_id)
         if not connection:
             return
         
@@ -74,7 +74,7 @@ async def create_agent(
 ):
     """Create an agent using connection_id"""
     try:
-        model_config = connection_service.get_connection_model_config(
+        model_config = await connection_service.get_connection_model_config(
             agent_request.connection_id, current_user.id)
         if not model_config:
             raise HTTPException(
@@ -93,7 +93,7 @@ async def create_agent(
         prompt = agent_request.prompt or f"You are {agent_request.name}, a helpful AI assistant."
         characteristics = agent_request.characteristics or "Friendly, helpful, and knowledgeable assistant."
         
-        agent = ai_service.create_agent(
+        agent = await ai_service.create_agent(
             agent_request.name,
             prompt,
             characteristics,
@@ -127,7 +127,7 @@ async def list_agents(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
-        agents_data = ai_service.list_agents(current_user.id)
+        agents_data = await ai_service.list_agents(current_user.id)
         return [AgentResponse(**agent) for agent in agents_data]
     except Exception as e:
         raise HTTPException(
@@ -143,7 +143,7 @@ async def update_agent(
 ):
     """Update an existing agent"""
     try:
-        model_config = connection_service.get_connection_model_config(
+        model_config = await connection_service.get_connection_model_config(
             agent_request.connection_id, current_user.id)
         if not model_config:
             raise HTTPException(
@@ -164,18 +164,16 @@ async def update_agent(
         logger.info(f"chat_style_dict type: {type(chat_style_dict)}, value: {chat_style_dict}")
         logger.info(f"voice_config_dict type: {type(voice_config_dict)}, value: {voice_config_dict}")
 
-        agent = ai_service.update_agent(
+        agent = await ai_service.update_agent(
             agent_id=agent_id,
             name=agent_request.name,
             prompt=agent_request.prompt,
             characteristics=agent_request.characteristics,
             gender=agent_request.gender,
-            ai_config=model_config_dict,
+            model_config=model_config_dict,
             chat_style=chat_style_dict,
             connection_id=agent_request.connection_id,
-            voice_config=voice_config_dict,
-            mcp_tools=None,
-            mcp_tool_config=None
+            voice_config=voice_config_dict
         )
 
         if not agent:
@@ -209,7 +207,7 @@ async def delete_agent(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
-        success = ai_service.delete_agent(agent_id, current_user.id)
+        success = await ai_service.delete_agent(agent_id, current_user.id)
         if not success:
             raise HTTPException(
                 status_code=404, detail=f"Agent {agent_id} not found")
@@ -228,7 +226,7 @@ async def chat_with_agent(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
-        agent = ai_service.get_agent(chat_request.agent_id, current_user.id)
+        agent = await ai_service.get_agent(chat_request.agent_id, current_user.id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
@@ -313,7 +311,7 @@ async def list_conversations(
 ):
     """Get all conversations from database"""
     try:
-        conversations = ai_service.get_all_conversations(current_user.id)
+        conversations = await ai_service.get_all_conversations(current_user.id)
         return conversations
     except Exception as e:
         raise HTTPException(
@@ -327,7 +325,7 @@ async def get_conversation_by_id(
     ai_service: AIServiceFacade = Depends(get_ai_service)
 ):
     try:
-        conversation = ai_service.get_conversation_by_id(
+        conversation = await ai_service.get_conversation_by_id(
             conversation_id, current_user.id)
         if not conversation:
             raise HTTPException(
@@ -349,7 +347,7 @@ async def update_conversation_sharing(
 ):
     """Update the sharing status of a conversation"""
     try:
-        conversation = ai_service.get_conversation_by_id(
+        conversation = await ai_service.get_conversation_by_id(
             conversation_id, current_user.id)
         if not conversation:
             raise HTTPException(
@@ -359,7 +357,7 @@ async def update_conversation_sharing(
             raise HTTPException(
                 status_code=403, detail="You can only share your own conversations")
 
-        success = ai_service.update_conversation_sharing(
+        success = await ai_service.update_conversation_sharing(
             conversation_id,
             share_request.is_shared,
             current_user.id
@@ -393,7 +391,7 @@ async def delete_conversation(
 ):
     """Delete a conversation and all its messages"""
     try:
-        conversation = ai_service.get_conversation_by_id(
+        conversation = await ai_service.get_conversation_by_id(
             conversation_id, current_user.id)
         if not conversation:
             raise HTTPException(
@@ -403,7 +401,7 @@ async def delete_conversation(
             raise HTTPException(
                 status_code=403, detail="You can only delete your own conversations")
 
-        success = ai_service.delete_conversation(
+        success = await ai_service.delete_conversation(
             conversation_id, current_user.id)
 
         if not success:
@@ -425,7 +423,7 @@ async def get_shared_conversation(
 ):
     """Get a shared conversation (public access, no authentication required)"""
     try:
-        conversation = ai_service.get_conversation_by_id(
+        conversation = await ai_service.get_conversation_by_id(
             conversation_id, user_id=None)
         if not conversation:
             raise HTTPException(

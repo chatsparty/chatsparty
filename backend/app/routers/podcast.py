@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
 import os
 import logging
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.chat import (
     PodcastGenerationRequest,
@@ -12,6 +13,7 @@ from ..models.database import User
 from ..core.error_handler import DatabaseErrorHandler
 from .auth import get_current_user_dependency
 from ..services.podcast.orchestrator import PodcastOrchestrator
+from ..core.database import get_db_session
 
 podcast_service = PodcastOrchestrator()
 
@@ -24,12 +26,13 @@ router = APIRouter(prefix="/podcast", tags=["podcast"])
 async def generate_podcast(
     request: PodcastGenerationRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user_dependency)
+    current_user: User = Depends(get_current_user_dependency),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Generate a podcast from a conversation using BackgroundTasks"""
     logger.info(f"Podcast generation request - User: {current_user.id}, Conversation: {request.conversation_id}")
     try:
-        job_id = podcast_service.create_podcast_job(request, current_user.id)
+        job_id = await podcast_service.create_podcast_job(db, request, current_user.id)
         logger.info(f"Created podcast job {job_id} for conversation {request.conversation_id}")
         
         background_tasks.add_task(
@@ -59,11 +62,12 @@ async def generate_podcast(
 @router.get("/status/{job_id}", response_model=PodcastJobStatus)
 async def get_podcast_status(
     job_id: str,
-    current_user: User = Depends(get_current_user_dependency)
+    current_user: User = Depends(get_current_user_dependency),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Get the status of a podcast generation job"""
     try:
-        job_status = podcast_service.get_job_status(job_id, current_user.id)
+        job_status = await podcast_service.get_job_status(db, job_id, current_user.id)
         
         if not job_status:
             raise HTTPException(
@@ -83,11 +87,12 @@ async def get_podcast_status(
 @router.get("/download/{job_id}")
 async def download_podcast(
     job_id: str,
-    current_user: User = Depends(get_current_user_dependency)
+    current_user: User = Depends(get_current_user_dependency),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Download a completed podcast"""
     try:
-        download_info = podcast_service.get_job_download_info(job_id, current_user.id)
+        download_info = await podcast_service.get_job_download_info(db, job_id, current_user.id)
         
         if not download_info:
             raise HTTPException(
@@ -127,11 +132,12 @@ async def download_podcast(
 @router.delete("/jobs/{job_id}")
 async def delete_podcast_job(
     job_id: str,
-    current_user: User = Depends(get_current_user_dependency)
+    current_user: User = Depends(get_current_user_dependency),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Delete a podcast job and its associated files"""
     try:
-        download_info = podcast_service.get_job_download_info(job_id, current_user.id)
+        download_info = await podcast_service.get_job_download_info(db, job_id, current_user.id)
         
         if download_info and download_info["file_path"]:
             try:
@@ -140,23 +146,25 @@ async def delete_podcast_job(
             except Exception as e:
                 logger.warning(f"Failed to delete audio file: {e}")
         
-        from ..core.database import db_manager
-        with db_manager.get_sync_session() as session:
-            from ..models.database import PodcastJob
-            job = session.query(PodcastJob).filter(
-                PodcastJob.id == job_id,
-                PodcastJob.user_id == current_user.id
-            ).first()
-            
-            if job:
-                session.delete(job)
-                session.commit()
-                return {"message": "Podcast job deleted successfully"}
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Podcast job not found"
-                )
+        from ..models.database import PodcastJob
+        from sqlmodel import select
+        
+        stmt = select(PodcastJob).where(
+            PodcastJob.id == job_id,
+            PodcastJob.user_id == current_user.id
+        )
+        result = await db.exec(stmt)
+        job = result.one_or_none()
+        
+        if job:
+            await db.delete(job)
+            # Let FastAPI handle commit/rollback
+            return {"message": "Podcast job deleted successfully"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Podcast job not found"
+            )
                 
     except HTTPException:
         raise

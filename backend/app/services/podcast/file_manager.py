@@ -3,7 +3,7 @@ import os
 from typing import Optional, Dict, Any
 import logging
 
-from ...core.database import db_manager
+from sqlmodel import Session, select
 from ...models.database import PodcastJob
 
 logger = logging.getLogger(__name__)
@@ -16,24 +16,25 @@ class PodcastFileManager:
         self.storage_path = storage_path
         os.makedirs(self.storage_path, exist_ok=True)
     
-    def get_download_info(self, job_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    def get_download_info(self, session: Session, job_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """Get download information for a completed podcast job."""
-        with db_manager.get_sync_session() as session:
-            job = session.query(PodcastJob).filter(
-                PodcastJob.id == job_id,
-                PodcastJob.user_id == user_id,
-                PodcastJob.status == "completed"
-            ).first()
-            
-            if not job or not job.audio_path or not os.path.exists(job.audio_path):
-                return None
-            
-            return {
-                "file_path": job.audio_path,
-                "file_size_bytes": job.file_size_bytes,
-                "duration_seconds": job.duration_seconds,
-                "filename": f"podcast_{job.conversation_id[:8]}.mp3"
-            }
+        stmt = select(PodcastJob).where(
+            PodcastJob.id == job_id,
+            PodcastJob.user_id == user_id,
+            PodcastJob.status == "completed"
+        )
+        result = session.execute(stmt)
+        job = result.scalar_one_or_none()
+        
+        if not job or not job.audio_path or not os.path.exists(job.audio_path):
+            return None
+        
+        return {
+            "file_path": job.audio_path,
+            "file_size_bytes": job.file_size_bytes,
+            "duration_seconds": job.duration_seconds,
+            "filename": f"podcast_{job.conversation_id[:8]}.mp3"
+        }
     
     def create_debug_directory(self, job_id: str) -> str:
         """Create debug directory for a job."""

@@ -8,6 +8,8 @@ try:
 except ImportError:
     from pydub import AudioSegment
 
+from sqlmodel.ext.asyncio.session import AsyncSession
+from ...core.database import db_manager
 from ...models.chat import PodcastGenerationRequest, PodcastJobStatus
 from ...services.voice_assignment import dynamic_voice_assignment_service
 from .job_manager import PodcastJobManager
@@ -32,17 +34,17 @@ class PodcastOrchestrator:
         self.message_processor = MessageProcessor()
         self.file_manager = PodcastFileManager(self.audio_storage_path)
     
-    def create_podcast_job(self, request: PodcastGenerationRequest, user_id: str) -> str:
+    async def create_podcast_job(self, session: AsyncSession, request: PodcastGenerationRequest, user_id: str) -> str:
         """Create a new podcast generation job."""
-        return self.job_manager.create_job(request, user_id)
+        return await self.job_manager.create_job(session, request, user_id)
     
-    def get_job_status(self, job_id: str, user_id: str) -> Optional[PodcastJobStatus]:
+    async def get_job_status(self, session: AsyncSession, job_id: str, user_id: str) -> Optional[PodcastJobStatus]:
         """Get the status of a podcast generation job."""
-        return self.job_manager.get_job_status(job_id, user_id)
+        return await self.job_manager.get_job_status(session, job_id, user_id)
     
-    def get_job_download_info(self, job_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    async def get_job_download_info(self, session: AsyncSession, job_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """Get download information for a completed podcast job."""
-        return self.file_manager.get_download_info(job_id, user_id)
+        return await self.file_manager.get_download_info(session, job_id, user_id)
     
     async def generate_podcast_background(self, job_id: str, request: PodcastGenerationRequest):
         """Background task to generate podcast."""
@@ -53,15 +55,20 @@ class PodcastOrchestrator:
         debug_dir = self.file_manager.create_debug_directory(job_id)
         
         try:
-            self.job_manager.update_status(job_id, "processing")
+            # Create a new session for the background task
+            async with db_manager.get_session() as session:
+                await self.job_manager.update_status(session, job_id, "processing")
             
-            messages_data = self.message_processor.get_conversation_messages(request.conversation_id)
-            logger.info(f"Found {len(messages_data)} messages for podcast generation")
+            # Get messages in a separate session
+            async with db_manager.get_session() as session:
+                messages_data = await self.message_processor.get_conversation_messages(session, request.conversation_id)
+                logger.info(f"Found {len(messages_data)} messages for podcast generation")
             
             if not messages_data:
                 error_msg = "No messages found in conversation"
                 logger.error(f"Job {job_id}: {error_msg}")
-                self.job_manager.update_status(job_id, "failed", error_msg)
+                async with db_manager.get_session() as session:
+                    await self.job_manager.update_status(session, job_id, "failed", error_msg)
                 return
             
             audio_segments = await self._generate_audio_segments(
@@ -71,7 +78,8 @@ class PodcastOrchestrator:
             if not audio_segments:
                 error_msg = "No audio segments generated"
                 logger.error(f"Job {job_id}: {error_msg}")
-                self.job_manager.update_status(job_id, "failed", error_msg)
+                async with db_manager.get_session() as session:
+                    await self.job_manager.update_status(session, job_id, "failed", error_msg)
                 return
             
             speech_segment_count = sum(1 for i, _ in enumerate(audio_segments) if i % 2 == 0) if len(audio_segments) > 0 else 0
@@ -88,7 +96,8 @@ class PodcastOrchestrator:
             
             logger.info(f"Job {job_id}: Podcast completed - Duration: {duration:.1f}s, Size: {file_size/1024/1024:.1f}MB")
             
-            self.job_manager.complete_job(job_id, output_path, duration, file_size)
+            async with db_manager.get_session() as session:
+                await self.job_manager.complete_job(session, job_id, output_path, duration, file_size)
             
             export_sample_rate = getattr(final_audio, 'frame_rate', 'unknown')
             self.file_manager.create_debug_summary(
@@ -100,7 +109,8 @@ class PodcastOrchestrator:
         except Exception as e:
             error_msg = f"Podcast generation failed: {str(e)}"
             logger.error(f"Job {job_id}: {error_msg}", exc_info=True)
-            self.job_manager.update_status(job_id, "failed", error_msg)
+            async with db_manager.get_session() as session:
+                self.job_manager.update_status(session, job_id, "failed", error_msg)
             
             dynamic_voice_assignment_service.clear_conversation_voices(request.conversation_id)
     
@@ -144,7 +154,8 @@ class PodcastOrchestrator:
                     logger.warning(f"Job {job_id}: No audio generated for message {msg_data['id']}")
                 
                 processed_count += 1
-                self.job_manager.update_progress(job_id, processed_count)
+                async with db_manager.get_session() as session:
+                    await self.job_manager.update_progress(session, job_id, processed_count)
                 
             except Exception as e:
                 failed_messages.append(msg_data['id'])

@@ -147,14 +147,17 @@ class CreditService(CreditServiceInterface):
         """Get the credit cost for a specific model from database or defaults"""
         try:
             from ....models.database import ModelCreditCost as ModelCreditCostDB
-            from ....core.database import get_sync_db_session
+            from ....core.database import db_manager
+            from sqlmodel import select
             
-            with get_sync_db_session() as db:
-                db_cost = db.query(ModelCreditCostDB).filter(
+            async with db_manager.get_session() as db:
+                stmt = select(ModelCreditCostDB).where(
                     ModelCreditCostDB.provider == provider,
                     ModelCreditCostDB.model_name == model_name,
                     ModelCreditCostDB.is_active == True
-                ).first()
+                )
+                result = await db.exec(stmt)
+                db_cost = result.first()
                 
                 if db_cost:
                     return ModelCreditCost(
@@ -165,11 +168,13 @@ class CreditService(CreditServiceInterface):
                         is_default_model=db_cost.is_default_model
                     )
                 
-                db_cost = db.query(ModelCreditCostDB).filter(
+                stmt = select(ModelCreditCostDB).where(
                     ModelCreditCostDB.provider == provider,
                     ModelCreditCostDB.model_name == "*",
                     ModelCreditCostDB.is_active == True
-                ).first()
+                )
+                result = await db.exec(stmt)
+                db_cost = result.first()
                 
                 if db_cost:
                     return ModelCreditCost(

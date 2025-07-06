@@ -40,17 +40,17 @@ class AIServiceFacade(AIServiceInterface):
         self._agent_service = None
         self._chat_service = None
 
-    def _get_agent_service(self) -> AgentService:
+    async def _get_agent_service(self) -> AgentService:
         """Get or create agent service"""
         if self._agent_service is None:
-            with SessionManager.get_agent_repository() as agent_repo:
+            async with SessionManager.get_agent_repository() as agent_repo:
                 self._agent_service = AgentService(agent_repo)
         return self._agent_service
 
-    def _get_chat_service(self) -> ChatService:
+    async def _get_chat_service(self) -> ChatService:
         """Get or create chat service"""
         if self._chat_service is None:
-            with SessionManager.get_agent_repository() as agent_repo, \
+            async with SessionManager.get_agent_repository() as agent_repo, \
                     SessionManager.get_conversation_repository() as conv_repo:
                 self._chat_service = ChatService(
                     self._model_provider,
@@ -61,7 +61,7 @@ class AIServiceFacade(AIServiceInterface):
 
 
 
-    def create_agent(
+    async def create_agent(
         self,
         name: str,
         prompt: str,
@@ -74,25 +74,25 @@ class AIServiceFacade(AIServiceInterface):
         voice_config: dict = None,
     ):
         """Create a new agent"""
-        with SessionManager.get_agent_repository() as agent_repo:
+        async with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
-            return agent_service.create_agent(
+            return await agent_service.create_agent(
                 name, prompt, characteristics, user_id, gender, 
                 model_config, chat_style, connection_id, voice_config
             )
 
-    def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
+    async def get_agent(self, agent_id: str, user_id: str = None) -> Optional[Agent]:
         """Get an agent by ID - direct repository access"""
-        with SessionManager.get_agent_repository() as agent_repo:
-            return agent_repo.get_agent(agent_id, user_id)
+        async with SessionManager.get_agent_repository() as agent_repo:
+            return await agent_repo.get_agent(agent_id, user_id)
 
-    def list_agents(self, user_id: str = None) -> List[Dict[str, Any]]:
+    async def list_agents(self, user_id: str = None) -> List[Dict[str, Any]]:
         """List all agents for a user"""
-        with SessionManager.get_agent_repository() as agent_repo:
+        async with SessionManager.get_agent_repository() as agent_repo:
             agent_service = AgentService(agent_repo)
-            return agent_service.list_agents_formatted(user_id)
+            return await agent_service.list_agents_formatted(user_id)
 
-    def update_agent(
+    async def update_agent(
         self,
         agent_id: str,
         name: str,
@@ -105,8 +105,8 @@ class AIServiceFacade(AIServiceInterface):
         voice_config: dict = None,
     ):
         """Update an existing agent"""
-        with SessionManager.get_agent_repository() as agent_repo:
-            existing_agent = agent_repo.get_agent(agent_id)
+        async with SessionManager.get_agent_repository() as agent_repo:
+            existing_agent = await agent_repo.get_agent(agent_id)
             if not existing_agent:
                 return None
 
@@ -153,12 +153,12 @@ class AIServiceFacade(AIServiceInterface):
                 voice_config=voice_config_obj,
             )
 
-            return agent_repo.update_agent(updated_agent)
+            return await agent_repo.update_agent(updated_agent)
 
-    def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
+    async def delete_agent(self, agent_id: str, user_id: str = None) -> bool:
         """Delete an agent - direct repository access"""
-        with SessionManager.get_agent_repository() as agent_repo:
-            return agent_repo.delete_agent(agent_id, user_id)
+        async with SessionManager.get_agent_repository() as agent_repo:
+            return await agent_repo.delete_agent(agent_id, user_id)
 
     async def agent_chat(
         self,
@@ -169,7 +169,7 @@ class AIServiceFacade(AIServiceInterface):
     ) -> str:
         """Single agent chat"""
         
-        with SessionManager.get_agent_repository() as agent_repo, \
+        async with SessionManager.get_agent_repository() as agent_repo, \
                 SessionManager.get_conversation_repository() as conv_repo:
             chat_service = ChatService(
                 self._model_provider,
@@ -189,7 +189,7 @@ class AIServiceFacade(AIServiceInterface):
         project_id: str = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Streaming multi-agent conversation"""
-        with SessionManager.get_agent_repository() as agent_repo, \
+        async with SessionManager.get_agent_repository() as agent_repo, \
                 SessionManager.get_conversation_repository() as conv_repo:
             chat_service = ChatService(
                 self._model_provider,
@@ -202,30 +202,30 @@ class AIServiceFacade(AIServiceInterface):
             ):
                 yield message
 
-    def get_conversation_history(self, conversation_id: str, user_id: str = None) -> List[Dict[str, Any]]:
+    async def get_conversation_history(self, conversation_id: str, user_id: str = None) -> List[Dict[str, Any]]:
         """Get conversation history"""
-        chat_service = self._get_chat_service()
+        chat_service = await self._get_chat_service()
         return chat_service.get_conversation_history(conversation_id, user_id)
 
-    def get_all_conversations(self, user_id: str = None) -> List[Dict[str, Any]]:
+    async def get_all_conversations(self, user_id: str = None) -> List[Dict[str, Any]]:
         """Get all conversations from database"""
-        with SessionManager.get_conversation_repository() as conv_repo:
-            return conv_repo.get_all_conversations(user_id)
+        async with SessionManager.get_conversation_repository() as conv_repo:
+            return await conv_repo.get_all_conversations(user_id)
 
-    def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> Dict[str, Any]:
+    async def get_conversation_by_id(self, conversation_id: str, user_id: str = None) -> Dict[str, Any]:
         """Get a specific conversation by ID, including shared conversations"""
-        with SessionManager.get_conversation_repository() as conv_repo:
-            return conv_repo.get_conversation_by_id(conversation_id, user_id)
+        async with SessionManager.get_conversation_repository() as conv_repo:
+            return await conv_repo.get_conversation_by_id(conversation_id, user_id)
 
-    def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
+    async def update_conversation_sharing(self, conversation_id: str, is_shared: bool, user_id: str) -> bool:
         """Update the sharing status of a conversation"""
-        with SessionManager.get_conversation_repository() as conv_repo:
-            return conv_repo.update_conversation_sharing(conversation_id, is_shared, user_id)
+        async with SessionManager.get_conversation_repository() as conv_repo:
+            return await conv_repo.update_conversation_sharing(conversation_id, is_shared, user_id)
 
-    def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
+    async def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
         """Delete a conversation and all its messages"""
-        with SessionManager.get_conversation_repository() as conv_repo:
-            return conv_repo.delete_conversation(conversation_id, user_id)
+        async with SessionManager.get_conversation_repository() as conv_repo:
+            return await conv_repo.delete_conversation(conversation_id, user_id)
 
     async def simple_chat(self, message: str, user_id: str = None) -> str:
         """Simple chat without agents for utility purposes like content enhancement"""

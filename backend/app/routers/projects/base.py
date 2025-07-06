@@ -6,9 +6,9 @@ import logging
 from typing import Dict
 
 from fastapi import Depends
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ...core.database import get_sync_db_session
+from ...core.database import get_db_session
 from ...services.vm_factory import get_vm_service
 from ...services.project.application.services import ProjectService
 from ...services.project.infrastructure.project_repository import ProjectRepository
@@ -40,7 +40,7 @@ def project_to_dict(project) -> Dict:
 
 _project_service_instance = None
 
-def get_project_service(db: Session = Depends(get_sync_db_session)) -> ProjectService:
+async def get_project_service(db: AsyncSession = Depends(get_db_session)) -> ProjectService:
     """Dependency injection for project service with singleton pattern"""
     global _project_service_instance
     

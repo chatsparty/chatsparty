@@ -3,7 +3,7 @@
 import uuid
 import time
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.chat import (
     ConnectionCreateRequest, 
@@ -13,11 +13,10 @@ from app.models.chat import (
     ModelConfig
 )
 from app.core.error_handler import DatabaseErrorHandler
-from sqlalchemy.exc import SQLAlchemyError
 
 from ..domain.entities import Connection
 from ..infrastructure.repositories import DatabaseConnectionRepository
-from ...shared.session_manager import SessionManager
+from app.core.database import db_manager
 
 
 class ConnectionService:
@@ -26,7 +25,7 @@ class ConnectionService:
     def __init__(self):
         self._initialize_default_connections()
     
-    def create_connection(self, request: ConnectionCreateRequest, user_id: str) -> ConnectionResponse:
+    async def create_connection(self, request: ConnectionCreateRequest, user_id: str) -> ConnectionResponse:
         """Create a new connection."""
         try:
             connection_id = str(uuid.uuid4())
@@ -44,24 +43,21 @@ class ConnectionService:
                 user_id=user_id,
             )
             
-            with SessionManager.create_session() as session:
+            async with db_manager.get_session() as session:
                 repo = DatabaseConnectionRepository(session)
-                saved_connection = repo.create(connection)
-                repo.commit()
-                
+                saved_connection = await repo.create(connection)
+                # Session auto-commits on successful context exit
                 return ConnectionResponse(**saved_connection.to_dict())
                 
-        except SQLAlchemyError as e:
-            raise DatabaseErrorHandler.handle_db_error(e, "creating connection", "Failed to create connection")
         except Exception as e:
             raise DatabaseErrorHandler.handle_db_error(e, "creating connection", "Failed to create connection")
     
-    def get_connections(self, user_id: str = None) -> List[ConnectionResponse]:
+    async def get_connections(self, user_id: str = None) -> List[ConnectionResponse]:
         """Get all connections."""
         try:
-            with SessionManager.create_session() as session:
+            async with db_manager.get_session() as session:
                 repo = DatabaseConnectionRepository(session)
-                connections = repo.get_all(user_id)
+                connections = await repo.get_all(user_id)
                 connection_responses = [ConnectionResponse(**conn.to_dict()) for conn in connections]
                 
                 # Add virtual default connection if enabled
@@ -72,12 +68,10 @@ class ConnectionService:
                 
                 return connection_responses
                 
-        except SQLAlchemyError as e:
-            raise DatabaseErrorHandler.handle_query_error(e, "connections")
         except Exception as e:
             raise DatabaseErrorHandler.handle_query_error(e, "connections")
     
-    def get_connection(self, connection_id: str, user_id: str = None) -> Optional[ConnectionResponse]:
+    async def get_connection(self, connection_id: str, user_id: str = None) -> Optional[ConnectionResponse]:
         """Get a specific connection."""
         from app.core.config import settings
         
@@ -85,24 +79,24 @@ class ConnectionService:
         if connection_id == "chatsparty-default" and settings.chatsparty_default_enabled:
             return self._create_virtual_default_connection()
         
-        with SessionManager.create_session() as session:
+        async with db_manager.get_session() as session:
             repo = DatabaseConnectionRepository(session)
-            connection = repo.get_by_id(connection_id, user_id)
+            connection = await repo.get_by_id(connection_id, user_id)
             
             if connection:
                 return ConnectionResponse(**connection.to_dict())
             return None
     
-    def update_connection(self, connection_id: str, request: ConnectionUpdateRequest, user_id: str = None) -> Optional[ConnectionResponse]:
+    async def update_connection(self, connection_id: str, request: ConnectionUpdateRequest, user_id: str = None) -> Optional[ConnectionResponse]:
         """Update an existing connection."""
         if connection_id == "chatsparty-default":
             raise ValueError("Cannot update the default ChatsParty connection")
         
-        with SessionManager.create_session() as session:
+        async with db_manager.get_session() as session:
             repo = DatabaseConnectionRepository(session)
             
             # Get existing connection
-            existing = repo.get_by_id(connection_id, user_id)
+            existing = await repo.get_by_id(connection_id, user_id)
             if not existing:
                 return None
             
@@ -113,22 +107,19 @@ class ConnectionService:
                     setattr(existing, field, value)
             
             # Save updates
-            updated_connection = repo.update(existing)
-            repo.commit()
-            
+            updated_connection = await repo.update(existing)
+            # Session auto-commits on successful context exit
             return ConnectionResponse(**updated_connection.to_dict())
     
-    def delete_connection(self, connection_id: str, user_id: str = None) -> bool:
+    async def delete_connection(self, connection_id: str, user_id: str = None) -> bool:
         """Delete a connection."""
         if connection_id == "chatsparty-default":
             raise ValueError("Cannot delete the default ChatsParty connection")
         
-        with SessionManager.create_session() as session:
+        async with db_manager.get_session() as session:
             repo = DatabaseConnectionRepository(session)
-            success = repo.delete(connection_id, user_id)
-            
-            if success:
-                repo.commit()
+            success = await repo.delete(connection_id, user_id)
+            # Session auto-commits on successful context exit
             return success
     
     async def test_connection(self, connection_id: str, user_id: str = None) -> ConnectionTestResult:
@@ -140,7 +131,7 @@ class ConnectionService:
                 latency=0
             )
         
-        connection = self.get_connection(connection_id, user_id)
+        connection = await self.get_connection(connection_id, user_id)
         if not connection:
             return ConnectionTestResult(
                 success=False,
@@ -197,12 +188,12 @@ class ConnectionService:
                 message=f"Connection test failed: {str(e)}"
             )
     
-    def get_active_connections(self, user_id: str = None) -> List[ConnectionResponse]:
+    async def get_active_connections(self, user_id: str = None) -> List[ConnectionResponse]:
         """Get only active connections."""
         try:
-            with SessionManager.create_session() as session:
+            async with db_manager.get_session() as session:
                 repo = DatabaseConnectionRepository(session)
-                connections = repo.get_active(user_id)
+                connections = await repo.get_active(user_id)
                 connection_responses = [ConnectionResponse(**conn.to_dict()) for conn in connections]
                 
                 # Add virtual default connection if enabled
@@ -213,14 +204,12 @@ class ConnectionService:
                 
                 return connection_responses
                 
-        except SQLAlchemyError as e:
-            raise DatabaseErrorHandler.handle_query_error(e, "active connections")
         except Exception as e:
             raise DatabaseErrorHandler.handle_query_error(e, "active connections")
     
-    def get_connection_model_config(self, connection_id: str, user_id: str = None) -> Optional[ModelConfig]:
+    async def get_connection_model_config(self, connection_id: str, user_id: str = None) -> Optional[ModelConfig]:
         """Get ModelConfig for a connection (for backward compatibility with agents)."""
-        connection = self.get_connection(connection_id, user_id)
+        connection = await self.get_connection(connection_id, user_id)
         if connection:
             return ModelConfig(
                 provider=connection.provider,
@@ -258,11 +247,11 @@ class ConnectionService:
             base_url=settings.chatsparty_default_base_url,
             is_active=True,
             is_default=True,
-            created_at=datetime.utcnow().isoformat(),
-            updated_at=datetime.utcnow().isoformat()
+            created_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat()
         )
     
-    def create_default_connections_for_user(self, user_id: str):
+    async def create_default_connections_for_user(self, user_id: str):
         """Create default connections for a new user."""
         from app.core.config import settings
         
@@ -307,7 +296,7 @@ class ConnectionService:
         # Create connections
         for conn_data in default_connections:
             request = ConnectionCreateRequest(**conn_data)
-            self.create_connection(request, user_id)
+            await self.create_connection(request, user_id)
 
 
 # Singleton instance

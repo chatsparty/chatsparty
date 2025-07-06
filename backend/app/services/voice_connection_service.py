@@ -4,7 +4,8 @@ import time
 import logging
 from datetime import datetime, timezone
 
-from ..core.database import db_manager
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from ..models.database import VoiceConnection
 from ..models.voice import (
     VoiceConnectionCreateRequest,
@@ -25,81 +26,82 @@ class VoiceConnectionService:
     def __init__(self):
         self.voice_service = VoiceService()
     
-    def create_voice_connection(self, request: VoiceConnectionCreateRequest, user_id: str) -> VoiceConnectionResponse:
+    async def create_voice_connection(self, session: AsyncSession, request: VoiceConnectionCreateRequest, user_id: str) -> VoiceConnectionResponse:
         """Create a new voice connection"""
-        with db_manager.get_sync_session() as session:
-            connection_id = str(uuid.uuid4())
-            
-            api_key = request.api_key
-            api_key_encrypted = False
-            if api_key is not None and api_key.strip() != "":
-                api_key = crypto_service.encrypt(api_key)
-                api_key_encrypted = True
-            
-            db_connection = VoiceConnection(
-                id=connection_id,
-                name=request.name,
-                description=request.description,
-                provider=request.provider,
-                provider_type=request.provider_type,
-                voice_id=request.voice_id,
-                speed=request.speed,
-                pitch=request.pitch,
-                stability=request.stability,
-                clarity=request.clarity,
-                style=request.style,
-                api_key=api_key,
-                api_key_encrypted=api_key_encrypted,
-                base_url=request.base_url,
-                is_active=True,
-                is_cloud_proxy=request.is_cloud_proxy,
-                user_id=user_id
-            )
-            
-            session.add(db_connection)
-            session.commit()
-            session.refresh(db_connection)
-            
-            return self._to_response(db_connection)
+        connection_id = str(uuid.uuid4())
+        
+        api_key = request.api_key
+        api_key_encrypted = False
+        if api_key is not None and api_key.strip() != "":
+            api_key = crypto_service.encrypt(api_key)
+            api_key_encrypted = True
+        
+        db_connection = VoiceConnection(
+            id=connection_id,
+            name=request.name,
+            description=request.description,
+            provider=request.provider,
+            provider_type=request.provider_type,
+            voice_id=request.voice_id,
+            speed=request.speed,
+            pitch=request.pitch,
+            stability=request.stability,
+            clarity=request.clarity,
+            style=request.style,
+            api_key=api_key,
+            api_key_encrypted=api_key_encrypted,
+            base_url=request.base_url,
+            is_active=True,
+            is_cloud_proxy=request.is_cloud_proxy,
+            user_id=user_id
+        )
+        
+        session.add(db_connection)
+        session.flush()  # Get the ID without committing
+        session.refresh(db_connection)
+        
+        return self._to_response(db_connection)
     
-    def get_voice_connections(self, user_id: str) -> List[VoiceConnectionResponse]:
+    async def get_voice_connections(self, session: AsyncSession, user_id: str) -> List[VoiceConnectionResponse]:
         """Get all voice connections for a user"""
         connections = []
         
         if settings.chatsparty_default_voice_enabled:
             connections.append(self._create_virtual_default_voice_connection())
         
-        with db_manager.get_sync_session() as session:
-            db_connections = session.query(VoiceConnection).filter(
-                VoiceConnection.user_id == user_id
-            ).all()
-            connections.extend([self._to_response(conn) for conn in db_connections])
-            
+        stmt = select(VoiceConnection).where(VoiceConnection.user_id == user_id)
+        result = await session.exec(stmt)
+        db_connections = result.all()
+        connections.extend([self._to_response(conn) for conn in db_connections])
+        
         return connections
     
-    def get_active_voice_connections(self, user_id: str) -> List[VoiceConnectionResponse]:
+    async def get_active_voice_connections(self, session: AsyncSession, user_id: str) -> List[VoiceConnectionResponse]:
         """Get only active voice connections for a user"""
-        with db_manager.get_sync_session() as session:
-            connections = session.query(VoiceConnection).filter(
-                VoiceConnection.user_id == user_id,
-                VoiceConnection.is_active == True
-            ).all()
-            return [self._to_response(conn) for conn in connections]
+        stmt = select(VoiceConnection).where(
+            VoiceConnection.user_id == user_id,
+            VoiceConnection.is_active == True
+        )
+        result = await session.exec(stmt)
+        connections = result.all()
+        return [self._to_response(conn) for conn in connections]
     
-    def get_voice_connection(self, connection_id: str, user_id: str) -> Optional[VoiceConnectionResponse]:
+    async def get_voice_connection(self, session: AsyncSession, connection_id: str, user_id: str) -> Optional[VoiceConnectionResponse]:
         """Get a specific voice connection"""
         if connection_id == "chatsparty-default-voice" and settings.chatsparty_default_voice_enabled:
             return self._create_virtual_default_voice_connection()
         
-        with db_manager.get_sync_session() as session:
-            connection = session.query(VoiceConnection).filter(
-                VoiceConnection.id == connection_id,
-                VoiceConnection.user_id == user_id
-            ).first()
-            return self._to_response(connection) if connection else None
+        stmt = select(VoiceConnection).where(
+            VoiceConnection.id == connection_id,
+            VoiceConnection.user_id == user_id
+        )
+        result = await session.exec(stmt)
+        connection = result.first()
+        return self._to_response(connection) if connection else None
     
-    def update_voice_connection(
+    async def update_voice_connection(
         self, 
+        session: AsyncSession,
         connection_id: str, 
         request: VoiceConnectionUpdateRequest, 
         user_id: str
@@ -108,65 +110,66 @@ class VoiceConnectionService:
         if connection_id == "chatsparty-default-voice":
             raise ValueError("Cannot update default voice connection")
         
-        with db_manager.get_sync_session() as session:
-            connection = session.query(VoiceConnection).filter(
-                VoiceConnection.id == connection_id,
-                VoiceConnection.user_id == user_id
-            ).first()
-            
-            if not connection:
-                return None
-            
-            if request.name is not None:
-                connection.name = request.name
-            if request.description is not None:
-                connection.description = request.description
-            if request.voice_id is not None:
-                connection.voice_id = request.voice_id
-            if request.speed is not None:
-                connection.speed = request.speed
-            if request.pitch is not None:
-                connection.pitch = request.pitch
-            if request.stability is not None:
-                connection.stability = request.stability
-            if request.clarity is not None:
-                connection.clarity = request.clarity
-            if request.style is not None:
-                connection.style = request.style
-            if request.api_key is not None:
-                if request.api_key.strip() != "":
-                    connection.api_key = crypto_service.encrypt(request.api_key)
-                    connection.api_key_encrypted = True
-                else:
-                    connection.api_key = request.api_key
-                    connection.api_key_encrypted = False
-            if request.base_url is not None:
-                connection.base_url = request.base_url
-            if request.is_active is not None:
-                connection.is_active = request.is_active
-            
-            session.commit()
-            session.refresh(connection)
-            
-            return self._to_response(connection)
+        stmt = select(VoiceConnection).where(
+            VoiceConnection.id == connection_id,
+            VoiceConnection.user_id == user_id
+        )
+        result = await session.exec(stmt)
+        connection = result.first()
+        
+        if not connection:
+            return None
+        
+        if request.name is not None:
+            connection.name = request.name
+        if request.description is not None:
+            connection.description = request.description
+        if request.voice_id is not None:
+            connection.voice_id = request.voice_id
+        if request.speed is not None:
+            connection.speed = request.speed
+        if request.pitch is not None:
+            connection.pitch = request.pitch
+        if request.stability is not None:
+            connection.stability = request.stability
+        if request.clarity is not None:
+            connection.clarity = request.clarity
+        if request.style is not None:
+            connection.style = request.style
+        if request.api_key is not None:
+            if request.api_key.strip() != "":
+                connection.api_key = crypto_service.encrypt(request.api_key)
+                connection.api_key_encrypted = True
+            else:
+                connection.api_key = request.api_key
+                connection.api_key_encrypted = False
+        if request.base_url is not None:
+            connection.base_url = request.base_url
+        if request.is_active is not None:
+            connection.is_active = request.is_active
+        
+        await session.flush()  # Ensure changes are visible
+        await session.refresh(connection)
+        
+        return self._to_response(connection)
     
-    def delete_voice_connection(self, connection_id: str, user_id: str) -> bool:
+    async def delete_voice_connection(self, session: AsyncSession, connection_id: str, user_id: str) -> bool:
         """Delete a voice connection"""
         if connection_id == "chatsparty-default-voice":
             raise ValueError("Cannot delete default voice connection")
         
-        with db_manager.get_sync_session() as session:
-            connection = session.query(VoiceConnection).filter(
-                VoiceConnection.id == connection_id,
-                VoiceConnection.user_id == user_id
-            ).first()
-            
-            if not connection:
-                return False
-            
-            session.delete(connection)
-            session.commit()    
-            return True
+        stmt = select(VoiceConnection).where(
+            VoiceConnection.id == connection_id,
+            VoiceConnection.user_id == user_id
+        )
+        result = await session.exec(stmt)
+        connection = result.first()
+        
+        if not connection:
+            return False
+        
+        await session.delete(connection)
+        return True
     
     async def test_voice_connection_data(
         self, 
@@ -218,7 +221,7 @@ class VoiceConnectionService:
                 latency_ms=latency_ms
             )
 
-    async def test_voice_connection(self, connection_id: str, user_id: str) -> VoiceConnectionTestResult:
+    async def test_voice_connection(self, session: AsyncSession, connection_id: str, user_id: str) -> VoiceConnectionTestResult:
         """Test a voice connection by making actual API calls"""
         if connection_id == "chatsparty-default-voice" and settings.chatsparty_default_voice_enabled:
             voice_connection_entity = self._create_virtual_default_voice_entity(user_id)
@@ -246,70 +249,72 @@ class VoiceConnectionService:
                     latency_ms=latency_ms
                 )
         
-        with db_manager.get_sync_session() as session:
-            connection = session.query(VoiceConnection).filter(
-                VoiceConnection.id == connection_id,
-                VoiceConnection.user_id == user_id
-            ).first()
+        stmt = select(VoiceConnection).where(
+            VoiceConnection.id == connection_id,
+            VoiceConnection.user_id == user_id
+        )
+        result = await session.exec(stmt)
+        connection = result.first()
             
-            if not connection:
-                return VoiceConnectionTestResult(
-                    success=False,
-                    message="Voice connection not found"
-                )
+        
+        if not connection:
+            return VoiceConnectionTestResult(
+                success=False,
+                message="Voice connection not found"
+            )
+        
+        if not connection.is_active:
+            return VoiceConnectionTestResult(
+                success=False,
+                message="Voice connection is inactive"
+            )
+        
+        decrypted_api_key = self._decrypt_api_key(connection)
+        voice_connection_entity = VoiceConnectionEntity(
+            id=connection.id,
+            name=connection.name,
+            description=connection.description,
+            provider=connection.provider,
+            provider_type=connection.provider_type,
+            voice_id=connection.voice_id,
+            speed=connection.speed,
+            pitch=connection.pitch,
+            stability=connection.stability,
+            clarity=connection.clarity,
+            style=connection.style,
+            api_key=decrypted_api_key,
+            api_key_encrypted=connection.api_key_encrypted,
+            base_url=connection.base_url,
+            is_active=connection.is_active,
+            is_cloud_proxy=connection.is_cloud_proxy,
+            user_id=connection.user_id,
+            created_at=connection.created_at,
+            updated_at=connection.updated_at
+        )
+        
+        start_time = time.time()
+        try:
+            test_result = await self.voice_service.test_voice_connection(voice_connection_entity)
+            end_time = time.time()
+            latency_ms = int((end_time - start_time) * 1000)
             
-            if not connection.is_active:
-                return VoiceConnectionTestResult(
-                    success=False,
-                    message="Voice connection is inactive"
-                )
-            
-            decrypted_api_key = self._decrypt_api_key(connection)
-            voice_connection_entity = VoiceConnectionEntity(
-                id=connection.id,
-                name=connection.name,
-                description=connection.description,
-                provider=connection.provider,
-                provider_type=connection.provider_type,
-                voice_id=connection.voice_id,
-                speed=connection.speed,
-                pitch=connection.pitch,
-                stability=connection.stability,
-                clarity=connection.clarity,
-                style=connection.style,
-                api_key=decrypted_api_key,
-                api_key_encrypted=connection.api_key_encrypted,
-                base_url=connection.base_url,
-                is_active=connection.is_active,
-                is_cloud_proxy=connection.is_cloud_proxy,
-                user_id=connection.user_id,
-                created_at=connection.created_at,
-                updated_at=connection.updated_at
+            return VoiceConnectionTestResult(
+                success=test_result.success,
+                message=test_result.message,
+                details=test_result.details,
+                latency_ms=latency_ms,
+                provider_info=test_result.provider_info
             )
             
-            start_time = time.time()
-            try:
-                test_result = await self.voice_service.test_voice_connection(voice_connection_entity)
-                end_time = time.time()
-                latency_ms = int((end_time - start_time) * 1000)
-                
-                return VoiceConnectionTestResult(
-                    success=test_result.success,
-                    message=test_result.message,
-                    details=test_result.details,
-                    latency_ms=latency_ms,
-                    provider_info=test_result.provider_info
-                )
-                
-            except Exception as e:
-                end_time = time.time()
-                latency_ms = int((end_time - start_time) * 1000)
-                
-                return VoiceConnectionTestResult(
-                    success=False,
-                    message=f"Test failed: {str(e)}",
-                    latency_ms=latency_ms
-                )
+        except Exception as e:
+            end_time = time.time()
+            latency_ms = int((end_time - start_time) * 1000)
+            
+            return VoiceConnectionTestResult(
+                success=False,
+                message=f"Test failed: {str(e)}",
+                latency_ms=latency_ms
+            )
     
     def _to_response(self, connection: VoiceConnection) -> VoiceConnectionResponse:
         """Convert database model to response model"""
@@ -394,7 +399,7 @@ class VoiceConnectionService:
             user_id=user_id
         )
     
-    def create_default_voice_connections_for_user(self, user_id: str):
+    async def create_default_voice_connections_for_user(self, session: AsyncSession, user_id: str):
         """Create default voice connections for a new user"""
         default_voice_connections = []
         
@@ -428,46 +433,47 @@ class VoiceConnectionService:
         for conn_data in default_voice_connections:
             try:
                 request = VoiceConnectionCreateRequest(**conn_data)
-                self.create_voice_connection(request, user_id)
+                await self.create_voice_connection(session, request, user_id)
             except Exception as e:
                 print(f"Failed to create default voice connection: {e}")
     
-    async def get_available_voices(self, connection_id: str, user_id: str) -> List[VoiceOption]:
+    async def get_available_voices(self, session: AsyncSession, connection_id: str, user_id: str) -> List[VoiceOption]:
         """Get available voices for a voice connection"""
         if connection_id == "chatsparty-default-voice" and settings.chatsparty_default_voice_enabled:
             voice_connection_entity = self._create_virtual_default_voice_entity(user_id)
         else:
-            with db_manager.get_sync_session() as session:
-                connection = session.query(VoiceConnection).filter(
-                    VoiceConnection.id == connection_id,
-                    VoiceConnection.user_id == user_id
-                ).first()
-                
-                if not connection:
-                    return []
-                
-                decrypted_api_key = self._decrypt_api_key(connection)
-                voice_connection_entity = VoiceConnectionEntity(
-                    id=connection.id,
-                    name=connection.name,
-                    description=connection.description,
-                    provider=connection.provider,
-                    provider_type=connection.provider_type,
-                    voice_id=connection.voice_id,
-                    speed=connection.speed,
-                    pitch=connection.pitch,
-                    stability=connection.stability,
-                    clarity=connection.clarity,
-                    style=connection.style,
-                    api_key=decrypted_api_key,
-                    api_key_encrypted=connection.api_key_encrypted,
-                    base_url=connection.base_url,
-                    is_active=connection.is_active,
-                    is_cloud_proxy=connection.is_cloud_proxy,
-                    user_id=connection.user_id,
-                    created_at=connection.created_at,
-                    updated_at=connection.updated_at
-                )
+            stmt = select(VoiceConnection).where(
+                VoiceConnection.id == connection_id,
+                VoiceConnection.user_id == user_id
+            )
+            result = await session.exec(stmt)
+            connection = result.first()
+            
+            if not connection:
+                return []
+            
+            decrypted_api_key = self._decrypt_api_key(connection)
+            voice_connection_entity = VoiceConnectionEntity(
+                id=connection.id,
+                name=connection.name,
+                description=connection.description,
+                provider=connection.provider,
+                provider_type=connection.provider_type,
+                voice_id=connection.voice_id,
+                speed=connection.speed,
+                pitch=connection.pitch,
+                stability=connection.stability,
+                clarity=connection.clarity,
+                style=connection.style,
+                api_key=decrypted_api_key,
+                api_key_encrypted=connection.api_key_encrypted,
+                base_url=connection.base_url,
+                is_active=connection.is_active,
+                is_cloud_proxy=connection.is_cloud_proxy,
+                user_id=connection.user_id,
+                created_at=connection.created_at,
+                updated_at=connection.updated_at
+            )
         
         try:
             provider = self.voice_service.providers.get(voice_connection_entity.provider.lower())

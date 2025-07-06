@@ -35,8 +35,6 @@ class ProjectFileRepository(BaseRepository, ProjectFileRepositoryInterface):
             self.session.add(db_file)
             db_files.append(db_file)
         
-        self.session.commit()
-        
         return [self._to_entity(db_file) for db_file in db_files]
 
     async def get_project_files(self, project_id: str) -> List[ProjectFile]:
@@ -81,7 +79,6 @@ class ProjectFileRepository(BaseRepository, ProjectFileRepositoryInterface):
             db_file.vm_path = vm_path
         db_file.updated_at = datetime.now()
 
-        self.session.commit()
         return True
 
     async def update_files_sync_status(self, files: List[ProjectFile]) -> bool:
@@ -98,7 +95,6 @@ class ProjectFileRepository(BaseRepository, ProjectFileRepositoryInterface):
                 db_file.vm_path = file.vm_path
                 db_file.updated_at = datetime.now()
         
-        self.session.commit()
         return True
 
     async def delete_file(self, file_id: str) -> bool:
@@ -113,7 +109,6 @@ class ProjectFileRepository(BaseRepository, ProjectFileRepositoryInterface):
             return False
 
         self.session.delete(db_file)
-        self.session.commit()
         return True
 
     def _to_entity(self, db_file: ProjectFileModel) -> ProjectFile:

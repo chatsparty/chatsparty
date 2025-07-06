@@ -5,14 +5,14 @@ from ..models.database import User
 from ..models.credit import CreditBalance, CreditTransaction
 from ..services.credit.application.credit_service import CreditService
 from ..services.credit.infrastructure.credit_repository import CreditRepository
-from ..core.database import get_sync_db_session
+from ..core.database import get_db_session
 from .auth import get_current_user_dependency
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter(prefix="/credits", tags=["credits"])
 
 
-def get_credit_service(db: Session = Depends(get_sync_db_session)) -> CreditService:
+async def get_credit_service(db: AsyncSession = Depends(get_db_session)) -> CreditService:
     """Dependency to get credit service instance"""
     repository = CreditRepository(db)
     return CreditService(repository)
