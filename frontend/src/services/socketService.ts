@@ -23,7 +23,6 @@ export interface ConversationStartData {
     content: string;
     file_type: string;
   }>;
-  project_id?: string;
 }
 
 class SocketService {

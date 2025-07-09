@@ -5,13 +5,26 @@ import { API_BASE_URL } from "./constants";
 export const fetchAgents = async (): Promise<Agent[]> => {
   try {
     const response = await axios.get(`${API_BASE_URL}/chat/agents`);
-    return response.data;
+    
+    // Ensure we return an array
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && Array.isArray(response.data.agents)) {
+      // Handle case where API returns { agents: [...] }
+      return response.data.agents;
+    } else if (response.data && Array.isArray(response.data.data)) {
+      // Handle case where API returns { data: [...] }
+      return response.data.data;
+    } else {
+      console.warn("Unexpected response format from agents API:", response.data);
+      return [];
+    }
   } catch (error) {
     console.error(
       "Failed to fetch agents:",
       error instanceof Error ? error.message : String(error)
     );
-    throw error;
+    return []; // Return empty array on error instead of throwing
   }
 };
 

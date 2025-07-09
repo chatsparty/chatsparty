@@ -122,8 +122,7 @@ export const useConversationActions = (
         finalAgents,
         finalMessage,
         maxTurns,
-        fileAttachments,
-        undefined
+        fileAttachments
       );
       
     } catch (error) {

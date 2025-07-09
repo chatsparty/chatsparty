@@ -22,7 +22,6 @@ const AgentManagerPage: React.FC = () => {
     handleCreateAgent,
     handleEditAgent,
     handleInputChange,
-    resetForm,
     handleDeleteAgent,
     confirmDeleteAgent,
     cancelDeleteAgent,

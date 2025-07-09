@@ -10,6 +10,7 @@ export interface ModelConnection {
   updated_at: string;
   is_active: boolean;
   is_default?: boolean;
+  is_system_default?: boolean; // Flag to identify system-provided default connections
 }
 
 export interface CreateConnectionRequest {

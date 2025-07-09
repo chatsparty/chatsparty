@@ -108,8 +108,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const configResponse = await axios.get("/auth/config");
-        setAuthConfig(configResponse.data);
+        // Set default auth config instead of fetching from backend
+        setAuthConfig({
+          social_auth_only: false,
+          google_enabled: false,
+          github_enabled: false,
+        });
 
         const storedToken = localStorage.getItem("access_token");
 
@@ -125,7 +129,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           }
         }
       } catch (error) {
-        console.error("Failed to fetch auth config:", error);
+        console.error("Failed to initialize auth:", error);
       } finally {
         setLoading(false);
       }

@@ -19,15 +19,10 @@ import Avatar from "boring-avatars";
 import { useTranslation } from "react-i18next";
 import { getDirection } from "./i18n/config";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
-import { PROJECTS_ENABLED } from "./config/features";
 import {
   AgentManagerPage,
   LandingPage,
   MultiAgentChatPage,
-  ProjectsPage,
-  CreateProjectPage,
-  ProjectDetailsPage,
-  VSCodePage,
 } from "./pages";
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
@@ -54,8 +49,6 @@ const Layout = () => {
     const previousPath = previousLocationRef.current;
 
     const getPageName = (path: string) => {
-      if (path === "/projects") return "projects";
-      if (path.includes("/vscode")) return "vscode_ide";
       if (path === "/agents") return "agents";
       if (path === "/chat") return "multi_agent_chat";
       if (path === "/settings") return "settings";
@@ -101,7 +94,6 @@ const Layout = () => {
   }
 
   const tabs = [
-    ...(PROJECTS_ENABLED ? [{ path: "/projects", label: t("navigation.projects") }] : []),
     { path: "/agents", label: t("navigation.agents") },
     { path: "/chat", label: t("navigation.chat") },
     { path: "/settings", label: t("navigation.settings") },
@@ -222,12 +214,6 @@ const Layout = () => {
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
-            {PROJECTS_ENABLED && (
-              <>
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/projects/new" element={<CreateProjectPage />} />
-              </>
-            )}
             <Route path="/agents" element={<AgentManagerPage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
@@ -238,12 +224,8 @@ const Layout = () => {
             />
             <Route path="/settings/general" element={<SettingsPage />} />
             <Route path="/settings/connections" element={<SettingsPage />} />
-            <Route
-              path="/settings/voice-connections"
-              element={<SettingsPage />}
-            />
             <Route path="/settings/credits" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to={PROJECTS_ENABLED ? "/projects" : "/agents"} replace />} />
+            <Route path="*" element={<Navigate to="/agents" replace />} />
           </Routes>
         </div>
       </div>
@@ -267,28 +249,6 @@ const MainApp = () => {
     );
   }
 
-  if (PROJECTS_ENABLED && location.pathname === "/projects/new") {
-    return (
-      <div className="h-screen w-screen bg-background">
-        <CreateProjectPage />
-      </div>
-    );
-  }
-
-  if (
-    PROJECTS_ENABLED &&
-    location.pathname.startsWith("/projects/") &&
-    location.pathname !== "/projects"
-  ) {
-    return (
-      <div className="h-screen w-screen bg-background">
-        <Routes>
-          <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
-          <Route path="/projects/:id/vscode" element={<VSCodePage />} />
-        </Routes>
-      </div>
-    );
-  }
 
   if (location.pathname.startsWith("/shared/conversation/")) {
     console.log(
@@ -308,7 +268,7 @@ const MainApp = () => {
   if (location.pathname === "/") {
     // If user is authenticated, redirect to main app
     if (user) {
-      return <Navigate to={PROJECTS_ENABLED ? "/projects" : "/agents"} replace />;
+      return <Navigate to="/agents" replace />;
     }
     // If not authenticated, show landing page
     return (

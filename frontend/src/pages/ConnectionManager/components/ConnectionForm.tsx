@@ -14,7 +14,6 @@ import type {
   CreateConnectionRequest,
   ModelConnection,
 } from "@/types/connection";
-import axios from "axios";
 import React, { useEffect, useState } from "react";
 
 interface ConnectionFormProps {
@@ -56,22 +55,39 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   const [loadingProviders, setLoadingProviders] = useState(true);
 
   useEffect(() => {
-    const fetchProviders = async () => {
-      try {
-        const response = await axios.get("/chat/providers");
-        setProviders(response.data.providers || {});
-      } catch (error: unknown) {
-        if (axios.isAxiosError(error)) {
-          console.error("Failed to fetch providers:", error.message);
-        } else {
-          console.error("Failed to fetch providers:", error);
+    const initProviders = () => {
+      // Set hardcoded providers instead of fetching from backend
+      setProviders({
+        openai: {
+          models: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
+          requires_api_key: true,
+          supports_tools: true,
+          connection_type: "api"
+        },
+        anthropic: {
+          models: ["claude-3-sonnet-20240229", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
+          requires_api_key: true,
+          supports_tools: true,
+          connection_type: "api"
+        },
+        google: {
+          models: ["gemini-pro", "gemini-pro-vision"],
+          requires_api_key: true,
+          supports_tools: false,
+          connection_type: "api"
+        },
+        ollama: {
+          models: ["llama2", "codellama", "mistral"],
+          requires_api_key: false,
+          base_url_required: true,
+          supports_tools: false,
+          connection_type: "local"
         }
-      } finally {
-        setLoadingProviders(false);
-      }
+      });
+      setLoadingProviders(false);
     };
 
-    fetchProviders();
+    initProviders();
   }, []);
 
   useEffect(() => {

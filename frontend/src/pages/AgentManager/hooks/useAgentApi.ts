@@ -12,7 +12,6 @@ interface Agent {
   characteristics?: string;
   gender?: string;
   connection_id?: string;
-  voice_config?: any;
 }
 
 export const useAgentApi = () => {
@@ -26,9 +25,12 @@ export const useAgentApi = () => {
   const fetchAgents = useCallback(async () => {
     try {
       const response = await axios.get('/chat/agents');
-      setAgents(response.data);
+      // Handle both direct array and wrapped response formats
+      const data = response.data?.data || response.data;
+      setAgents(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch agents:', error);
+      setAgents([]); // Ensure agents is always an array
       showToast(t('errors.generic'), 'error');
     }
   }, [t, showToast]);
@@ -36,17 +38,48 @@ export const useAgentApi = () => {
   const createAgent = useCallback(async (formData: FormData): Promise<boolean> => {
     setIsLoading(true);
     try {
+      // If no connection_id provided, try to use default
+      let connectionId = formData.connection_id;
+      if (!connectionId) {
+        const defaultConnection = connections.find(conn => conn.is_default || conn.id === 'chatsparty-default');
+        connectionId = defaultConnection?.id || 'default';
+      }
+
+      // Get connection details for aiConfig
+      const connection = connections.find(conn => conn.id === connectionId);
+      
+      // Debug logging
+      if (!connection) {
+        console.warn(`Connection not found for ID: ${connectionId}. Available connections:`, connections);
+      }
+      
+      // Generate a default prompt based on name and characteristics
+      const defaultPrompt = `You are ${formData.name.trim()}, a helpful AI assistant. ${formData.characteristics.trim()}`;
+      
       const payload = {
         name: formData.name.trim(),
+        prompt: defaultPrompt,
         characteristics: formData.characteristics.trim(),
         gender: formData.gender,
-        connection_id: formData.connection_id,
-        voice_config: formData.voice_config
+        connectionId: connectionId, // Note: API expects 'connectionId' not 'connection_id'
+        // Add default aiConfig based on connection
+        aiConfig: {
+          provider: connection?.provider || 'openai',
+          modelName: connection?.model_name || 'gpt-3.5-turbo', // Changed from 'model' to 'modelName'
+          connectionId: connectionId // Include connectionId in aiConfig
+        },
+        // Add default chatStyle
+        chatStyle: {
+          friendliness: 'friendly',
+          responseLength: 'medium',
+          personality: 'balanced',
+          humor: 'light',
+          expertiseLevel: 'expert'
+        }
       };
 
       await axios.post('/chat/agents', payload);
       
-      const connection = connections.find(conn => conn.id === formData.connection_id);
       trackAgentCreated({
         agent_name: formData.name,
         agent_type: 'simple',
@@ -75,12 +108,44 @@ export const useAgentApi = () => {
   const updateAgent = useCallback(async (agentId: string, formData: FormData): Promise<boolean> => {
     setIsLoading(true);
     try {
+      // If no connection_id provided, try to use default
+      let connectionId = formData.connection_id;
+      if (!connectionId) {
+        const defaultConnection = connections.find(conn => conn.is_default || conn.id === 'chatsparty-default');
+        connectionId = defaultConnection?.id || 'default';
+      }
+
+      // Get connection details for aiConfig
+      const connection = connections.find(conn => conn.id === connectionId);
+      
+      // Debug logging
+      if (!connection) {
+        console.warn(`Connection not found for ID: ${connectionId}. Available connections:`, connections);
+      }
+      
+      // Generate a default prompt based on name and characteristics
+      const defaultPrompt = `You are ${formData.name.trim()}, a helpful AI assistant. ${formData.characteristics.trim()}`;
+      
       const payload = {
         name: formData.name.trim(),
+        prompt: defaultPrompt,
         characteristics: formData.characteristics.trim(),
         gender: formData.gender,
-        connection_id: formData.connection_id,
-        voice_config: formData.voice_config
+        connectionId: connectionId, // Note: API expects 'connectionId' not 'connection_id'
+        // Add default aiConfig based on connection
+        aiConfig: {
+          provider: connection?.provider || 'openai',
+          modelName: connection?.model_name || 'gpt-3.5-turbo', // Changed from 'model' to 'modelName'
+          connectionId: connectionId // Include connectionId in aiConfig
+        },
+        // Add default chatStyle
+        chatStyle: {
+          friendliness: 'friendly',
+          responseLength: 'medium',
+          personality: 'balanced',
+          humor: 'light',
+          expertiseLevel: 'expert'
+        }
       };
 
       await axios.put(`/chat/agents/${agentId}`, payload);

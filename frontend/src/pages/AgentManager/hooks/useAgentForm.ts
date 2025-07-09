@@ -8,7 +8,6 @@ interface Agent {
   characteristics?: string;
   gender?: string;
   connection_id?: string;
-  voice_config?: any;
 }
 
 const getInitialFormData = (connections: ModelConnection[]): FormData => {
@@ -17,11 +16,7 @@ const getInitialFormData = (connections: ModelConnection[]): FormData => {
     name: '',
     characteristics: '',
     gender: 'neutral',
-    connection_id: chatspartyDefault ? 'chatsparty-default' : '',
-    voice_config: {
-      voice_enabled: false,
-      voice_connection_id: undefined
-    }
+    connection_id: chatspartyDefault ? 'chatsparty-default' : ''
   };
 };
 
@@ -31,13 +26,17 @@ export const useAgentForm = (connections: ModelConnection[]) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    if (connections.length > 0 && !formData.connection_id) {
+    // Update default connection when connections load
+    if (connections.length > 0 && !editingAgent) {
       const chatspartyDefault = connections.find(conn => conn.id === 'chatsparty-default');
-      if (chatspartyDefault) {
+      if (chatspartyDefault && !formData.connection_id) {
         setFormData(prev => ({ ...prev, connection_id: 'chatsparty-default' }));
+      } else if (!formData.connection_id && connections.length > 0) {
+        // If no default connection, select the first available
+        setFormData(prev => ({ ...prev, connection_id: connections[0].id }));
       }
     }
-  }, [connections, formData.connection_id]);
+  }, [connections, editingAgent]);
 
   const updateField = useCallback(<K extends keyof FormData>(name: K, value: FormData[K]) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -55,9 +54,10 @@ export const useAgentForm = (connections: ModelConnection[]) => {
   }, [connections]);
 
   const openCreateModal = useCallback(() => {
-    resetForm();
+    setEditingAgent(null);
+    setFormData(getInitialFormData(connections));
     setIsModalOpen(true);
-  }, [resetForm]);
+  }, [connections]);
 
   const openEditModal = useCallback((agent: Agent) => {
     setEditingAgent(agent);
@@ -65,11 +65,7 @@ export const useAgentForm = (connections: ModelConnection[]) => {
       name: agent.name,
       characteristics: agent.characteristics || '',
       gender: agent.gender || 'neutral',
-      connection_id: agent.connection_id || '',
-      voice_config: agent.voice_config || {
-        voice_enabled: false,
-        voice_connection_id: undefined
-      }
+      connection_id: agent.connection_id || ''
     });
     setIsModalOpen(true);
   }, []);

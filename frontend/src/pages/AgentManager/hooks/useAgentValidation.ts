@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ModelConnection } from '@/types/connection';
-import type { AgentVoiceConfig } from '@/types/voice';
 
 const VALIDATION_RULES = {
   name: {
@@ -20,7 +19,6 @@ export interface FormData {
   characteristics: string;
   gender: string;
   connection_id: string;
-  voice_config?: AgentVoiceConfig;
 }
 
 export interface FormErrors {
@@ -28,7 +26,6 @@ export interface FormErrors {
   characteristics?: string;
   gender?: string;
   connection_id?: string;
-  voice_config?: string;
 }
 
 export const useAgentValidation = (connections: ModelConnection[]) => {
@@ -70,16 +67,21 @@ export const useAgentValidation = (connections: ModelConnection[]) => {
         break;
         
       case 'connection_id':
-        if (!value) return t('errors.missingField');
+        // Make connection optional - backend will use default if not provided
+        if (!value || value === '') {
+          // Check if there's a default connection available
+          const defaultConnection = connections.find(conn => conn.is_default || conn.id === 'chatsparty-default');
+          if (!defaultConnection && connections.length > 0) {
+            return t('errors.connection.noDefaultAvailable');
+          }
+          // If no value but default exists, it's valid
+          return undefined;
+        }
+        // Don't validate connection if connections are still loading
+        if (connections.length === 0) return undefined;
         const connection = connections.find(conn => conn.id === value);
         if (!connection) return t('errors.connection.notFound');
         if (!connection.is_active) return t('errors.connection.inactive');
-        break;
-        
-      case 'voice_config':
-        if (value?.voice_enabled && !value?.voice_connection_id) {
-          return t('errors.voice.connectionRequired');
-        }
         break;
     }
     return undefined;
@@ -92,21 +94,37 @@ export const useAgentValidation = (connections: ModelConnection[]) => {
     newErrors.characteristics = validateField('characteristics', formData.characteristics);
     newErrors.gender = validateField('gender', formData.gender);
     newErrors.connection_id = validateField('connection_id', formData.connection_id);
-    newErrors.voice_config = validateField('voice_config', formData.voice_config);
     
+    // Remove undefined entries from errors object
+    const cleanedErrors: FormErrors = {};
     Object.keys(newErrors).forEach(key => {
-      if (newErrors[key as keyof FormErrors] === undefined) {
-        delete newErrors[key as keyof FormErrors];
+      const error = newErrors[key as keyof FormErrors];
+      if (error !== undefined && error !== null && error !== '') {
+        cleanedErrors[key as keyof FormErrors] = error;
       }
     });
     
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(cleanedErrors);
+    
+    // Debug logging
+    if (Object.keys(cleanedErrors).length > 0) {
+      console.log('Validation errors:', cleanedErrors);
+    }
+    
+    return Object.keys(cleanedErrors).length === 0;
   }, [validateField]);
 
   const validateFieldRealtime = useCallback((name: keyof FormData, value: any) => {
     const error = validateField(name, value);
-    setErrors(prev => ({ ...prev, [name]: error }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      if (error) {
+        newErrors[name] = error;
+      } else {
+        delete newErrors[name];
+      }
+      return newErrors;
+    });
   }, [validateField]);
 
   const clearErrors = useCallback(() => {

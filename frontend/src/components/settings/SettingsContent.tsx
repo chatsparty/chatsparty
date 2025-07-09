@@ -2,7 +2,6 @@ import React from "react";
 import { Menu } from "lucide-react";
 import { ConnectionsManagement } from "./ConnectionsManagement";
 import { CreditsManagement } from "./CreditsManagement";
-import { VoiceConnectionList } from "../voice/VoiceConnectionList";
 import { CREDITS_ENABLED } from "@/config/features";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcherWithLabel } from "../LanguageSwitcher";
@@ -41,8 +40,6 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
         );
       case "connections":
         return <ConnectionsManagement />;
-      case "voice-connections":
-        return <VoiceConnectionList />;
       case "credits":
         return CREDITS_ENABLED ? <CreditsManagement /> : null;
       default:

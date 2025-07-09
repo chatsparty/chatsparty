@@ -1,1 +1,0 @@
-"""Domain layer for connections - contains business entities and logic."""

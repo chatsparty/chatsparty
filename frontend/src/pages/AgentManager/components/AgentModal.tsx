@@ -15,10 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useConnections } from "@/hooks/useConnections";
-import { useVoiceConnections } from "@/hooks/useVoiceConnections";
-import type { AgentVoiceConfig } from "@/types/voice";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -29,7 +26,6 @@ interface Agent {
   characteristics?: string;
   gender?: string;
   connection_id?: string;
-  voice_config?: AgentVoiceConfig;
 }
 
 interface FormData {
@@ -37,7 +33,6 @@ interface FormData {
   characteristics: string;
   gender: string;
   connection_id: string;
-  voice_config?: AgentVoiceConfig;
 }
 
 interface FormErrors {
@@ -45,7 +40,6 @@ interface FormErrors {
   characteristics?: string;
   gender?: string;
   connection_id?: string;
-  voice_config?: string;
 }
 
 interface AgentModalProps {
@@ -74,15 +68,6 @@ const AgentModal: React.FC<AgentModalProps> = ({
   const { loading: connectionsLoading, getActiveConnections } = useConnections();
   const activeConnections = getActiveConnections();
   
-  const { connections: voiceConnections, loading: voiceConnectionsLoading } = useVoiceConnections();
-  const activeVoiceConnections = voiceConnections.filter(vc => vc.is_active);
-  
-  
-  const voiceConfig = formData.voice_config || {
-    voice_enabled: false,
-    voice_connection_id: undefined,
-    selected_voice_id: undefined,
-  };
 
   const handleConnectionChange = (connectionId: string) => {
     if (connectionId === "add-new") {
@@ -96,36 +81,6 @@ const AgentModal: React.FC<AgentModalProps> = ({
     onInputChange(event);
   };
   
-  const handleVoiceEnabledChange = (enabled: boolean) => {
-    const event = {
-      target: {
-        name: "voice_config",
-        value: {
-          ...voiceConfig,
-          voice_enabled: enabled,
-        },
-      },
-    } as any;
-    onInputChange(event);
-  };
-  
-  const handleVoiceConnectionChange = (connectionId: string) => {
-    if (connectionId === "add-new") {
-      navigate("/settings/voice-connections");
-      return;
-    }
-    
-    const event = {
-      target: {
-        name: "voice_config",
-        value: {
-          ...voiceConfig,
-          voice_connection_id: connectionId,
-        },
-      },
-    } as any;
-    onInputChange(event);
-  };
   
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -143,8 +98,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
         </DialogHeader>
         
         <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="space-y-4">
+          <div className="space-y-4">
               <div>
                 <Label htmlFor="name" className="text-sm font-medium">
                   {t("agents.agentName")} *
@@ -215,7 +169,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
 
               <div>
                 <Label htmlFor="connection" className="text-sm font-medium">
-                  {t("agents.modelConnection")} *
+                  {t("agents.modelConnection")} <span className="text-muted-foreground text-xs">{t("common.optional")}</span>
                 </Label>
                 <Select
                   value={formData.connection_id || ""}
@@ -223,75 +177,35 @@ const AgentModal: React.FC<AgentModalProps> = ({
                   disabled={connectionsLoading}
                 >
                   <SelectTrigger className={`mt-1 ${formErrors.connection_id ? 'border-red-500 focus:border-red-500' : ''}`}>
-                    <SelectValue placeholder={t("agents.selectModelConnection")} />
+                    <SelectValue placeholder={connectionsLoading ? t("common.loading") : t("agents.selectModelConnection")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {activeConnections.map((connection) => (
-                      <SelectItem key={connection.id} value={connection.id}>
-                        {connection.name} ({connection.provider})
-                        {connection.is_default && ` • ${t("agents.default")}`}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="add-new">{t("agents.addNewConnection")}</SelectItem>
+                    {connectionsLoading ? (
+                      <SelectItem value="loading" disabled>{t("common.loading")}</SelectItem>
+                    ) : activeConnections.length === 0 ? (
+                      <SelectItem value="no-connections" disabled>{t("agents.noConnectionsAvailable")}</SelectItem>
+                    ) : (
+                      <>
+                        {activeConnections.map((connection) => (
+                          <SelectItem key={connection.id} value={connection.id}>
+                            {connection.name} ({connection.provider})
+                            {connection.is_default && ` • ${t("agents.default")}`}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="add-new">{t("agents.addNewConnection")}</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
-                {formErrors.connection_id && (
+                {formErrors.connection_id ? (
                   <p className="text-sm text-red-500 mt-1">{formErrors.connection_id}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("agents.connectionHelpText")}
+                  </p>
                 )}
               </div>
             </div>
-
-            <div className="space-y-4">
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <Label htmlFor="voice-enabled" className="text-sm font-medium">
-                      {t("agents.voiceConfiguration")}
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("agents.voiceConfigurationDescription")}
-                    </p>
-                  </div>
-                  <Switch
-                    id="voice-enabled"
-                    checked={voiceConfig.voice_enabled}
-                    onCheckedChange={handleVoiceEnabledChange}
-                  />
-                </div>
-                
-                {voiceConfig.voice_enabled && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="voice-connection" className="text-sm font-medium">
-                        {t("agents.voiceConnection")}
-                      </Label>
-                      <Select
-                        value={voiceConfig.voice_connection_id || ""}
-                        onValueChange={handleVoiceConnectionChange}
-                        disabled={voiceConnectionsLoading}
-                      >
-                        <SelectTrigger className={`mt-1 ${formErrors.voice_config ? 'border-red-500 focus:border-red-500' : ''}`}>
-                          <SelectValue placeholder={t("agents.selectVoiceConnection")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activeVoiceConnections.map((connection) => (
-                            <SelectItem key={connection.id} value={connection.id}>
-                              {connection.name} ({connection.provider})
-                              {connection.is_default && ` • ${t("agents.default")}`}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="add-new">{t("agents.addVoiceConnection")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {formErrors.voice_config && (
-                        <p className="text-sm text-red-500 mt-1">{formErrors.voice_config}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
           {Object.keys(formErrors).length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">

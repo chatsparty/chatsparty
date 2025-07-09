@@ -35,9 +35,8 @@ export const useAgentManager = () => {
     const { name, value } = e.target;
     handleInputChange(e);
     
-    setTimeout(() => {
-      validateFieldRealtime(name as keyof FormData, value);
-    }, 300);
+    // Validate immediately for better UX
+    validateFieldRealtime(name as keyof FormData, value);
   }, [handleInputChange, validateFieldRealtime]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -86,9 +85,19 @@ export const useAgentManager = () => {
     deleteModalOpen,
     agentToDelete,
     
-    setShowCreateForm: (open: boolean) => open ? openCreateModal() : closeModal(),
+    setShowCreateForm: (open: boolean) => {
+      if (open) {
+        clearErrors();
+        openCreateModal();
+      } else {
+        closeModal();
+      }
+    },
     handleCreateAgent: handleSubmit,
-    handleEditAgent: openEditModal,
+    handleEditAgent: (agent: any) => {
+      clearErrors();
+      openEditModal(agent);
+    },
     handleInputChange: handleInputChangeWithValidation,
     resetForm: () => { closeModal(); clearErrors(); },
     handleDeleteAgent: handleDeleteByAgentId,

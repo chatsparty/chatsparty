@@ -147,8 +147,7 @@ export const useSocketConversation = ({
     agentIds: string[],
     initialMessage: string,
     maxTurns: number,
-    fileAttachments?: Array<{filename: string, content: string, file_type: string}>,
-    projectId?: string
+    fileAttachments?: Array<{filename: string, content: string, file_type: string}>
   ) => {
     if (!socketService.isConnected()) {
       try {
@@ -164,8 +163,7 @@ export const useSocketConversation = ({
       agent_ids: agentIds,
       initial_message: initialMessage,
       max_turns: maxTurns,
-      file_attachments: fileAttachments,
-      project_id: projectId
+      file_attachments: fileAttachments
     });
   }, []);
 

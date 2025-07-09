@@ -438,7 +438,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     if (activeConversation) {
       setSelectedAgentsForMessage(activeConversation.agents);
     } else {
-      setSelectedAgentsForMessage(agents.slice(0, 2).map(a => a.agent_id));
+      setSelectedAgentsForMessage((agents || []).slice(0, 2).map(a => a.agent_id));
     }
   }, [activeConversation, agents]);
 
@@ -451,7 +451,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               <Label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-foreground`}>{t("chat.to")}</Label>
             <div className="flex-1 flex flex-wrap items-center gap-2">
               {selectedAgentsForMessage.map(agentId => {
-                const agent = agents.find(a => a.agent_id === agentId);
+                const agent = (agents || []).find(a => a.agent_id === agentId);
                 if (!agent) return null;
                 return (
                   <Badge
@@ -512,7 +512,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 {t("chat.multiAgentChat")}
               </p>
               <p className={`text-muted-foreground/80 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                {agents.length < 2 ? t("chat.addAgentsToStart") : t("chat.selectAgentsAndType")}
+                {(agents || []).length < 2 ? t("chat.addAgentsToStart") : t("chat.selectAgentsAndType")}
               </p>
             </div>
           </div>
@@ -600,7 +600,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg">
                 <Label className="text-xs font-medium text-muted-foreground w-full mb-2">{t("chat.selectedAgents", { count: selectedAgentsForMessage.length })}:</Label>
                 {selectedAgentsForMessage.map(agentId => {
-                  const agent = agents.find(a => a.agent_id === agentId);
+                  const agent = (agents || []).find(a => a.agent_id === agentId);
                   if (!agent) return null;
                   return (
                     <Badge
@@ -635,7 +635,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             )}
             
             <div className="max-h-96 overflow-y-auto space-y-2 pe-2">
-              {agents
+              {(agents || [])
                 .filter(agent => 
                   agent.name.toLowerCase().includes(agentSearchQuery.toLowerCase()) ||
                   (agent.prompt && agent.prompt.toLowerCase().includes(agentSearchQuery.toLowerCase()))
@@ -689,7 +689,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                   </div>
                 ))
               }
-              {agents.filter(agent => 
+              {(agents || []).filter(agent => 
                 agent.name.toLowerCase().includes(agentSearchQuery.toLowerCase()) ||
                 (agent.prompt && agent.prompt.toLowerCase().includes(agentSearchQuery.toLowerCase()))
               ).length === 0 && (
@@ -715,7 +715,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             </span>
             <div className="flex flex-wrap items-center gap-1.5 flex-1">
               {selectedAgentsForMessage.map(agentId => {
-                const agent = agents.find(a => a.agent_id === agentId);
+                const agent = (agents || []).find(a => a.agent_id === agentId);
                 if (!agent) return null;
                 return (
                   <div
@@ -763,7 +763,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 <Label className="text-sm font-medium text-foreground">{t("chat.to")}</Label>
                 <div className="flex-1 flex flex-wrap items-center gap-2">
                   {selectedAgentsForMessage.map(agentId => {
-                    const agent = agents.find(a => a.agent_id === agentId);
+                    const agent = (agents || []).find(a => a.agent_id === agentId);
                     if (!agent) return null;
                     return (
                       <Badge
@@ -1013,7 +1013,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             <div className="flex flex-wrap gap-1.5 p-2 bg-muted/30 rounded-md">
               <Label className="text-xs font-medium text-muted-foreground w-full mb-1">{t("chat.selectedAgents", { count: selectedAgentsForMessage.length })}:</Label>
               {selectedAgentsForMessage.map(agentId => {
-                const agent = agents.find(a => a.agent_id === agentId);
+                const agent = (agents || []).find(a => a.agent_id === agentId);
                 if (!agent) return null;
                 return (
                   <Badge
@@ -1076,7 +1076,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 </div>
               ))
             }
-            {agents.filter(agent => 
+            {(agents || []).filter(agent => 
               agent.name.toLowerCase().includes(agentSearchQuery.toLowerCase()) ||
               (agent.prompt && agent.prompt.toLowerCase().includes(agentSearchQuery.toLowerCase()))
             ).length === 0 && (
