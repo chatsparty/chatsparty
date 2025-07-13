@@ -280,7 +280,6 @@
     "test": "Test Agent",
     "deploy": "Deploy",
     "archive": "Archive",
-    "duplicate": "Duplicate Agent",
     "export": "Export Agent",
     "import": "Import Agent",
     "share": "Share Agent",

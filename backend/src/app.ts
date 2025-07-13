@@ -6,7 +6,8 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { config } from './config/env';
 import { connectDatabase, disconnectDatabase } from './config/database';
-import { errorHandler } from './middleware/error';
+import { HttpError } from './utils/http-error';
+import { ZodError } from 'zod';
 import { authenticate } from './middleware/auth';
 import userRoutes from './services/user/user.routes';
 import authRoutes from './services/user/auth.routes';
@@ -147,7 +148,29 @@ async function start() {
     await registerPlugins();
     await registerRoutes();
 
-    app.setErrorHandler(errorHandler);
+    app.setErrorHandler((error, request, reply) => {
+      if (error instanceof ZodError) {
+        reply.status(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: error.flatten(),
+        });
+      } else if (error instanceof HttpError) {
+        request.log.warn(error);
+        reply.status(error.statusCode).send({
+          statusCode: error.statusCode,
+          error: error.name,
+          message: error.message,
+        });
+      } else {
+        request.log.error(error);
+        reply.status(500).send({
+          statusCode: 500,
+          error: 'Internal Server Error',
+          message: 'An unexpected error occurred',
+        });
+      }
+    });
 
     const port = config.PORT || 4000;
     const host = config.HOST || '0.0.0.0';
