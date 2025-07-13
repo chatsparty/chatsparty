@@ -10,12 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Gender enum for agent voice configuration
-enum Gender {
-  MALE
-  FEMALE
-  NEUTRAL
-}
 
 // User model with credit system
 model User {
@@ -44,7 +38,7 @@ model User {
   voiceConnections   VoiceConnection[]
   projects           Project[]
   creditTransactions CreditTransaction[]
-  podcastJobs        PodcastJob[]
+  
   credits            Credit[]
   
   @@index([email])
@@ -63,10 +57,9 @@ model Agent {
   chatStyle         Json        // Chat style configuration
   
   // Voice configuration
-  gender            Gender      @default(NEUTRAL)
   voiceConnectionId String?
   voiceEnabled      Boolean     @default(false)
-  podcastSettings   Json?
+  
   
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -129,7 +122,7 @@ model Conversation {
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   project       Project?    @relation(fields: [projectId], references: [id])
   messageRecords Message[]   @relation("ConversationMessages")
-  podcastJobs   PodcastJob[]
+  
   
   @@index([userId])
   @@index([agentId])
@@ -192,34 +185,7 @@ model VoiceConnection {
   @@index([provider])
 }
 
-// Podcast Job model
-model PodcastJob {
-  id                String       @id @default(cuid())
-  conversationId    String
-  userId            String
-  
-  // Job status and tracking
-  status            String       @default("queued") // queued, processing, completed, failed
-  audioPath         String?
-  errorMessage      String?      @db.Text
-  
-  // Job metadata
-  totalMessages     Int?
-  processedMessages Int          @default(0)
-  durationSeconds   Float?
-  fileSizeBytes     BigInt?
-  
-  createdAt         DateTime     @default(now())
-  completedAt       DateTime?
-  
-  // Relations
-  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId])
-  @@index([conversationId])
-  @@index([status])
-}
+
 
 // Project model
 model Project {

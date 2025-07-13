@@ -1,56 +1,43 @@
-import { FastifyPluginAsync } from 'fastify';
-import { authenticate } from '../middleware/auth';
-import { ConnectionService } from '../services/connections/connection.service';
-// Note: Schema validation imports removed as they are not used in route handlers
-// import {
-//   createConnectionSchema,
-//   updateConnectionSchema,
-//   testConnectionSchema,
-//   connectionIdSchema,
-//   setDefaultSchema,
-//   connectionQuerySchema,
-//   paginationSchema,
-// } from '../services/connections/connection.validation';
-import { AIProvider } from '../services/connections/connection.types';
+import { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import { authenticate } from '../../middleware/auth';
+import { ConnectionService } from './connection.service';
+import {
+  createConnectionSchema,
+  listConnectionsSchema,
+  getConnectionSchema,
+  updateConnectionSchema,
+  deleteConnectionSchema,
+  testConnectionSchema,
+  setDefaultConnectionSchema,
+  getDefaultConnectionSchema,
+  getProviderInfoSchema,
+  getProvidersSchema,
+  getProviderModelsSchema,
+} from './connection.schemas';
+import {
+  AIProvider,
+  CreateConnectionRequest,
+  UpdateConnectionRequest,
+  TestConnectionRequest,
+  ConnectionQueryOptions,
+  PaginationOptions,
+} from './connection.types';
 
 // Connection routes plugin
-const connectionRoutes: FastifyPluginAsync = async (fastify) => {
+const connectionRoutes: FastifyPluginAsync = async fastify => {
   const connectionService = new ConnectionService();
 
   // Create a new connection
   fastify.post(
     '/',
     {
-      schema: {
-        description: 'Create a new AI connection',
-        tags: ['Connections'],
-        security: [{ bearerAuth: [] }],
-        body: {
-          type: 'object',
-          required: ['name', 'provider'],
-          properties: {
-            name: { type: 'string' },
-            provider: { type: 'string', enum: ['openai', 'anthropic', 'vertex_ai'] },
-            config: { type: 'object' },
-            isDefault: { type: 'boolean' },
-          },
-        },
-        response: {
-          201: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              provider: { type: 'string' },
-              createdAt: { type: 'string' },
-              updatedAt: { type: 'string' },
-            },
-          },
-        },
-      },
+      schema: createConnectionSchema,
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (
+      request: FastifyRequest<{ Body: CreateConnectionRequest }>,
+      reply
+    ) => {
       const result = await connectionService.createConnection(
         request.user!.userId,
         request.body
@@ -71,44 +58,15 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/',
     {
-      schema: {
-        description: 'List user connections',
-        tags: ['Connections'],
-        security: [{ bearerAuth: [] }],
-        querystring: {
-          type: 'object',
-          properties: {
-            page: { type: 'integer', minimum: 1 },
-            limit: { type: 'integer', minimum: 1, maximum: 100 },
-            provider: { type: 'string' },
-          },
-        },
-        response: {
-          200: {
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              data: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'string' },
-                    name: { type: 'string' },
-                    provider: { type: 'string' },
-                    isDefault: { type: 'boolean' },
-                    createdAt: { type: 'string' },
-                    updatedAt: { type: 'string' },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      schema: listConnectionsSchema,
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (
+      request: FastifyRequest<{
+        Querystring: ConnectionQueryOptions & PaginationOptions;
+      }>,
+      reply
+    ) => {
       const result = await connectionService.listConnections(
         request.user!.userId,
         request.query
@@ -129,9 +87,10 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/:id',
     {
+      schema: getConnectionSchema,
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const result = await connectionService.getConnectionById(
         request.user!.userId,
         request.params.id
@@ -152,9 +111,16 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.patch(
     '/:id',
     {
+      schema: updateConnectionSchema,
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: UpdateConnectionRequest;
+      }>,
+      reply
+    ) => {
       const result = await connectionService.updateConnection(
         request.user!.userId,
         request.params.id,
@@ -176,9 +142,10 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.delete(
     '/:id',
     {
+      schema: deleteConnectionSchema,
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const result = await connectionService.deleteConnection(
         request.user!.userId,
         request.params.id
@@ -199,9 +166,10 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
     '/test',
     {
+      schema: testConnectionSchema,
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (request: FastifyRequest<{ Body: TestConnectionRequest }>, reply) => {
       const result = await connectionService.testConnection(request.body);
 
       if (!result.success) {
@@ -219,9 +187,13 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
     '/default',
     {
+      schema: setDefaultConnectionSchema,
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (
+      request: FastifyRequest<{ Body: { connectionId: string } }>,
+      reply
+    ) => {
       const result = await connectionService.setDefaultConnection(
         request.user!.userId,
         request.body.connectionId
@@ -242,9 +214,13 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/default/:provider',
     {
+      schema: getDefaultConnectionSchema,
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (
+      request: FastifyRequest<{ Params: { provider: string } }>,
+      reply
+    ) => {
       const result = await connectionService.getDefaultConnection(
         request.user!.userId,
         request.params.provider as AIProvider
@@ -264,7 +240,13 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   // Get provider information
   fastify.get(
     '/providers/:provider',
-    async (request, reply) => {
+    {
+      schema: getProviderInfoSchema,
+    },
+    async (
+      request: FastifyRequest<{ Params: { provider: string } }>,
+      reply
+    ) => {
       const providerInfo = connectionService.getProviderInfo(
         request.params.provider as AIProvider
       );
@@ -274,18 +256,37 @@ const connectionRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // Get available providers
-  fastify.get('/providers', async (request, reply) => {
-    const providers = ['openai', 'anthropic', 'google', 'groq', 'ollama', 'vertex_ai'].map(
-      (provider) => connectionService.getProviderInfo(provider as AIProvider)
-    );
+  fastify.get(
+    '/providers',
+    {
+      schema: getProvidersSchema,
+    },
+    async (_request, reply) => {
+      const providers = [
+        'openai',
+        'anthropic',
+        'google',
+        'groq',
+        'ollama',
+        'vertex_ai',
+      ].map(provider =>
+        connectionService.getProviderInfo(provider as AIProvider)
+      );
 
-    return reply.send(providers);
-  });
+      return reply.send(providers);
+    }
+  );
 
   // Get models for a provider
   fastify.get(
     '/providers/:provider/models',
-    async (request, reply) => {
+    {
+      schema: getProviderModelsSchema,
+    },
+    async (
+      request: FastifyRequest<{ Params: { provider: string } }>,
+      reply
+    ) => {
       const models = connectionService.getProviderModels(
         request.params.provider as AIProvider
       );

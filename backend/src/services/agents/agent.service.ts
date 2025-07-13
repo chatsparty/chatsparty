@@ -126,7 +126,6 @@ export class AgentService {
           prompt: input.prompt,
           characteristics: input.characteristics,
           connectionId: input.connectionId,
-          gender: input.gender || 'NEUTRAL',
           aiConfig: input.aiConfig,
           chatStyle: input.chatStyle,
           userId,
@@ -142,7 +141,6 @@ export class AgentService {
         aiConfig: agent.aiConfig as any,
         chatStyle: agent.chatStyle as any,
         connectionId: agent.connectionId,
-        gender: agent.gender as any,
       };
 
       await agentManager.registerAgent(mastraAgent);
@@ -302,6 +300,7 @@ export class AgentService {
         }
       }
 
+
       // Validate connection if changing
       if (input.connectionId) {
         let connection = await this.prisma.connection.findFirst({
@@ -350,7 +349,6 @@ export class AgentService {
       if (input.prompt !== undefined) updateData.prompt = input.prompt;
       if (input.characteristics !== undefined) updateData.characteristics = input.characteristics;
       if (input.connectionId !== undefined) updateData.connectionId = input.connectionId;
-      if (input.gender !== undefined) updateData.gender = input.gender;
       if (input.aiConfig !== undefined) updateData.aiConfig = input.aiConfig;
       if (input.chatStyle !== undefined) updateData.chatStyle = input.chatStyle;
 
@@ -368,7 +366,6 @@ export class AgentService {
         aiConfig: agent.aiConfig as any,
         chatStyle: agent.chatStyle as any,
         connectionId: agent.connectionId,
-        gender: agent.gender as any,
       };
 
       await agentManager.registerAgent(mastraAgent);
@@ -491,16 +488,9 @@ export class AgentService {
           prompt: originalAgent.prompt,
           characteristics: originalAgent.characteristics,
           connectionId: originalAgent.connectionId,
-          gender: originalAgent.gender,
           aiConfig: originalAgent.aiConfig,
           chatStyle: originalAgent.chatStyle,
-          voiceEnabled: originalAgent.voiceEnabled,
-          voiceConnectionId: originalAgent.voiceConnectionId,
-          podcastSettings: originalAgent.podcastSettings,
           userId,
-        },
-        include: {
-          voiceConnection: true,
         },
       });
 
@@ -513,13 +503,6 @@ export class AgentService {
         aiConfig: duplicatedAgent.aiConfig as any,
         chatStyle: duplicatedAgent.chatStyle as any,
         connectionId: duplicatedAgent.connectionId,
-        gender: duplicatedAgent.gender as any,
-        voiceConfig: duplicatedAgent.voiceConnectionId ? {
-          voiceEnabled: duplicatedAgent.voiceEnabled,
-          voiceConnectionId: duplicatedAgent.voiceConnectionId,
-          selectedVoiceId: duplicatedAgent.voiceConnection?.voiceId || undefined,
-          podcastSettings: duplicatedAgent.podcastSettings as Record<string, any> || undefined,
-        } : undefined,
       };
 
       await agentManager.registerAgent(mastraAgent);

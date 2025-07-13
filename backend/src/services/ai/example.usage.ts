@@ -36,7 +36,6 @@ export function createSampleAgents(): Agent[] {
         personality: 'enthusiastic',
       },
       connectionId: 'default',
-      gender: 'neutral',
     },
     {
       agentId: 'creative-writer',
@@ -54,7 +53,6 @@ export function createSampleAgents(): Agent[] {
         responseLength: 'long',
       },
       connectionId: 'default',
-      gender: 'neutral',
     },
     {
       agentId: 'business-analyst',
@@ -72,7 +70,6 @@ export function createSampleAgents(): Agent[] {
         humor: 'none',
       },
       connectionId: 'default',
-      gender: 'neutral',
     },
   ];
 

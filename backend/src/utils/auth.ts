@@ -23,6 +23,6 @@ export function verifyToken(token: string): JwtPayload {
 
 export function generateToken(payload: JwtPayload): string {
   return jwt.sign(payload, config.JWT_SECRET, {
-    expiresIn: config.JWT_EXPIRES_IN,
+    expiresIn: config.JWT_EXPIRES_IN as string,
   });
 }

@@ -44,6 +44,7 @@
     "bcryptjs": "^2.4.3",
     "fastify": "^5.4.0",
     "google-auth-library": "^10.1.0",
+    "jest-mock-extended": "^4.0.0",
     "jsonwebtoken": "^9.0.2",
     "mastra": "^0.10.10",
     "nanoid": "^5.0.6",

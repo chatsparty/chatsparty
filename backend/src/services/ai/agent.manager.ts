@@ -1,15 +1,20 @@
 import { Agent as MastraAgent } from '@mastra/core';
 import { CoreMessage, generateObject, generateText } from 'ai';
-import { mastra, getModel, SUPERVISOR_MODEL, SUPERVISOR_PROMPTS } from './mastra.config';
-import { 
-  Agent, 
-  AgentSelection, 
+import {
+  mastra,
+  getModel,
+  SUPERVISOR_MODEL,
+  SUPERVISOR_PROMPTS,
+} from './mastra.config';
+import {
+  Agent,
+  AgentSelection,
   AgentSelectionSchema,
   TerminationDecision,
   TerminationDecisionSchema,
   Message,
   ConversationState,
-  getAgentSystemPrompt 
+  getAgentSystemPrompt,
 } from './types';
 
 export class AgentManager {
@@ -32,13 +37,15 @@ export class AgentManager {
     });
 
     this.mastraAgents.set(agent.agentId, mastraAgent);
-    
+
     // Register with Mastra instance
-    if (!mastra.agents) {
-      console.warn('Mastra agents object is not initialized, creating empty object');
-      mastra.agents = {};
+    if (!(mastra as any).agents) {
+      console.warn(
+        'Mastra agents object is not initialized, creating empty object'
+      );
+      (mastra as any).agents = {};
     }
-    mastra.agents[agent.agentId] = mastraAgent;
+    (mastra as any).agents[agent.agentId] = mastraAgent;
   }
 
   /**
@@ -47,7 +54,7 @@ export class AgentManager {
   async unregisterAgent(agentId: string): Promise<void> {
     this.agents.delete(agentId);
     this.mastraAgents.delete(agentId);
-    delete mastra.agents[agentId];
+    delete (mastra as any).agents[agentId];
   }
 
   /**
@@ -89,19 +96,31 @@ export class AgentManager {
 
       // Get last speakers for anti-repetition
       const lastSpeakers: string[] = [];
-      for (let i = state.messages.length - 1; i >= 0 && lastSpeakers.length < 3; i--) {
+      for (
+        let i = state.messages.length - 1;
+        i >= 0 && lastSpeakers.length < 3;
+        i--
+      ) {
         const msg = state.messages[i];
-        if (msg.role === 'assistant' && msg.speaker && !lastSpeakers.includes(msg.speaker)) {
+        if (
+          msg.role === 'assistant' &&
+          msg.speaker &&
+          !lastSpeakers.includes(msg.speaker)
+        ) {
           lastSpeakers.push(msg.speaker);
         }
       }
 
       // Build prompt
-      const selectionPrompt = this.buildSelectionPrompt(recentMessages, agentsInfo, lastSpeakers);
+      const selectionPrompt = this.buildSelectionPrompt(
+        recentMessages,
+        agentsInfo,
+        lastSpeakers
+      );
 
       // Use supervisor model to select agent
       const model = getModel(SUPERVISOR_MODEL.provider, SUPERVISOR_MODEL.model);
-      
+
       const result = await generateObject({
         model,
         schema: AgentSelectionSchema,
@@ -113,11 +132,17 @@ export class AgentManager {
 
       // Validate selection
       const selectedAgent = result.object;
-      
+
       // Anti-repetition check
-      if (selectedAgent && lastSpeakers.length > 0 && lastSpeakers[0] === selectedAgent.agentId) {
+      if (
+        selectedAgent &&
+        lastSpeakers.length > 0 &&
+        lastSpeakers[0] === selectedAgent.agentId
+      ) {
         // Force different agent
-        const availableAgents = state.agents.filter(a => a.id !== lastSpeakers[0]);
+        const availableAgents = state.agents.filter(
+          a => a.id !== lastSpeakers[0]
+        );
         if (availableAgents.length > 0) {
           return {
             agentId: availableAgents[0].id,
@@ -152,7 +177,7 @@ export class AgentManager {
       const terminationPrompt = this.buildTerminationPrompt(recentMessages);
 
       const model = getModel(SUPERVISOR_MODEL.provider, SUPERVISOR_MODEL.model);
-      
+
       const result = await generateObject({
         model,
         schema: TerminationDecisionSchema,
@@ -193,12 +218,6 @@ export class AgentManager {
     }));
 
     // Get model for this agent
-    console.log(`Generating response for agent ${agent.name}:`, {
-      provider: agent.aiConfig.provider,
-      modelName: agent.aiConfig.modelName,
-      messagesCount: messages.length,
-    });
-    
     const model = getModel(agent.aiConfig.provider, agent.aiConfig.modelName);
 
     // Generate response
@@ -216,35 +235,34 @@ export class AgentManager {
       throw error;
     }
 
-    // Log the response for debugging
-    console.log(`Agent ${agent.name} (${agentId}) response:`, {
-      hasText: !!result.text,
-      textLength: result.text?.length || 0,
-      firstChars: result.text?.substring(0, 50) || 'EMPTY',
-    });
-
     // Validate response is not empty
     if (!result.text || result.text.trim() === '') {
       console.warn(`Agent ${agent.name} generated empty response. Retrying...`);
-      
+
       // For Google models, we can't add system messages mid-conversation
       // Instead, add a user message prompting for a response
-      const isGoogleModel = agent.aiConfig.provider === 'google' || agent.aiConfig.provider === 'vertex_ai';
-      
-      const retryMessages: CoreMessage[] = isGoogleModel ? [
-        ...messages,
-        {
-          role: 'user',
-          content: 'Please continue the conversation with a substantive response.',
-        },
-      ] : [
-        ...messages,
-        {
-          role: 'system',
-          content: 'Please provide a substantive response to continue the conversation.',
-        },
-      ];
-      
+      const isGoogleModel =
+        agent.aiConfig.provider === 'google' ||
+        agent.aiConfig.provider === 'vertex_ai';
+
+      const retryMessages: CoreMessage[] = isGoogleModel
+        ? [
+            ...messages,
+            {
+              role: 'user',
+              content:
+                'Please continue the conversation with a substantive response.',
+            },
+          ]
+        : [
+            ...messages,
+            {
+              role: 'system',
+              content:
+                'Please provide a substantive response to continue the conversation.',
+            },
+          ];
+
       try {
         const retryResult = await generateText({
           model,
@@ -253,15 +271,20 @@ export class AgentManager {
           temperature: 0.8, // Slightly higher temperature for variety
           maxTokens: 1000,
         });
-        
+
         if (!retryResult.text || retryResult.text.trim() === '') {
-          console.error(`Agent ${agent.name} generated empty response after retry`);
+          console.error(
+            `Agent ${agent.name} generated empty response after retry`
+          );
           return `Hey everyone!`; // Simple fallback for greetings
         }
-        
+
         return retryResult.text;
       } catch (retryError) {
-        console.error(`Error during retry for agent ${agent.name}:`, retryError);
+        console.error(
+          `Error during retry for agent ${agent.name}:`,
+          retryError
+        );
         return `Hey there!`; // Simple fallback
       }
     }
@@ -288,8 +311,9 @@ export class AgentManager {
       agentsList += `- ${agent.id}: ${agent.name} - ${agent.characteristics}\n`;
     }
 
-    const lastSpeaker = recentMessages[recentMessages.length - 1]?.speaker || 'unknown';
-    
+    const lastSpeaker =
+      recentMessages[recentMessages.length - 1]?.speaker || 'unknown';
+
     let antiRepetitionNote = '';
     if (lastSpeakers.length > 0) {
       const recentSpeakerNames = lastSpeakers.join(', ');

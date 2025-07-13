@@ -2,7 +2,14 @@ import { z } from 'zod';
 
 // Model configuration schema
 export const ModelConfigurationSchema = z.object({
-  provider: z.enum(['openai', 'anthropic', 'google']),
+  provider: z.enum([
+    'openai',
+    'anthropic',
+    'google',
+    'vertex_ai',
+    'groq',
+    'ollama',
+  ]),
   modelName: z.string(),
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
@@ -15,9 +22,13 @@ export type ModelConfiguration = z.infer<typeof ModelConfigurationSchema>;
 export const ChatStyleSchema = z.object({
   friendliness: z.enum(['friendly', 'formal', 'balanced']).default('friendly'),
   responseLength: z.enum(['short', 'medium', 'long']).default('medium'),
-  personality: z.enum(['enthusiastic', 'reserved', 'balanced']).default('balanced'),
+  personality: z
+    .enum(['enthusiastic', 'reserved', 'balanced'])
+    .default('balanced'),
   humor: z.enum(['witty', 'light', 'none']).default('light'),
-  expertiseLevel: z.enum(['beginner', 'intermediate', 'expert']).default('expert'),
+  expertiseLevel: z
+    .enum(['beginner', 'intermediate', 'expert'])
+    .default('expert'),
 });
 
 export type ChatStyle = z.infer<typeof ChatStyleSchema>;
@@ -27,7 +38,7 @@ export const VoiceConfigSchema = z.object({
   voiceEnabled: z.boolean().default(false),
   voiceConnectionId: z.string().optional(),
   selectedVoiceId: z.string().optional(),
-  podcastSettings: z.record(z.any()).optional(),
+  
 });
 
 export type VoiceConfig = z.infer<typeof VoiceConfigSchema>;
@@ -41,7 +52,6 @@ export const AgentSchema = z.object({
   aiConfig: ModelConfigurationSchema,
   chatStyle: ChatStyleSchema,
   connectionId: z.string(),
-  gender: z.enum(['MALE', 'FEMALE', 'NEUTRAL']).default('NEUTRAL'),
   voiceConfig: VoiceConfigSchema.optional(),
 });
 
@@ -72,11 +82,13 @@ export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 // Conversation state for multi-agent workflows
 export const ConversationStateSchema = z.object({
   messages: z.array(MessageSchema),
-  agents: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    characteristics: z.string(),
-  })),
+  agents: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      characteristics: z.string(),
+    })
+  ),
   currentSpeaker: z.string().optional().nullable(),
   turnCount: z.number().default(0),
   maxTurns: z.number().default(10),
@@ -90,7 +102,9 @@ export type ConversationState = z.infer<typeof ConversationStateSchema>;
 // Supervisor decision schemas
 export const AgentSelectionSchema = z.object({
   agentId: z.string().describe('The ID of the agent that should respond next'),
-  reasoning: z.string().describe('Brief explanation of why this agent was selected'),
+  reasoning: z
+    .string()
+    .describe('Brief explanation of why this agent was selected'),
 });
 
 export type AgentSelection = z.infer<typeof AgentSelectionSchema>;
@@ -103,8 +117,14 @@ export const TerminationDecisionSchema = z.object({
 export type TerminationDecision = z.infer<typeof TerminationDecisionSchema>;
 
 // Workflow event types
-export type WorkflowEvent = 
-  | { type: 'agent_response'; agentId: string; agentName: string; message: string; timestamp: number }
+export type WorkflowEvent =
+  | {
+      type: 'agent_response';
+      agentId: string;
+      agentName: string;
+      message: string;
+      timestamp: number;
+    }
   | { type: 'conversation_complete'; message: string }
   | { type: 'error'; message: string }
   | { type: 'status'; message: string };
@@ -112,32 +132,44 @@ export type WorkflowEvent =
 // Agent helper methods
 export function getAgentSystemPrompt(agent: Agent): string {
   const styleInstructions: string[] = [];
-  
+
   // Build style instructions based on chat style
   if (agent.chatStyle.friendliness === 'friendly') {
-    styleInstructions.push('Be warm, approachable, and friendly in your responses.');
+    styleInstructions.push(
+      'Be warm, approachable, and friendly in your responses.'
+    );
   } else if (agent.chatStyle.friendliness === 'formal') {
     styleInstructions.push('Maintain a professional and formal tone.');
   } else {
-    styleInstructions.push('Use a balanced, neither too casual nor too formal tone.');
+    styleInstructions.push(
+      'Use a balanced, neither too casual nor too formal tone.'
+    );
   }
-  
+
   if (agent.chatStyle.responseLength === 'short') {
-    styleInstructions.push('Keep your responses brief and concise (1-2 sentences when possible).');
+    styleInstructions.push(
+      'Keep your responses brief and concise (1-2 sentences when possible).'
+    );
   } else if (agent.chatStyle.responseLength === 'long') {
-    styleInstructions.push('Provide detailed, comprehensive responses with explanations.');
+    styleInstructions.push(
+      'Provide detailed, comprehensive responses with explanations.'
+    );
   } else {
-    styleInstructions.push('Keep responses moderate in length - informative but not overly long.');
+    styleInstructions.push(
+      'Keep responses moderate in length - informative but not overly long.'
+    );
   }
-  
+
   if (agent.chatStyle.personality === 'enthusiastic') {
     styleInstructions.push('Show enthusiasm and energy in your responses.');
   } else if (agent.chatStyle.personality === 'reserved') {
     styleInstructions.push('Be thoughtful and measured in your responses.');
   } else {
-    styleInstructions.push('Maintain a balanced, engaging but not overwhelming personality.');
+    styleInstructions.push(
+      'Maintain a balanced, engaging but not overwhelming personality.'
+    );
   }
-  
+
   if (agent.chatStyle.humor === 'witty') {
     styleInstructions.push('Feel free to include appropriate humor and wit.');
   } else if (agent.chatStyle.humor === 'light') {
@@ -145,17 +177,23 @@ export function getAgentSystemPrompt(agent: Agent): string {
   } else {
     styleInstructions.push('Keep responses serious and focused.');
   }
-  
+
   if (agent.chatStyle.expertiseLevel === 'beginner') {
-    styleInstructions.push('Explain concepts simply, as if speaking to a beginner.');
+    styleInstructions.push(
+      'Explain concepts simply, as if speaking to a beginner.'
+    );
   } else if (agent.chatStyle.expertiseLevel === 'intermediate') {
-    styleInstructions.push('Use moderate technical language appropriate for someone with some experience.');
+    styleInstructions.push(
+      'Use moderate technical language appropriate for someone with some experience.'
+    );
   } else {
-    styleInstructions.push('You can use technical language and assume advanced knowledge.');
+    styleInstructions.push(
+      'You can use technical language and assume advanced knowledge.'
+    );
   }
-  
+
   const styleText = styleInstructions.join(' ');
-  
+
   return `You are ${agent.name}. 
 
 Your role and characteristics: ${agent.characteristics}

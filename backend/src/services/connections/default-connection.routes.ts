@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { DefaultConnectionService } from '../services/connections/default-connection.service';
-import { authenticate } from '../middleware/auth';
+import { DefaultConnectionService } from './default-connection.service';
+import { authenticate } from '../../middleware/auth';
 
 // Response schemas
 const defaultConnectionSchema = {
@@ -18,10 +18,20 @@ const defaultConnectionSchema = {
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
   },
-  required: ['id', 'name', 'provider', 'modelName', 'isActive', 'isDefault', 'isSystemDefault'],
+  required: [
+    'id',
+    'name',
+    'provider',
+    'modelName',
+    'isActive',
+    'isDefault',
+    'isSystemDefault',
+  ],
 };
 
-export default async function defaultConnectionRoutes(fastify: FastifyInstance) {
+export default async function defaultConnectionRoutes(
+  fastify: FastifyInstance
+) {
   const defaultConnectionService = new DefaultConnectionService();
 
   // Get system default connection info
@@ -53,15 +63,18 @@ export default async function defaultConnectionRoutes(fastify: FastifyInstance) 
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const result = await defaultConnectionService.getSystemDefaultConnection();
-        
+        const result =
+          await defaultConnectionService.getSystemDefaultConnection();
+
         if (!result.success) {
           return reply.status(500).send({ error: result.error });
         }
 
         return reply.send({
           enabled: defaultConnectionService.isDefaultConnectionAvailable(),
-          connection: result.data ? defaultConnectionService.toPublicDefaultConnection(result.data) : null,
+          connection: result.data
+            ? defaultConnectionService.toPublicDefaultConnection(result.data)
+            : null,
         });
       } catch (error) {
         request.log.error(error, 'Error getting default connection');
@@ -99,25 +112,27 @@ export default async function defaultConnectionRoutes(fastify: FastifyInstance) 
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const result = await defaultConnectionService.testDefaultConnection();
-        
+
         if (!result.success) {
-          return reply.status(500).send({ 
+          return reply.status(500).send({
             success: false,
             message: 'Failed to test connection',
-            error: result.error 
+            error: result.error,
           });
         }
 
         return reply.send({
           success: result.data || false,
-          message: result.data ? 'Default connection is working' : 'Default connection test failed',
+          message: result.data
+            ? 'Default connection is working'
+            : 'Default connection test failed',
         });
       } catch (error) {
         request.log.error(error, 'Error testing default connection');
-        return reply.status(500).send({ 
+        return reply.status(500).send({
           success: false,
           message: 'Internal server error',
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
@@ -160,8 +175,9 @@ export default async function defaultConnectionRoutes(fastify: FastifyInstance) 
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const result = await defaultConnectionService.getDefaultConnectionConfig();
-        
+        const result =
+          await defaultConnectionService.getDefaultConnectionConfig();
+
         if (!result.success) {
           return reply.status(404).send({ error: result.error });
         }
@@ -182,14 +198,22 @@ export default async function defaultConnectionRoutes(fastify: FastifyInstance) 
     {
       preHandler: [authenticate],
       schema: {
-        description: 'Check if a specific provider has a default connection available',
+        description:
+          'Check if a specific provider has a default connection available',
         tags: ['Default Connection'],
         params: {
           type: 'object',
           properties: {
-            provider: { 
+            provider: {
               type: 'string',
-              enum: ['openai', 'anthropic', 'google', 'groq', 'ollama', 'vertex_ai'],
+              enum: [
+                'openai',
+                'anthropic',
+                'google',
+                'groq',
+                'ollama',
+                'vertex_ai',
+              ],
             },
           },
           required: ['provider'],
@@ -213,18 +237,26 @@ export default async function defaultConnectionRoutes(fastify: FastifyInstance) 
         },
       },
     },
-    async (request: FastifyRequest<{ Params: { provider: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { provider: string } }>,
+      reply: FastifyReply
+    ) => {
       try {
         const { provider } = request.params;
-        const result = await defaultConnectionService.getDefaultConnectionForProvider(provider as any);
-        
+        const result =
+          await defaultConnectionService.getDefaultConnectionForProvider(
+            provider as any
+          );
+
         if (!result.success) {
           return reply.status(500).send({ error: result.error });
         }
 
         return reply.send({
           available: result.data !== null,
-          connection: result.data ? defaultConnectionService.toPublicDefaultConnection(result.data) : null,
+          connection: result.data
+            ? defaultConnectionService.toPublicDefaultConnection(result.data)
+            : null,
         });
       } catch (error) {
         request.log.error(error, 'Error checking provider default connection');

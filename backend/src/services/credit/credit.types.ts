@@ -33,7 +33,7 @@ export enum TransactionReason {
   AI_CHAT = 'ai_chat',
   MODEL_USAGE = 'model_usage',
   VOICE_SYNTHESIS = 'voice_synthesis',
-  PODCAST_GENERATION = 'podcast_generation',
+  
   MANUAL_ADJUSTMENT = 'manual_adjustment',
   SUBSCRIPTION_REFILL = 'subscription_refill',
   WELCOME_BONUS = 'welcome_bonus',

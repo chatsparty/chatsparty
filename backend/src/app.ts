@@ -8,14 +8,14 @@ import { config } from './config/env';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { errorHandler } from './middleware/error';
 import { authenticate } from './middleware/auth';
-import userRoutes from './routes/user.routes';
-import authRoutes from './routes/auth.routes';
-import { agentRoutes } from './routes/agent.routes';
-import connectionRoutes from './routes/connection.routes';
-import creditRoutes from './routes/credit.routes';
-import { storageRoutes } from './routes/storage.routes';
-import { chatRoutes } from './routes/chat.routes';
-import defaultConnectionRoutes from './routes/default-connection.routes';
+import userRoutes from './services/user/user.routes';
+import authRoutes from './services/user/auth.routes';
+import { agentRoutes } from './services/agents/agent.routes';
+import connectionRoutes from './services/connections/connection.routes';
+import creditRoutes from './services/credit/credit.routes';
+import { storageRoutes } from './services/storage/storage.routes';
+import { chatRoutes } from './services/chat/chat.routes';
+import defaultConnectionRoutes from './services/connections/default-connection.routes';
 import { websocketService } from './services/websocket/websocket.service';
 import { setupChatHandlers } from './services/websocket/chat.handlers';
 
@@ -35,9 +35,7 @@ const app = Fastify({
   },
 });
 
-// Register plugins
 async function registerPlugins() {
-  // Swagger documentation
   await app.register(swagger, {
     openapi: {
       openapi: '3.0.0',
@@ -71,31 +69,29 @@ async function registerPlugins() {
       deepLinking: false,
     },
     uiHooks: {
-      onRequest: function (request, reply, next) {
+      onRequest: function (_request, _reply, next) {
         next();
       },
-      preHandler: function (request, reply, next) {
+      preHandler: function (_request, _reply, next) {
         next();
       },
     },
     staticCSP: true,
-    transformStaticCSP: (header) => header,
-    transformSpecification: (swaggerObject, request, reply) => {
+    transformStaticCSP: header => header,
+    transformSpecification: (swaggerObject, _request, _reply) => {
       return swaggerObject;
     },
     transformSpecificationClone: true,
   });
 
-  // Security headers
   await app.register(helmet, {
-    contentSecurityPolicy: false, // Configure as needed
+    contentSecurityPolicy: false,
   });
 
-  // CORS
-  const corsOrigins = config.CORS_ORIGIN 
+  const corsOrigins = config.CORS_ORIGIN
     ? config.CORS_ORIGIN.split(',').map(origin => origin.trim())
     : true;
-    
+
   await app.register(cors, {
     origin: corsOrigins,
     credentials: true,
@@ -103,33 +99,33 @@ async function registerPlugins() {
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // Authentication
   await app.register(auth);
   app.decorate('verifyJWT', authenticate);
 }
 
-// Register routes
 async function registerRoutes() {
-  // Health check
-  app.get('/health', {
-    schema: {
-      description: 'Health check endpoint',
-      tags: ['Health'],
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            status: { type: 'string' },
-            timestamp: { type: 'string' },
+  app.get(
+    '/health',
+    {
+      schema: {
+        description: 'Health check endpoint',
+        tags: ['Health'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              status: { type: 'string' },
+              timestamp: { type: 'string' },
+            },
           },
         },
       },
     },
-  }, async (_request, _reply) => {
-    return { status: 'ok', timestamp: new Date().toISOString() };
-  });
+    async (_request, _reply) => {
+      return { status: 'ok', timestamp: new Date().toISOString() };
+    }
+  );
 
-  // API routes
   await app.register(userRoutes, { prefix: '/api/users' });
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(agentRoutes, { prefix: '/api' });
@@ -138,23 +134,19 @@ async function registerRoutes() {
   await app.register(creditRoutes, { prefix: '/api/credits' });
   await app.register(storageRoutes, { prefix: '/api' });
   await app.register(chatRoutes, { prefix: '/api' });
-  
-  // Frontend compatibility aliases (without /api prefix)
+
   await app.register(connectionRoutes, { prefix: '/connections' });
   await app.register(defaultConnectionRoutes, { prefix: '' });
   await app.register(agentRoutes, { prefix: '/chat' });
 }
 
-// Start server
 async function start() {
   try {
-    // Connect to database
     await connectDatabase();
 
     await registerPlugins();
     await registerRoutes();
 
-    // Set error handler
     app.setErrorHandler(errorHandler);
 
     const port = config.PORT || 4000;
@@ -163,15 +155,13 @@ async function start() {
     await app.listen({ port, host });
     console.info(`Server listening on http://${host}:${port}`);
 
-    // Initialize Socket.IO after server is listening
     const server = app.server;
     const io = websocketService.initializeSocketIO(server);
-    
-    // Setup chat handlers for each connection
-    io.on('connection', (socket) => {
+
+    io.on('connection', socket => {
       setupChatHandlers(socket);
     });
-    
+
     console.info('Socket.IO server initialized');
   } catch (err) {
     app.log.error(err);
@@ -179,7 +169,6 @@ async function start() {
   }
 }
 
-// Handle graceful shutdown
 process.on('SIGINT', async () => {
   app.log.info('SIGINT signal received: closing HTTP server');
   await app.close();
@@ -194,5 +183,4 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// Start the server
 start();
