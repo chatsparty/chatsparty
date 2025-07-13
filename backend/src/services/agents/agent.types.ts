@@ -15,7 +15,7 @@ export const CreateAgentInputSchema = z.object({
   prompt: z.string().min(1).max(5000),
   characteristics: z.string().min(1).max(2000),
   connectionId: z.string().cuid(),
-  gender: z.enum(['male', 'female', 'neutral']).default('neutral'),
+  gender: z.enum(['MALE', 'FEMALE', 'NEUTRAL']).default('NEUTRAL'),
   aiConfig: ModelConfigurationSchema,
   chatStyle: ChatStyleSchema,
   voiceConfig: VoiceConfigSchema.optional(),
@@ -29,7 +29,7 @@ export const UpdateAgentInputSchema = z.object({
   prompt: z.string().min(1).max(5000).optional(),
   characteristics: z.string().min(1).max(2000).optional(),
   connectionId: z.string().cuid().optional(),
-  gender: z.enum(['male', 'female', 'neutral']).optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'NEUTRAL']).optional(),
   aiConfig: ModelConfigurationSchema.optional(),
   chatStyle: ChatStyleSchema.optional(),
   voiceConfig: VoiceConfigSchema.optional(),
@@ -90,7 +90,16 @@ export const AGENT_LIMITS = {
 
 // Helper function to format agent response
 export function formatAgentResponse(agent: AgentWithRelations): AgentResponse {
-  return {
+  console.log('🔍 Backend formatting agent:', { 
+    id: agent.id, 
+    name: agent.name, 
+    connectionId: agent.connectionId,
+    typeof_connectionId: typeof agent.connectionId,
+    hasConnectionId: 'connectionId' in agent,
+    agentKeys: Object.keys(agent)
+  });
+  
+  const response = {
     id: agent.id,
     name: agent.name,
     prompt: agent.prompt,
@@ -109,4 +118,12 @@ export function formatAgentResponse(agent: AgentWithRelations): AgentResponse {
     createdAt: agent.createdAt,
     updatedAt: agent.updatedAt,
   };
+  
+  console.log('🔍 Formatted response:', { 
+    id: response.id, 
+    name: response.name, 
+    connectionId: response.connectionId 
+  });
+  
+  return response;
 }

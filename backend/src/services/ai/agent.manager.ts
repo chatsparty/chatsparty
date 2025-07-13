@@ -34,6 +34,10 @@ export class AgentManager {
     this.mastraAgents.set(agent.agentId, mastraAgent);
     
     // Register with Mastra instance
+    if (!mastra.agents) {
+      console.warn('Mastra agents object is not initialized, creating empty object');
+      mastra.agents = {};
+    }
     mastra.agents[agent.agentId] = mastraAgent;
   }
 

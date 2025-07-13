@@ -38,7 +38,7 @@ export const OAuthCallback: React.FC = () => {
         console.log("OAuth callback successful, navigating to /agents");
         setSuccess(true);
         // Small delay to show success state before navigation
-        setTimeout(() => navigate("/agents"), 500);
+        setTimeout(() => navigate("/chat/agents"), 500);
       } catch (error: any) {
         console.error("OAuth callback failed:", error);
         console.error("Error details:", {

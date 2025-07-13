@@ -1,4 +1,5 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback,
+useState } from 'react';
 import { useConnections } from '../../../hooks/useConnections';
 import { useAgentValidation, type FormData } from './useAgentValidation';
 import { useAgentForm } from './useAgentForm';
@@ -29,7 +30,7 @@ export const useAgentManager = () => {
 
   useEffect(() => {
     fetchAgents();
-  }, [fetchAgents]);
+  }, []);
 
   const handleInputChangeWithValidation = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any) => {
     const { name, value } = e.target;
@@ -47,7 +48,7 @@ export const useAgentManager = () => {
     }
 
     const success = isEditing
-      ? await updateAgent(editingAgent!.agent_id, formData)
+      ? await updateAgent(editingAgent!.id, formData)
       : await createAgent(formData);
 
     if (success) {
@@ -57,7 +58,7 @@ export const useAgentManager = () => {
   }, [validateForm, formData, isEditing, updateAgent, editingAgent, createAgent, closeModal, clearErrors]);
 
   const handleDeleteByAgentId = useCallback((agentId: string) => {
-    const agent = agents.find(a => a.agent_id === agentId);
+    const agent = agents.find(a => a.id === agentId);
     if (agent) {
       openDeleteConfirmation(agent);
     }

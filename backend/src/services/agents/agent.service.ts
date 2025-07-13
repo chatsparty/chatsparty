@@ -107,6 +107,15 @@ export class AgentService {
               createdAt: defaultConn.createdAt,
               updatedAt: defaultConn.updatedAt,
             } as any;
+            
+            // Update the AI config with the default connection's provider and model
+            if (!input.aiConfig || !input.aiConfig.provider) {
+              input.aiConfig = {
+                ...input.aiConfig,
+                provider: defaultConn.provider,
+                modelName: defaultConn.modelName,
+              };
+            }
           }
         }
       }
@@ -138,7 +147,7 @@ export class AgentService {
           prompt: input.prompt,
           characteristics: input.characteristics,
           connectionId: input.connectionId,
-          gender: input.gender || 'neutral',
+          gender: input.gender || 'NEUTRAL',
           aiConfig: input.aiConfig,
           chatStyle: input.chatStyle,
           voiceEnabled: input.voiceConfig?.voiceEnabled || false,
@@ -256,6 +265,14 @@ export class AgentService {
         this.prisma.agent.count({ where }),
       ]);
 
+      console.log('🔍 Raw agents from database:', agents.map(a => ({ 
+        id: a.id, 
+        name: a.name, 
+        connectionId: a.connectionId,
+        hasConnectionId: 'connectionId' in a,
+        keys: Object.keys(a)
+      })));
+
       return {
         success: true,
         data: {
@@ -361,6 +378,15 @@ export class AgentService {
                 (input.connectionId === 'default' && defaultConn.isSystemDefault)) {
               // Default connection is valid
               connection = defaultConn as any;
+              
+              // Update the AI config with the default connection's provider and model if not provided
+              if (!input.aiConfig || !input.aiConfig.provider) {
+                input.aiConfig = {
+                  ...input.aiConfig,
+                  provider: defaultConn.provider,
+                  modelName: defaultConn.modelName,
+                };
+              }
             }
           }
         }
@@ -598,5 +624,8 @@ export class AgentService {
   }
 }
 
+// Import the database instance
+import { db } from '../../config/database';
+
 // Create singleton instance  
-export const agentService = new AgentService();
+export const agentService = new AgentService(db);

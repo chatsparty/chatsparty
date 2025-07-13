@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
 
 interface Agent {
-  agent_id: string;
+  id: string;
   name: string;
   characteristics?: string;
   gender?: string;
-  connection_id?: string;
+  connectionId?: string;
   voice_config?: any;
 }
 

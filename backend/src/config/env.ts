@@ -20,6 +20,10 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_API_KEY: z.string().optional(),
+  GROQ_API_KEY: z.string().optional(),
+  VERTEX_PROJECT_ID: z.string().optional(),
+  VERTEX_LOCATION: z.string().optional(),
+  OLLAMA_BASE_URL: z.string().optional(),
   
   // Mastra Configuration
   MASTRA_API_KEY: z.string().optional(),

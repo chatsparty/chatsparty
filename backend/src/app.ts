@@ -99,6 +99,8 @@ async function registerPlugins() {
   await app.register(cors, {
     origin: corsOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Authentication
@@ -139,6 +141,7 @@ async function registerRoutes() {
   
   // Frontend compatibility aliases (without /api prefix)
   await app.register(connectionRoutes, { prefix: '/connections' });
+  await app.register(defaultConnectionRoutes, { prefix: '' });
   await app.register(agentRoutes, { prefix: '/chat' });
 }
 

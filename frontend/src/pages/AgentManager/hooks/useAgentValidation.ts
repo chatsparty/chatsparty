@@ -61,7 +61,7 @@ export const useAgentValidation = (connections: ModelConnection[]) => {
         
       case 'gender':
         if (!value) return t('errors.missingField');
-        if (!['male', 'female', 'neutral'].includes(value)) {
+        if (!['MALE', 'FEMALE', 'NEUTRAL'].includes(value)) {
           return t('errors.invalidInput');
         }
         break;

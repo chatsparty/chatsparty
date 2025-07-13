@@ -2,6 +2,8 @@ import { Mastra } from '@mastra/core';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createVertex } from '@ai-sdk/google-vertex';
+import { createGroq } from '@ai-sdk/groq';
 import { config } from '../../config/env';
 
 // Initialize AI model providers
@@ -23,6 +25,29 @@ const providers = {
         apiKey: config.GOOGLE_API_KEY,
       })
     : null,
+  
+  vertex_ai: (config.VERTEX_PROJECT_ID && config.VERTEX_LOCATION) || 
+             (process.env.DEFAULT_CONNECTION_PROJECT_ID && process.env.DEFAULT_CONNECTION_LOCATION)
+    ? createVertex({
+        project: config.VERTEX_PROJECT_ID || process.env.DEFAULT_CONNECTION_PROJECT_ID,
+        location: config.VERTEX_LOCATION || process.env.DEFAULT_CONNECTION_LOCATION,
+      })
+    : null,
+  
+  groq: config.GROQ_API_KEY
+    ? createGroq({
+        apiKey: config.GROQ_API_KEY,
+      })
+    : null,
+  
+  // Note: Ollama provider is not available in AI SDK yet
+  // Using OpenAI-compatible API for now
+  ollama: config.OLLAMA_BASE_URL
+    ? createOpenAI({
+        apiKey: 'ollama', // Ollama doesn't require real API key
+        baseURL: config.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
+      })
+    : null,
 };
 
 // Export model providers for direct use
@@ -32,7 +57,7 @@ export const modelProviders = providers;
 export function getModel(provider: keyof typeof providers, modelName: string) {
   const providerInstance = providers[provider];
   if (!providerInstance) {
-    throw new Error(`Model provider ${provider} is not configured. Please add the API key.`);
+    throw new Error(`Model provider ${provider} is not configured. Please add the required configuration (API key, project ID, etc.).`);
   }
   
   return providerInstance(modelName);
@@ -83,8 +108,8 @@ Be aggressive about ending greeting-only conversations. Real group chats pause a
 
 // Model configurations for supervisor decisions
 export const SUPERVISOR_MODEL = {
-  provider: 'anthropic' as const,
-  model: 'claude-3-haiku-20240307', // Fast, cost-effective for supervisor tasks
+  provider: 'vertex_ai' as const,
+  model: 'gemini-2.0-flash-exp', // Fast, cost-effective for supervisor tasks
   temperature: 0.3, // Lower temperature for more consistent decisions
   maxTokens: 200, // Supervisor responses should be brief
 };

@@ -8,6 +8,7 @@ interface ConversationData {
   agentIds: string[];
   userId: string;
   isActive: boolean;
+  databaseId?: string | null;
 }
 
 interface SocketData {

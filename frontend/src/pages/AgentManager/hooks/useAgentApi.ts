@@ -7,11 +7,11 @@ import { useConnections } from '../../../hooks/useConnections';
 import type { FormData } from './useAgentValidation';
 
 interface Agent {
-  agent_id: string;
+  id: string;
   name: string;
   characteristics?: string;
   gender?: string;
-  connection_id?: string;
+  connectionId?: string;
 }
 
 export const useAgentApi = () => {
@@ -25,9 +25,16 @@ export const useAgentApi = () => {
   const fetchAgents = useCallback(async () => {
     try {
       const response = await axios.get('/chat/agents');
-      // Handle both direct array and wrapped response formats
-      const data = response.data?.data || response.data;
-      setAgents(Array.isArray(data) ? data : []);
+      // Backend returns { success: true, data: { agents: [...], total, page, limit } }
+      const responseData = response.data;
+      
+      if (responseData.success && responseData.data?.agents) {
+        setAgents(responseData.data.agents);
+      } else {
+        // Fallback for different response formats
+        const data = responseData?.data || responseData;
+        setAgents(Array.isArray(data) ? data : []);
+      }
     } catch (error) {
       console.error('Failed to fetch agents:', error);
       setAgents([]); // Ensure agents is always an array
@@ -166,8 +173,8 @@ export const useAgentApi = () => {
   const deleteAgent = useCallback(async (agent: Agent): Promise<boolean> => {
     setIsLoading(true);
     try {
-      await axios.delete(`/chat/agents/${agent.agent_id}`);
-      trackAgentDeleted(agent.agent_id, agent.name);
+      await axios.delete(`/chat/agents/${agent.id}`);
+      trackAgentDeleted(agent.id, agent.name);
       showToast(t('agents.agentDeleted'), 'success');
       await fetchAgents();
       return true;

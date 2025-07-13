@@ -3,11 +3,11 @@ import type { ModelConnection } from '@/types/connection';
 import type { FormData } from './useAgentValidation';
 
 interface Agent {
-  agent_id: string;
+  id: string;
   name: string;
   characteristics?: string;
   gender?: string;
-  connection_id?: string;
+  connectionId?: string;
 }
 
 const getInitialFormData = (connections: ModelConnection[]): FormData => {
@@ -15,7 +15,7 @@ const getInitialFormData = (connections: ModelConnection[]): FormData => {
   return {
     name: '',
     characteristics: '',
-    gender: 'neutral',
+    gender: 'NEUTRAL',
     connection_id: chatspartyDefault ? 'chatsparty-default' : ''
   };
 };
@@ -64,8 +64,8 @@ export const useAgentForm = (connections: ModelConnection[]) => {
     setFormData({
       name: agent.name,
       characteristics: agent.characteristics || '',
-      gender: agent.gender || 'neutral',
-      connection_id: agent.connection_id || ''
+      gender: agent.gender || 'NEUTRAL',
+      connection_id: agent.connectionId || ''
     });
     setIsModalOpen(true);
   }, []);

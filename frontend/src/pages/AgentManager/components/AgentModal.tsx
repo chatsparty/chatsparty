@@ -21,11 +21,11 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 interface Agent {
-  agent_id: string;
+  id: string;
   name: string;
   characteristics?: string;
   gender?: string;
-  connection_id?: string;
+  connectionId?: string;
 }
 
 interface FormData {
@@ -153,9 +153,9 @@ const AgentModal: React.FC<AgentModalProps> = ({
                     <SelectValue placeholder={t("agents.selectGender")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">{t("agents.male")}</SelectItem>
-                    <SelectItem value="female">{t("agents.female")}</SelectItem>
-                    <SelectItem value="neutral">{t("agents.neutral")}</SelectItem>
+                    <SelectItem value="MALE">{t("agents.male")}</SelectItem>
+                    <SelectItem value="FEMALE">{t("agents.female")}</SelectItem>
+                    <SelectItem value="NEUTRAL">{t("agents.neutral")}</SelectItem>
                   </SelectContent>
                 </Select>
                 {formErrors.gender ? (

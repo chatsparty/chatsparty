@@ -1,6 +1,5 @@
 import { AgentManager } from './agent.manager';
 import { runMultiAgentConversation } from './conversation.workflow';
-import { Agent } from '@prisma/client';
 import { agentService } from '../agents/agent.service';
 
 export interface StreamEvent {
@@ -43,11 +42,13 @@ class AIService {
 
     try {
       // Load agents from database
-      const agents = await Promise.all(
-        agentIds.map(id => agentService.getAgent(id))
+      const agentResponses = await Promise.all(
+        agentIds.map(id => agentService.getAgent(userId, id))
       );
 
-      const validAgents = agents.filter((agent): agent is Agent => agent !== null);
+      const validAgents = agentResponses
+        .filter(response => response.success && response.data)
+        .map(response => response.data!);
       
       if (validAgents.length === 0) {
         yield {
@@ -62,46 +63,65 @@ class AIService {
       // Register agents with the manager
       for (const agent of validAgents) {
         await this.agentManager.registerAgent({
-          id: agent.id,
+          agentId: agent.id,
           name: agent.name,
           prompt: agent.prompt,
-          aiConfig: agent.ai_config as any,
-          chatStyle: agent.chat_style as any
+          characteristics: agent.characteristics,
+          aiConfig: agent.aiConfig,
+          chatStyle: agent.chatStyle,
+          connectionId: agent.connectionId,
+          gender: agent.gender,
+          voiceConfig: agent.voiceConfig
         });
       }
 
+      // Convert AgentResponse objects to Agent type for the workflow
+      const agentObjects = validAgents.map(agent => ({
+        agentId: agent.id,
+        name: agent.name,
+        prompt: agent.prompt,
+        characteristics: agent.characteristics,
+        aiConfig: agent.aiConfig,
+        chatStyle: agent.chatStyle,
+        connectionId: agent.connectionId,
+        gender: agent.gender,
+        voiceConfig: agent.voiceConfig
+      }));
+
       // Run the conversation
-      const result = await runMultiAgentConversation(
+      const eventStream = await runMultiAgentConversation(
         conversationId,
         initialMessage,
-        validAgents.map(a => a.id),
+        agentObjects,
+        userId,
         maxTurns
       );
 
       // Stream events from the conversation
-      if (result.stream) {
-        for await (const event of result.stream) {
-          if ('delta' in event) {
-            // This is a message chunk
-            const agentId = event.agentId || 'unknown';
-            const agent = validAgents.find(a => a.id === agentId);
-            
-            yield {
-              type: 'message',
-              agentId,
-              agentName: agent?.name || 'Unknown Agent',
-              content: event.delta,
-              timestamp: Date.now()
-            };
-          } else if ('status' in event && event.status === 'thinking') {
-            // Agent is thinking
-            const agent = validAgents.find(a => a.id === event.agentId);
-            yield {
-              type: 'thinking',
-              agentId: event.agentId || 'unknown',
-              agentName: agent?.name || 'Unknown Agent'
-            };
-          }
+      for await (const event of eventStream) {
+        if (event.type === 'agent_response') {
+          // Agent has generated a response
+          yield {
+            type: 'message',
+            agentId: event.agentId,
+            agentName: event.agentName,
+            content: event.message,
+            timestamp: event.timestamp
+          };
+        } else if (event.type === 'status') {
+          // Status update
+          console.log('Conversation status:', event.message);
+        } else if (event.type === 'error') {
+          // Error occurred
+          yield {
+            type: 'error',
+            agentId: 'system',
+            agentName: 'System',
+            message: event.message
+          };
+        } else if (event.type === 'conversation_complete') {
+          // Conversation completed
+          console.log('Conversation complete:', event.message);
         }
       }
 

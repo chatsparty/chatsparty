@@ -188,12 +188,30 @@ export class ConversationService {
     message: Message
   ): Promise<ServiceResponse<void>> {
     try {
+      // First, get the current conversation to access existing messages
+      const conversation = await this.db.conversation.findUnique({
+        where: { id: conversationId },
+        select: { messages: true }
+      });
+
+      if (!conversation) {
+        return {
+          success: false,
+          error: 'Conversation not found',
+        };
+      }
+
+      // Get existing messages array or initialize empty array
+      const currentMessages = conversation.messages as Message[] || [];
+      
+      // Append the new message
+      const updatedMessages = [...currentMessages, message];
+
+      // Update the conversation with the new messages array
       await this.db.conversation.update({
         where: { id: conversationId },
         data: {
-          messages: {
-            push: message,
-          },
+          messages: updatedMessages,
           updatedAt: new Date(),
         },
       });

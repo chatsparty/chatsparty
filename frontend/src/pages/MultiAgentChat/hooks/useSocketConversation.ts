@@ -37,11 +37,30 @@ export const useSocketConversation = ({
 
   useEffect(() => {
     const handleConversationStarted = (data: any) => {
-      console.log('Conversation started:', data);
+      console.log('🟢 Socket Event: Conversation started:', data);
+    };
+
+    const handleConversationCreated = (data: any) => {
+      console.log('🟢 Socket Event: Conversation created:', data);
+      // Update the conversation ID from client ID to database ID
+      if (data.client_conversation_id && data.database_conversation_id) {
+        setConversations(prev => 
+          prev.map(conv => 
+            conv.id === data.client_conversation_id 
+              ? { ...conv, id: data.database_conversation_id, name: data.title || conv.name }
+              : conv
+          )
+        );
+        
+        // Update the URL if we're on the conversation page
+        if (window.location.pathname.includes(`/chat/${data.client_conversation_id}`)) {
+          window.history.replaceState(null, '', `/chat/${data.database_conversation_id}`);
+        }
+      }
     };
 
     const handleConversationResumed = (data: any) => {
-      console.log('Conversation resumed:', data);
+      console.log('🟢 Socket Event: Conversation resumed:', data);
       const conversationId = data.conversation_id;
       setConversations(prev => 
         prev.map(conv => 
@@ -53,6 +72,7 @@ export const useSocketConversation = ({
     };
 
     const handleConversationComplete = (data: any) => {
+      console.log('🟢 Socket Event: Conversation complete:', data);
       const conversationId = data.conversation_id;
       setConversations(prev => 
         prev.map(conv => 
@@ -64,7 +84,7 @@ export const useSocketConversation = ({
     };
 
     const handleConversationError = (data: any) => {
-      console.error('Conversation error:', data);
+      console.error('🔴 Socket Event: Conversation error:', data);
       onError?.(data.error || 'Conversation error occurred', data.conversation_id);
       
       if (data.conversation_id) {
@@ -79,6 +99,7 @@ export const useSocketConversation = ({
     };
 
     const handleAgentTyping = (data: SocketMessage) => {
+      console.log('🟡 Socket Event: Agent typing:', data);
       if (!data.conversation_id) return;
       
       setConversations(prev => 
@@ -103,6 +124,7 @@ export const useSocketConversation = ({
     };
 
     const handleAgentMessage = (data: SocketMessage) => {
+      console.log('🟢 Socket Event: Agent message:', data);
       if (!data.conversation_id) return;
       
       setConversations(prev => 
@@ -126,6 +148,7 @@ export const useSocketConversation = ({
     };
 
     socketService.on('conversation_started', handleConversationStarted);
+    socketService.on('conversation_created', handleConversationCreated);
     socketService.on('conversation_resumed', handleConversationResumed);
     socketService.on('conversation_complete', handleConversationComplete);
     socketService.on('conversation_error', handleConversationError);
@@ -134,6 +157,7 @@ export const useSocketConversation = ({
 
     return () => {
       socketService.off('conversation_started', handleConversationStarted);
+      socketService.off('conversation_created', handleConversationCreated);
       socketService.off('conversation_resumed', handleConversationResumed);
       socketService.off('conversation_complete', handleConversationComplete);
       socketService.off('conversation_error', handleConversationError);
@@ -149,22 +173,36 @@ export const useSocketConversation = ({
     maxTurns: number,
     fileAttachments?: Array<{filename: string, content: string, file_type: string}>
   ) => {
+    console.log('🔵 useSocketConversation.startSocketConversation called', {
+      conversationId,
+      agentIds,
+      initialMessage,
+      maxTurns,
+      fileAttachments: fileAttachments?.length || 0,
+      socketConnected: socketService.isConnected()
+    });
+
     if (!socketService.isConnected()) {
+      console.log('🟡 Socket not connected, connecting...');
       try {
         await socketService.connect();
+        console.log('🟢 Socket connected successfully');
       } catch (error) {
-        console.error('Failed to connect before starting conversation:', error);
+        console.error('🔴 Failed to connect before starting conversation:', error);
         throw new Error('Failed to connect to server');
       }
     }
 
-    socketService.startConversation({
+    const conversationData = {
       conversation_id: conversationId,
       agent_ids: agentIds,
       initial_message: initialMessage,
       max_turns: maxTurns,
       file_attachments: fileAttachments
-    });
+    };
+
+    console.log('🟡 Calling socketService.startConversation with:', conversationData);
+    socketService.startConversation(conversationData);
   }, []);
 
   const stopSocketConversation = useCallback((conversationId: string) => {
@@ -176,15 +214,25 @@ export const useSocketConversation = ({
     message: string,
     agentIds: string[]
   ) => {
+    console.log('🔵 useSocketConversation.sendSocketMessage called', {
+      conversationId,
+      message,
+      agentIds,
+      socketConnected: socketService.isConnected()
+    });
+
     if (!socketService.isConnected()) {
+      console.log('🟡 Socket not connected, connecting...');
       try {
         await socketService.connect();
+        console.log('🟢 Socket connected successfully');
       } catch (error) {
-        console.error('Failed to connect before sending message:', error);
+        console.error('🔴 Failed to connect before sending message:', error);
         throw new Error('Failed to connect to server');
       }
     }
 
+    console.log('🟡 Calling socketService.sendMessage');
     socketService.sendMessage(conversationId, message, agentIds);
   }, []);
 

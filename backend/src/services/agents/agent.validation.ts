@@ -4,6 +4,7 @@ import {
   UpdateAgentInputSchema,
   AGENT_LIMITS 
 } from './agent.types';
+import { AIProvider } from '../connections/connection.types';
 
 // Request body schemas
 export const createAgentBodySchema = z.object({
@@ -97,16 +98,19 @@ export function validateAIConfig(aiConfig: any): string | null {
     return 'AI provider is required';
   }
   
-  if (!['openai', 'anthropic', 'google'].includes(aiConfig.provider)) {
-    return 'Invalid AI provider. Must be one of: openai, anthropic, google';
+  const validProviders: AIProvider[] = ['openai', 'anthropic', 'google', 'groq', 'ollama', 'vertex_ai'];
+  if (!validProviders.includes(aiConfig.provider)) {
+    return `Invalid AI provider. Must be one of: ${validProviders.join(', ')}`;
   }
   
   if (!aiConfig.modelName) {
     return 'Model name is required';
   }
   
-  // If not using a connection ID, API key is required
-  if (!aiConfig.connectionId && !aiConfig.apiKey) {
+  // For certain providers like vertex_ai, API key may not be required
+  // if using default system configuration
+  if (!aiConfig.connectionId && !aiConfig.apiKey && 
+      !['vertex_ai', 'ollama'].includes(aiConfig.provider)) {
     return 'Either connectionId or apiKey must be provided';
   }
   

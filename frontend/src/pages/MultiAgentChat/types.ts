@@ -7,11 +7,17 @@ export interface ChatStyle {
 }
 
 export interface Agent {
-  agent_id: string;
+  id: string;
   name: string;
   prompt: string;
   characteristics: string;
-  chat_style?: ChatStyle;
+  connectionId: string;
+  gender: string;
+  aiConfig: any;
+  chatStyle?: ChatStyle;
+  voiceEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ConversationMessage {

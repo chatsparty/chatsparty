@@ -36,7 +36,7 @@ describe('AgentService', () => {
       prompt: 'You are a helpful assistant',
       characteristics: 'Friendly and knowledgeable',
       connectionId: 'test-connection-id',
-      gender: 'neutral',
+      gender: 'NEUTRAL',
       aiConfig: {
         provider: 'openai',
         modelName: 'gpt-4',
@@ -103,7 +103,7 @@ describe('AgentService', () => {
         prompt: 'Test prompt',
         characteristics: 'Test characteristics',
         connectionId: 'connection-id',
-        gender: 'neutral',
+        gender: 'NEUTRAL',
         aiConfig: {},
         chatStyle: {},
         voiceEnabled: false,

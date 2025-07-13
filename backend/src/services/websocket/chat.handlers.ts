@@ -75,12 +75,13 @@ export function setupChatHandlers(socket: Socket): void {
         return;
       }
 
-      // Store conversation data
+      // Store conversation data with client ID initially
       websocketService.getActiveConversations().set(conversation_id, {
         sid: socket.id,
         agentIds: agent_ids,
         userId,
-        isActive: true
+        isActive: true,
+        databaseId: null // Will be set after database creation
       });
 
       // Join conversation room
@@ -128,6 +129,33 @@ export function setupChatHandlers(socket: Socket): void {
         }
 
         const conversation = conversationResult.data;
+        
+        // Update the active conversation with database ID
+        const activeConv = websocketService.getActiveConversations().get(conversation_id);
+        if (activeConv) {
+          activeConv.databaseId = conversation.id;
+        }
+        
+        // Also store with database ID for easy lookup
+        websocketService.getActiveConversations().set(conversation.id, {
+          ...activeConv,
+          databaseId: conversation.id
+        });
+        
+        // Emit the database conversation ID to the client
+        socket.emit('conversation_created', {
+          client_conversation_id: conversation_id,
+          database_conversation_id: conversation.id,
+          title: conversation.title
+        });
+
+        // Save the initial user message
+        await conversationService.addMessage(conversation.id, {
+          role: 'user',
+          content: initial_message,
+          speaker: 'User',
+          timestamp: Date.now()
+        });
 
         // Stream the conversation
         const stream = aiService.streamMultiAgentConversation({
@@ -171,12 +199,10 @@ export function setupChatHandlers(socket: Socket): void {
               // Save message to database
               await conversationService.addMessage(conversation.id, {
                 role: 'assistant',
-                content: event.content,
-                metadata: {
-                  agentId: event.agentId,
-                  agentName: event.agentName,
-                  timestamp: event.timestamp
-                }
+                content: event.content || '',
+                agentId: event.agentId,
+                speaker: event.agentName,
+                timestamp: event.timestamp || Date.now()
               });
               break;
 
@@ -237,14 +263,47 @@ export function setupChatHandlers(socket: Socket): void {
         return;
       }
 
-      // Check if conversation exists and is active
-      const conversationData = websocketService.getActiveConversations().get(conversation_id);
-      if (!conversationData || !conversationData.isActive) {
-        socket.emit('conversation_error', {
-          conversation_id,
-          error: 'Conversation not found or inactive'
-        });
-        return;
+      // First check if it's a database conversation ID
+      const dbConversation = await conversationService.getConversation(userId, conversation_id);
+      
+      let conversationData: any;
+      let databaseConversationId: string = conversation_id;
+      
+      if (dbConversation.success && dbConversation.data) {
+        // This is a database conversation ID
+        // Check if it's in active conversations or resume it
+        conversationData = websocketService.getActiveConversations().get(conversation_id);
+        
+        if (!conversationData) {
+          // Resume the conversation
+          conversationData = {
+            sid: socket.id,
+            agentIds: dbConversation.data.agentIds,
+            userId,
+            isActive: true
+          };
+          websocketService.getActiveConversations().set(conversation_id, conversationData);
+          socket.join(conversation_id);
+          
+          // Emit conversation resumed
+          socket.emit('conversation_resumed', {
+            conversation_id,
+            status: 'resumed'
+          });
+        }
+      } else {
+        // Check if it's a client conversation ID in active conversations
+        conversationData = websocketService.getActiveConversations().get(conversation_id);
+        if (!conversationData || !conversationData.isActive) {
+          socket.emit('conversation_error', {
+            conversation_id,
+            error: 'Conversation not found or inactive'
+          });
+          return;
+        }
+        // For new conversations, we need to find the database ID
+        // This should have been set when conversation_created was emitted
+        // For now, we'll continue with the client ID
       }
 
       // Emit user message
@@ -256,9 +315,19 @@ export function setupChatHandlers(socket: Socket): void {
         Date.now()
       );
 
+      // Save user message to database if we have a database ID
+      if (dbConversation.success && dbConversation.data) {
+        await conversationService.addMessage(databaseConversationId, {
+          role: 'user',
+          content: message,
+          speaker: 'User',
+          timestamp: Date.now()
+        });
+      }
+
       // Continue the conversation
       const stream = aiService.continueMultiAgentConversation({
-        conversationId: conversation_id,
+        conversationId: databaseConversationId,
         message,
         agentIds: conversationData.agentIds,
         userId
@@ -286,6 +355,17 @@ export function setupChatHandlers(socket: Socket): void {
               event.content,
               event.timestamp || Date.now()
             );
+            
+            // Save agent message to database
+            if (dbConversation.success && dbConversation.data) {
+              await conversationService.addMessage(databaseConversationId, {
+                role: 'assistant',
+                content: event.content || '',
+                agentId: event.agentId,
+                speaker: event.agentName,
+                timestamp: event.timestamp || Date.now()
+              });
+            }
             break;
 
           case 'error':

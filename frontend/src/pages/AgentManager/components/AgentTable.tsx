@@ -15,11 +15,11 @@ import Avatar from "boring-avatars";
 import { useTranslation } from "react-i18next";
 
 interface Agent {
-  agent_id: string;
+  id: string;
   name: string;
   characteristics?: string;
   gender?: string;
-  connection_id?: string;
+  connectionId?: string;
 }
 
 interface AgentTableProps {
@@ -47,8 +47,45 @@ const AgentTable: React.FC<AgentTableProps> = ({
   };
 
   const getModelInfo = (connectionId?: string) => {
-    if (!connectionId) return null;
-    const connection = connections.find((conn) => conn.id === connectionId);
+    if (!connectionId) {
+      console.log('🔍 No connectionId provided for agent');
+      return null;
+    }
+    console.log('🔍 Looking for connection:', connectionId);
+    console.log('🔍 Available connections:', connections.map(c => ({ id: c.id, name: c.name, provider: c.provider })));
+    
+    // First try to find in regular connections
+    let connection = connections.find((conn) => conn.id === connectionId);
+    
+    // If not found and it looks like a default connection, create a mock object
+    if (!connection && (connectionId.includes('default') || connectionId.includes('system'))) {
+      console.log('🔍 Creating mock connection for default:', connectionId);
+      
+      // Extract provider from connectionId if possible
+      let provider = 'vertex_ai';
+      let modelName = 'gemini-2.5-flash';
+      
+      if (connectionId.includes('vertex_ai')) {
+        provider = 'vertex_ai';
+        modelName = 'gemini-2.5-flash';
+      } else if (connectionId.includes('openai')) {
+        provider = 'openai';
+        modelName = 'gpt-3.5-turbo';
+      }
+      
+      connection = {
+        id: connectionId,
+        name: 'System Default',
+        provider: provider,
+        model_name: modelName,
+        is_default: true,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    }
+    
+    console.log('🔍 Found connection:', connection);
     return connection;
   };
 
@@ -105,10 +142,11 @@ const AgentTable: React.FC<AgentTableProps> = ({
             </TableHeader>
             <TableBody>
               {agents.map((agent) => {
-                const modelInfo = getModelInfo(agent.connection_id);
+                console.log('🔍 Agent data:', { id: agent.id, name: agent.name, connectionId: agent.connectionId });
+                const modelInfo = getModelInfo(agent.connectionId);
                 return (
                   <TableRow
-                    key={agent.agent_id}
+                    key={agent.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => onEditAgent(agent)}
                   >
@@ -116,7 +154,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
                       <div className="flex items-center gap-3">
                         <Avatar
                           size={32}
-                          name={agent.name || agent.agent_id}
+                          name={agent.name || agent.id}
                           variant="beam"
                           colors={avatarColors}
                         />
@@ -148,9 +186,9 @@ const AgentTable: React.FC<AgentTableProps> = ({
                       <Badge
                         variant="secondary"
                         className="text-xs font-mono"
-                        title={`Full ID: ${agent.agent_id}`}
+                        title={`Full ID: ${agent.id}`}
                       >
-                        {agent.agent_id.slice(0, 8)}...
+                        {agent.id.slice(0, 8)}...
                       </Badge>
                     </TableCell>
                     <TableCell className="text-end py-3">
@@ -169,7 +207,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => handleDeleteClick(e, agent.agent_id)}
+                          onClick={(e) => handleDeleteClick(e, agent.id)}
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4" />

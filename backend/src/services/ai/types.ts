@@ -41,7 +41,7 @@ export const AgentSchema = z.object({
   aiConfig: ModelConfigurationSchema,
   chatStyle: ChatStyleSchema,
   connectionId: z.string(),
-  gender: z.enum(['male', 'female', 'neutral']).default('neutral'),
+  gender: z.enum(['MALE', 'FEMALE', 'NEUTRAL']).default('NEUTRAL'),
   voiceConfig: VoiceConfigSchema.optional(),
 });
 

@@ -184,7 +184,7 @@ export class DefaultConnectionService {
   /**
    * Convert default connection to public format
    */
-  toPublicDefaultConnection(connection: DefaultConnection): PublicConnection {
+  toPublicDefaultConnection(connection: DefaultConnection): PublicConnection & { isSystemDefault: boolean } {
     return {
       id: connection.id,
       name: connection.name,
@@ -194,6 +194,7 @@ export class DefaultConnectionService {
       baseUrl: connection.baseUrl,
       isActive: connection.isActive,
       isDefault: connection.isDefault,
+      isSystemDefault: connection.isSystemDefault,
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
     };

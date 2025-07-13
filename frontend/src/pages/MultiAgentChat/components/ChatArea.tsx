@@ -383,9 +383,29 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   }, [activeConversation?.id, lastUpdatedConversationId]);
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || selectedAgentsForMessage.length < 2) return;
+    console.log('🔵 handleSendMessage called', {
+      messageInput: messageInput.trim(),
+      selectedAgentsForMessage,
+      activeConversation: activeConversation?.id,
+      messageInputLength: messageInput.trim().length,
+      agentCount: selectedAgentsForMessage.length
+    });
+
+    if (!messageInput.trim() || selectedAgentsForMessage.length < 2) {
+      console.log('🔴 handleSendMessage: Early return - invalid input', {
+        hasMessage: !!messageInput.trim(),
+        agentCount: selectedAgentsForMessage.length
+      });
+      return;
+    }
 
     if (!activeConversation) {
+      console.log('🟡 handleSendMessage: Starting new conversation', {
+        selectedAgents: selectedAgentsForMessage,
+        message: messageInput,
+        onStartNewConversation: !!onStartNewConversation
+      });
+      
       setIsSendingMessage(true);
       
       let errorHandled = false;
@@ -393,7 +413,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       try {
         await onStartNewConversation(selectedAgentsForMessage, messageInput, (error: string) => {
           errorHandled = true;
-          console.error("Socket error during conversation start:", error);
+          console.error("🔴 Socket error during conversation start:", error);
           
           if (!error.startsWith('insufficient_credits:')) {
             showToast(t("toast.conversationStartFailed"), "error");
@@ -402,26 +422,40 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           setIsSendingMessage(false);
         });
         
+        console.log('🟢 handleSendMessage: Conversation started successfully');
         setMessageInput("");
         setIsSendingMessage(false);
       } catch (error) {
-        console.error("Failed to start conversation:", error);
+        console.error("🔴 Failed to start conversation:", error);
         if (!errorHandled) {
           showToast("Failed to start conversation. Please try again.", "error");
           setIsSendingMessage(false);
         }
       }
     } else if (onSendMessage) {
+      console.log('🟡 handleSendMessage: Sending message to existing conversation', {
+        conversationId: activeConversation.id,
+        message: messageInput,
+        selectedAgents: selectedAgentsForMessage,
+        onSendMessage: !!onSendMessage
+      });
+      
       setIsSendingMessage(true);
       try {
         await onSendMessage(activeConversation.id, messageInput, selectedAgentsForMessage);
+        console.log('🟢 handleSendMessage: Message sent successfully');
         setMessageInput("");
       } catch (error) {
-        console.error("Failed to send message:", error);
+        console.error("🔴 Failed to send message:", error);
         showToast(t("toast.messageSendFailed"), "error");
       } finally {
         setIsSendingMessage(false);
       }
+    } else {
+      console.log('🔴 handleSendMessage: No send message function available', {
+        hasActiveConversation: !!activeConversation,
+        hasOnSendMessage: !!onSendMessage
+      });
     }
   };
 
@@ -435,10 +469,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   useEffect(() => {
+    console.log('🔵 Agent selection effect triggered', {
+      activeConversation: activeConversation?.id,
+      activeConversationAgents: activeConversation?.agents,
+      availableAgents: agents?.length || 0
+    });
+    
     if (activeConversation) {
+      console.log('🟡 Setting agents from active conversation:', activeConversation.agents);
       setSelectedAgentsForMessage(activeConversation.agents);
     } else {
-      setSelectedAgentsForMessage((agents || []).slice(0, 2).map(a => a.agent_id));
+      const defaultAgents = (agents || []).slice(0, 2).map(a => a.id);
+      console.log('🟡 Setting default agents:', defaultAgents);
+      setSelectedAgentsForMessage(defaultAgents);
     }
   }, [activeConversation, agents]);
 
@@ -451,7 +494,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               <Label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-foreground`}>{t("chat.to")}</Label>
             <div className="flex-1 flex flex-wrap items-center gap-2">
               {selectedAgentsForMessage.map(agentId => {
-                const agent = (agents || []).find(a => a.agent_id === agentId);
+                const agent = (agents || []).find(a => a.id === agentId);
                 if (!agent) return null;
                 return (
                   <Badge
@@ -526,6 +569,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 onChange={(e) => setMessageInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
+                    console.log('🔵 Enter key pressed in message input (new conversation)');
                     e.preventDefault();
                     handleSendMessage();
                   }
@@ -539,7 +583,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 className="w-full resize-none border border-border bg-background rounded-full px-4 py-3 pe-12 focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-muted-foreground shadow-sm"
               />
               <Button
-                onClick={handleSendMessage}
+                onClick={() => {
+                  console.log('🔵 Send button clicked (new conversation)');
+                  handleSendMessage();
+                }}
                 disabled={!messageInput.trim() || selectedAgentsForMessage.length < 2 || isSendingMessage}
                 size="sm"
                 className="absolute end-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full p-0 bg-primary hover:bg-primary/90 text-primary-foreground border-0 disabled:opacity-50 shadow-sm"
@@ -600,7 +647,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg">
                 <Label className="text-xs font-medium text-muted-foreground w-full mb-2">{t("chat.selectedAgents", { count: selectedAgentsForMessage.length })}:</Label>
                 {selectedAgentsForMessage.map(agentId => {
-                  const agent = (agents || []).find(a => a.agent_id === agentId);
+                  const agent = (agents || []).find(a => a.id === agentId);
                   if (!agent) return null;
                   return (
                     <Badge
@@ -642,17 +689,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 )
                 .map(agent => (
                   <div
-                    key={agent.agent_id}
+                    key={agent.id}
                     className={`flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                      selectedAgentsForMessage.includes(agent.agent_id)
+                      selectedAgentsForMessage.includes(agent.id)
                         ? 'bg-primary/10 border-primary/30 shadow-sm'
                         : 'bg-background border-border hover:bg-accent/30 hover:border-accent-foreground/20'
                     }`}
-                    onClick={() => toggleAgentSelection(agent.agent_id)}
+                    onClick={() => toggleAgentSelection(agent.id)}
                   >
                     <input
                       type="checkbox"
-                      checked={selectedAgentsForMessage.includes(agent.agent_id)}
+                      checked={selectedAgentsForMessage.includes(agent.id)}
                       onChange={() => {}}
                       className="w-4 h-4 mt-0.5 text-primary bg-background border-gray-300 rounded focus:ring-primary flex-shrink-0"
                     />
@@ -662,7 +709,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                         name={agent.name}
                         variant="beam"
                         colors={[
-                          getAgentColor(agent.agent_id),
+                          getAgentColor(agent.id),
                           "#92A1C6",
                           "#146A7C",
                           "#F0AB3D",
@@ -676,7 +723,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                           </Label>
                           <div
                             className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: getAgentColor(agent.agent_id) }}
+                            style={{ backgroundColor: getAgentColor(agent.id) }}
                           />
                         </div>
                         {agent.prompt && (
@@ -715,7 +762,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             </span>
             <div className="flex flex-wrap items-center gap-1.5 flex-1">
               {selectedAgentsForMessage.map(agentId => {
-                const agent = (agents || []).find(a => a.agent_id === agentId);
+                const agent = (agents || []).find(a => a.id === agentId);
                 if (!agent) return null;
                 return (
                   <div
@@ -763,7 +810,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 <Label className="text-sm font-medium text-foreground">{t("chat.to")}</Label>
                 <div className="flex-1 flex flex-wrap items-center gap-2">
                   {selectedAgentsForMessage.map(agentId => {
-                    const agent = (agents || []).find(a => a.agent_id === agentId);
+                    const agent = (agents || []).find(a => a.id === agentId);
                     if (!agent) return null;
                     return (
                       <Badge
@@ -933,6 +980,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               onChange={(e) => setMessageInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
+                  console.log('🔵 Enter key pressed in message input (existing conversation)');
                   e.preventDefault();
                   handleSendMessage();
                 }
@@ -946,7 +994,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               className="w-full resize-none border border-border bg-background rounded-full px-4 py-3 pr-12 focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-muted-foreground shadow-sm"
             />
             <Button
-              onClick={handleSendMessage}
+              onClick={() => {
+                console.log('🔵 Send button clicked (existing conversation)');
+                handleSendMessage();
+              }}
               disabled={!messageInput.trim() || selectedAgentsForMessage.length < 2 || isSendingMessage}
               size="sm"
               className="absolute end-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full p-0 bg-primary hover:bg-primary/90 text-primary-foreground border-0 disabled:opacity-50 shadow-sm"
@@ -1013,7 +1064,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             <div className="flex flex-wrap gap-1.5 p-2 bg-muted/30 rounded-md">
               <Label className="text-xs font-medium text-muted-foreground w-full mb-1">{t("chat.selectedAgents", { count: selectedAgentsForMessage.length })}:</Label>
               {selectedAgentsForMessage.map(agentId => {
-                const agent = (agents || []).find(a => a.agent_id === agentId);
+                const agent = (agents || []).find(a => a.id === agentId);
                 if (!agent) return null;
                 return (
                   <Badge

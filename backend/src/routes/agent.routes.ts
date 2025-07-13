@@ -37,12 +37,13 @@ export async function agentRoutes(fastify: FastifyInstance) {
         security: [{ bearerAuth: [] }],
         body: {
           type: 'object',
-          required: ['name', 'description'],
+          required: ['name', 'characteristics'],
           properties: {
             name: { type: 'string' },
-            description: { type: 'string' },
-            aiConfig: { type: 'object' },
+            characteristics: { type: 'string' },
+            gender: { type: 'string' },
             connectionId: { type: 'string' },
+            aiConfig: { type: 'object' },
           },
         },
         response: {
@@ -55,7 +56,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                 properties: {
                   id: { type: 'string' },
                   name: { type: 'string' },
-                  description: { type: 'string' },
+                  characteristics: { type: 'string' },
                   createdAt: { type: 'string' },
                   updatedAt: { type: 'string' },
                 },
@@ -104,7 +105,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                 properties: {
                   id: { type: 'string' },
                   name: { type: 'string' },
-                  description: { type: 'string' },
+                  characteristics: { type: 'string' },
                   createdAt: { type: 'string' },
                   updatedAt: { type: 'string' },
                 },
@@ -297,7 +298,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest<{
+      Params: { agentId: string };
+      Body: { name?: string };
+    }>, reply: FastifyReply) => {
       const userId = request.user!.userId;
       const { agentId } = request.params;
       const { name } = request.body;
