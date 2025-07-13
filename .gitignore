@@ -9,3 +9,10 @@ backend/.env.cloud
 venv/
 deploy.sh
 migrate.sh
+credentials/*
+api/credentials/
+api/*.json
+api/service-account-*.json
+api/vertex-ai-*.json
+*-credentials.json
+backend/credentials/*

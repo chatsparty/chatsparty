@@ -3,25 +3,29 @@ import AgentModal from "./components/AgentModal";
 import AgentTable from "./components/AgentTable";
 import { useAgentManager } from "./hooks/useAgentManager";
 import { useTranslation } from "react-i18next";
+import { ToastContainer } from "../../components/ui/toast";
+import { useToast } from "../../hooks/useToast";
 
 const AgentManagerPage: React.FC = () => {
   const { t } = useTranslation();
+  const { toasts, removeToast } = useToast();
   const {
     agents,
     isLoading,
     showCreateForm,
     editingAgent,
     formData,
+    formErrors,
     deleteModalOpen,
     agentToDelete,
     setShowCreateForm,
     handleCreateAgent,
     handleEditAgent,
     handleInputChange,
-    resetForm,
     handleDeleteAgent,
     confirmDeleteAgent,
     cancelDeleteAgent,
+    onModalOpenChange,
   } = useAgentManager();
 
   useEffect(() => {
@@ -54,10 +58,9 @@ const AgentManagerPage: React.FC = () => {
         {/* Agent Create/Edit Modal */}
         <AgentModal
           open={showCreateForm}
-          onOpenChange={(open) => {
-            if (!open) resetForm();
-          }}
+          onOpenChange={onModalOpenChange}
           formData={formData}
+          formErrors={formErrors}
           editingAgent={editingAgent}
           isLoading={isLoading}
           onInputChange={handleInputChange}
@@ -107,6 +110,9 @@ const AgentManagerPage: React.FC = () => {
             </div>
           </div>
         )}
+        
+        {/* Toast Container */}
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
       </div>
     </div>
   );

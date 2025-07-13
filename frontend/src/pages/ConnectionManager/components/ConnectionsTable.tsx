@@ -102,8 +102,13 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
                   {/* Connection Name & Description */}
                   <td className="px-4 py-3">
                     <div>
-                      <div className="font-medium text-sm text-card-foreground">
+                      <div className="font-medium text-sm text-card-foreground flex items-center gap-2">
                         {connection.name}
+                        {connection.is_system_default && (
+                          <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full">
+                            System
+                          </span>
+                        )}
                       </div>
                       {(connection.description || connection.base_url) && (
                         <div className="text-sm text-muted-foreground truncate max-w-[200px] mt-1">
@@ -182,8 +187,14 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
                           onToggleActive(connection.id, !connection.is_active)
                         }
                         className="h-7 w-7 p-0"
-                        title={connection.is_active ? "Deactivate" : "Activate"}
-                        disabled={connection.is_default}
+                        title={
+                          connection.is_system_default
+                            ? "System connections cannot be deactivated"
+                            : connection.is_active
+                            ? "Deactivate"
+                            : "Activate"
+                        }
+                        disabled={connection.is_system_default}
                       >
                         {connection.is_active ? (
                           <FaPause className="h-3 w-3" />
@@ -196,12 +207,16 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
                         size="sm"
                         onClick={() => onEdit(connection)}
                         className="h-7 w-7 p-0"
-                        title="Edit"
-                        disabled={connection.is_default}
+                        title={
+                          connection.is_system_default
+                            ? "System connections cannot be edited"
+                            : "Edit"
+                        }
+                        disabled={connection.is_system_default}
                       >
                         <FaEdit className="h-3 w-3" />
                       </Button>
-                      {!connection.is_default && (
+                      {!connection.is_system_default && (
                         <Button
                           variant="ghost"
                           size="sm"

@@ -9,17 +9,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useConnections } from "@/hooks/useConnections";
-import { Bot, Edit, Plus, Trash2 } from "lucide-react";
+import { Bot, Edit, Plus, Trash2, MessageSquare } from "lucide-react";
 import React from "react";
 import Avatar from "boring-avatars";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 interface Agent {
-  agent_id: string;
+  id: string;
   name: string;
   characteristics?: string;
-  gender?: string;
-  connection_id?: string;
+  connectionId?: string;
 }
 
 interface AgentTableProps {
@@ -39,6 +39,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
 }) => {
   const { t } = useTranslation();
   const { connections } = useConnections();
+  const navigate = useNavigate();
   const avatarColors = ["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"];
 
   const handleDeleteClick = (e: React.MouseEvent, agentId: string) => {
@@ -47,8 +48,45 @@ const AgentTable: React.FC<AgentTableProps> = ({
   };
 
   const getModelInfo = (connectionId?: string) => {
-    if (!connectionId) return null;
-    const connection = connections.find((conn) => conn.id === connectionId);
+    if (!connectionId) {
+      console.log('🔍 No connectionId provided for agent');
+      return null;
+    }
+    console.log('🔍 Looking for connection:', connectionId);
+    console.log('🔍 Available connections:', connections.map(c => ({ id: c.id, name: c.name, provider: c.provider })));
+    
+    // First try to find in regular connections
+    let connection = connections.find((conn) => conn.id === connectionId);
+    
+    // If not found and it looks like a default connection, create a mock object
+    if (!connection && (connectionId.includes('default') || connectionId.includes('system'))) {
+      console.log('🔍 Creating mock connection for default:', connectionId);
+      
+      // Extract provider from connectionId if possible
+      let provider = 'vertex_ai';
+      let modelName = 'gemini-2.5-flash';
+      
+      if (connectionId.includes('vertex_ai')) {
+        provider = 'vertex_ai';
+        modelName = 'gemini-2.5-flash';
+      } else if (connectionId.includes('openai')) {
+        provider = 'openai';
+        modelName = 'gpt-3.5-turbo';
+      }
+      
+      connection = {
+        id: connectionId,
+        name: 'System Default',
+        provider: provider,
+        model_name: modelName,
+        is_default: true,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    }
+    
+    console.log('🔍 Found connection:', connection);
     return connection;
   };
 
@@ -95,7 +133,6 @@ const AgentTable: React.FC<AgentTableProps> = ({
               <TableRow className="bg-muted/50">
                 <TableHead className="w-[200px] font-medium">{t("agents.name")}</TableHead>
                 <TableHead className="font-medium">{t("agents.characteristics")}</TableHead>
-                <TableHead className="w-[100px] font-medium">{t("agents.gender")}</TableHead>
                 <TableHead className="w-[150px] font-medium">{t("agents.model")}</TableHead>
                 <TableHead className="w-[100px] font-medium">{t("agents.id")}</TableHead>
                 <TableHead className="w-[120px] text-end font-medium">
@@ -105,10 +142,11 @@ const AgentTable: React.FC<AgentTableProps> = ({
             </TableHeader>
             <TableBody>
               {agents.map((agent) => {
-                const modelInfo = getModelInfo(agent.connection_id);
+                console.log('🔍 Agent data:', { id: agent.id, name: agent.name, connectionId: agent.connectionId });
+                const modelInfo = getModelInfo(agent.connectionId);
                 return (
                   <TableRow
-                    key={agent.agent_id}
+                    key={agent.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => onEditAgent(agent)}
                   >
@@ -116,7 +154,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
                       <div className="flex items-center gap-3">
                         <Avatar
                           size={32}
-                          name={agent.name || agent.agent_id}
+                          name={agent.name || agent.id}
                           variant="beam"
                           colors={avatarColors}
                         />
@@ -127,11 +165,6 @@ const AgentTable: React.FC<AgentTableProps> = ({
                       <p className="text-sm text-muted-foreground line-clamp-2 max-w-md">
                         {agent.characteristics}
                       </p>
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <Badge variant="secondary" className="text-xs capitalize">
-                        {agent.gender || 'neutral'}
-                      </Badge>
                     </TableCell>
                     <TableCell className="py-3">
                       {modelInfo ? (
@@ -148,13 +181,25 @@ const AgentTable: React.FC<AgentTableProps> = ({
                       <Badge
                         variant="secondary"
                         className="text-xs font-mono"
-                        title={`Full ID: ${agent.agent_id}`}
+                        title={`Full ID: ${agent.id}`}
                       >
-                        {agent.agent_id.slice(0, 8)}...
+                        {agent.id.slice(0, 8)}...
                       </Badge>
                     </TableCell>
                     <TableCell className="text-end py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/chat');
+                          }}
+                          className="h-8 w-8 p-0 hover:bg-muted"
+                          title={t("agents.chat")}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -169,7 +214,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => handleDeleteClick(e, agent.agent_id)}
+                          onClick={(e) => handleDeleteClick(e, agent.id)}
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4" />

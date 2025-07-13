@@ -56,7 +56,7 @@ export function LandingPage({}: LandingPageProps) {
   const avatarColors = ["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"];
 
   const handleGetStarted = () => {
-    navigate('/agents');
+    navigate('/chat/agents');
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 overflow-hidden">

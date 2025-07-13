@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import type { ActiveConversation, Agent } from '../types';
+import type { ActiveConversation, Agent, ConversationMessage } from '../types';
 import { createStreamMessageHandlers } from './streamHandlers';
 import { createAgentHelpers } from './helpers';
 import { useTracking } from '../../../hooks/useTracking';
@@ -62,27 +62,63 @@ export const useConversationActions = (
     messageToUse?: string,
     onError?: (error: string) => void
   ): Promise<void> => {
+    console.log('🔵 conversationActions.startConversation called', {
+      agentsToUse,
+      messageToUse,
+      selectedAgents,
+      initialMessage,
+      hasOnError: !!onError
+    });
+
     // Set the error callback for socket errors
     conversationErrorCallbackRef.current = onError || null;
     const finalAgents = agentsToUse || selectedAgents;
     const finalMessage = messageToUse || initialMessage;
     
-    if (finalAgents.length < 2 || !finalMessage.trim()) return;
+    console.log('🟡 Final conversation parameters', {
+      finalAgents,
+      finalMessage,
+      agentCount: finalAgents.length,
+      messageLength: finalMessage.trim().length
+    });
+    
+    if (finalAgents.length < 2 || !finalMessage.trim()) {
+      console.log('🔴 startConversation: Early return - invalid parameters', {
+        agentCount: finalAgents.length,
+        hasMessage: !!finalMessage.trim()
+      });
+      return;
+    }
 
     setIsLoading(true);
     const conversationId = `conv_${Date.now()}`;
     const abortController = new AbortController();
     abortControllersRef.current.set(conversationId, abortController);
     
+    console.log('🟡 Creating new conversation', {
+      conversationId,
+      finalAgents,
+      agentNames: finalAgents.map(id => getAgentName(id))
+    });
+    
     try {
+      // Create user message for the initial message
+      const userMessage: ConversationMessage = {
+        speaker: 'User',
+        agent_id: undefined,
+        message: finalMessage,
+        timestamp: Date.now() / 1000
+      };
+
       const newConversation: ActiveConversation = {
         id: conversationId,
         name: finalAgents.map(id => getAgentName(id)).join(' & '),
         agents: finalAgents,
-        messages: [],
+        messages: [userMessage],
         isActive: true
       };
 
+      console.log('🟡 Setting conversation state', newConversation);
       setConversations(prev => [...prev, newConversation]);
       setActiveConversation(conversationId);
       activeConversationIdRef.current = conversationId;
@@ -117,14 +153,23 @@ export const useConversationActions = (
           file_type: file.file.type || 'application/octet-stream'
         }));
 
+      console.log('🟡 Starting socket conversation', {
+        conversationId,
+        finalAgents,
+        finalMessage,
+        maxTurns,
+        fileAttachments: fileAttachments?.length || 0
+      });
+
       await startSocketConversation(
         conversationId,
         finalAgents,
         finalMessage,
         maxTurns,
-        fileAttachments,
-        undefined
+        fileAttachments
       );
+      
+      console.log('🟢 Socket conversation started successfully');
       
     } catch (error) {
       console.error('Failed to start conversation:', error instanceof Error ? error.message : String(error));
@@ -186,9 +231,39 @@ export const useConversationActions = (
     message: string,
     agentIds: string[]
   ): Promise<void> => {
-    if (!message.trim() || agentIds.length < 2) return;
+    console.log('🔵 conversationActions.sendMessage called', {
+      conversationId,
+      message,
+      agentIds,
+      messageLength: message.trim().length,
+      agentCount: agentIds.length
+    });
+
+    if (!message.trim() || agentIds.length < 2) {
+      console.log('🔴 sendMessage: Early return - invalid parameters', {
+        hasMessage: !!message.trim(),
+        agentCount: agentIds.length
+      });
+      return;
+    }
 
     try {
+      // Add user message to the conversation immediately
+      const userMessage: ConversationMessage = {
+        speaker: 'User',
+        agent_id: undefined,
+        message: message,
+        timestamp: Date.now() / 1000
+      };
+      
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === conversationId 
+            ? { ...conv, messages: [...conv.messages, userMessage] }
+            : conv
+        )
+      );
+
       trackMessageSent({
         message_length: message.length,
         conversation_type: 'multi_agent',
@@ -196,13 +271,15 @@ export const useConversationActions = (
         conversation_id: conversationId
       });
 
+      console.log('🟡 Calling sendSocketMessage');
       await sendSocketMessage(conversationId, message, agentIds);
+      console.log('🟢 Socket message sent successfully');
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('🔴 Failed to send message:', error);
       trackError('message_send_error', error instanceof Error ? error.message : 'Unknown error', 'multi_agent_chat');
       throw error;
     }
-  }, [sendSocketMessage, trackMessageSent, trackError]);
+  }, [sendSocketMessage, trackMessageSent, trackError, setConversations]);
 
   const cleanup = useCallback(() => {
     abortControllersRef.current.forEach(controller => controller.abort());

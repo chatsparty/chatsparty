@@ -15,35 +15,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useConnections } from "@/hooks/useConnections";
-import { useVoiceConnections } from "@/hooks/useVoiceConnections";
-import type { AgentVoiceConfig } from "@/types/voice";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 interface Agent {
-  agent_id: string;
+  id: string;
   name: string;
   characteristics?: string;
-  gender?: string;
-  connection_id?: string;
-  voice_config?: AgentVoiceConfig;
+  connectionId?: string;
 }
 
 interface FormData {
   name: string;
   characteristics: string;
-  gender: string;
   connection_id: string;
-  voice_config?: AgentVoiceConfig;
+}
+
+interface FormErrors {
+  name?: string;
+  characteristics?: string;
+  connection_id?: string;
 }
 
 interface AgentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   formData: FormData;
+  formErrors: FormErrors;
   editingAgent: Agent | null;
   isLoading: boolean;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -54,6 +54,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
   open,
   onOpenChange,
   formData,
+  formErrors,
   editingAgent,
   isLoading,
   onInputChange,
@@ -64,15 +65,6 @@ const AgentModal: React.FC<AgentModalProps> = ({
   const { loading: connectionsLoading, getActiveConnections } = useConnections();
   const activeConnections = getActiveConnections();
   
-  const { connections: voiceConnections, loading: voiceConnectionsLoading } = useVoiceConnections();
-  const activeVoiceConnections = voiceConnections.filter(vc => vc.is_active);
-  
-  
-  const voiceConfig = formData.voice_config || {
-    voice_enabled: false,
-    voice_connection_id: undefined,
-    selected_voice_id: undefined,
-  };
 
   const handleConnectionChange = (connectionId: string) => {
     if (connectionId === "add-new") {
@@ -86,36 +78,6 @@ const AgentModal: React.FC<AgentModalProps> = ({
     onInputChange(event);
   };
   
-  const handleVoiceEnabledChange = (enabled: boolean) => {
-    const event = {
-      target: {
-        name: "voice_config",
-        value: {
-          ...voiceConfig,
-          voice_enabled: enabled,
-        },
-      },
-    } as any;
-    onInputChange(event);
-  };
-  
-  const handleVoiceConnectionChange = (connectionId: string) => {
-    if (connectionId === "add-new") {
-      navigate("/settings/voice-connections");
-      return;
-    }
-    
-    const event = {
-      target: {
-        name: "voice_config",
-        value: {
-          ...voiceConfig,
-          voice_connection_id: connectionId,
-        },
-      },
-    } as any;
-    onInputChange(event);
-  };
   
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -133,8 +95,7 @@ const AgentModal: React.FC<AgentModalProps> = ({
         </DialogHeader>
         
         <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="space-y-4">
+          <div className="space-y-4">
               <div>
                 <Label htmlFor="name" className="text-sm font-medium">
                   {t("agents.agentName")} *
@@ -146,8 +107,11 @@ const AgentModal: React.FC<AgentModalProps> = ({
                   onChange={onInputChange}
                   placeholder={t("agents.namePlaceholder")}
                   required
-                  className="mt-1"
+                  className={`mt-1 ${formErrors.name ? 'border-red-500 focus:border-red-500' : ''}`}
                 />
+                {formErrors.name && (
+                  <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>
+                )}
               </div>
 
               <div>
@@ -161,111 +125,65 @@ const AgentModal: React.FC<AgentModalProps> = ({
                   onChange={onInputChange}
                   rows={3}
                   placeholder={t("agents.characteristicsPlaceholder")}
-                  className="resize-none mt-1"
+                  className={`resize-none mt-1 ${formErrors.characteristics ? 'border-red-500 focus:border-red-500' : ''}`}
                   required
                 />
+                {formErrors.characteristics && (
+                  <p className="text-sm text-red-500 mt-1">{formErrors.characteristics}</p>
+                )}
               </div>
 
-              <div>
-                <Label htmlFor="gender" className="text-sm font-medium">
-                  {t("agents.gender")} *
-                </Label>
-                <Select
-                  value={formData.gender || "neutral"}
-                  onValueChange={(value) => {
-                    const event = {
-                      target: { name: "gender", value },
-                    } as React.ChangeEvent<HTMLInputElement>;
-                    onInputChange(event);
-                  }}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder={t("agents.selectGender")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">{t("agents.male")}</SelectItem>
-                    <SelectItem value="female">{t("agents.female")}</SelectItem>
-                    <SelectItem value="neutral">{t("agents.neutral")}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("agents.genderDescription")}
-                </p>
-              </div>
 
               <div>
                 <Label htmlFor="connection" className="text-sm font-medium">
-                  {t("agents.modelConnection")} *
+                  {t("agents.modelConnection")} <span className="text-muted-foreground text-xs">{t("common.optional")}</span>
                 </Label>
                 <Select
                   value={formData.connection_id || ""}
                   onValueChange={handleConnectionChange}
                   disabled={connectionsLoading}
                 >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder={t("agents.selectModelConnection")} />
+                  <SelectTrigger className={`mt-1 ${formErrors.connection_id ? 'border-red-500 focus:border-red-500' : ''}`}>
+                    <SelectValue placeholder={connectionsLoading ? t("common.loading") : t("agents.selectModelConnection")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {activeConnections.map((connection) => (
-                      <SelectItem key={connection.id} value={connection.id}>
-                        {connection.name} ({connection.provider})
-                        {connection.is_default && ` • ${t("agents.default")}`}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="add-new">{t("agents.addNewConnection")}</SelectItem>
+                    {connectionsLoading ? (
+                      <SelectItem value="loading" disabled>{t("common.loading")}</SelectItem>
+                    ) : activeConnections.length === 0 ? (
+                      <SelectItem value="no-connections" disabled>{t("agents.noConnectionsAvailable")}</SelectItem>
+                    ) : (
+                      <>
+                        {activeConnections.map((connection) => (
+                          <SelectItem key={connection.id} value={connection.id}>
+                            {connection.name} ({connection.provider})
+                            {connection.is_default && ` • ${t("agents.default")}`}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="add-new">{t("agents.addNewConnection")}</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <Label htmlFor="voice-enabled" className="text-sm font-medium">
-                      {t("agents.voiceConfiguration")}
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("agents.voiceConfigurationDescription")}
-                    </p>
-                  </div>
-                  <Switch
-                    id="voice-enabled"
-                    checked={voiceConfig.voice_enabled}
-                    onCheckedChange={handleVoiceEnabledChange}
-                  />
-                </div>
-                
-                {voiceConfig.voice_enabled && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="voice-connection" className="text-sm font-medium">
-                        {t("agents.voiceConnection")}
-                      </Label>
-                      <Select
-                        value={voiceConfig.voice_connection_id || ""}
-                        onValueChange={handleVoiceConnectionChange}
-                        disabled={voiceConnectionsLoading}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder={t("agents.selectVoiceConnection")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activeVoiceConnections.map((connection) => (
-                            <SelectItem key={connection.id} value={connection.id}>
-                              {connection.name} ({connection.provider})
-                              {connection.is_default && ` • ${t("agents.default")}`}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="add-new">{t("agents.addVoiceConnection")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                {formErrors.connection_id ? (
+                  <p className="text-sm text-red-500 mt-1">{formErrors.connection_id}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("agents.connectionHelpText")}
+                  </p>
                 )}
               </div>
             </div>
-          </div>
+
+          {Object.keys(formErrors).length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+              <p className="text-sm text-red-700 font-medium">
+                {t('errors.invalidInput')}
+              </p>
+              <p className="text-xs text-red-600 mt-1">
+                {t('errors.pleaseCheckFields')}
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button

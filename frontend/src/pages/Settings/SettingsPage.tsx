@@ -1,9 +1,9 @@
 import type { SettingsItem } from "@/components/settings";
 import { SettingsContent, SettingsSidebar } from "@/components/settings";
-import { Server, Settings, Shield, Mic, Plug, User, Coins } from "lucide-react";
+import { Settings, Shield, Plug, User, Coins } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CREDITS_ENABLED, MCP_ENABLED } from "@/config/features";
+import { CREDITS_ENABLED } from "@/config/features";
 import { useTranslation } from "react-i18next";
 
 export const SettingsPage: React.FC = () => {
@@ -51,20 +51,6 @@ export const SettingsPage: React.FC = () => {
       description: t("settings.connectionsDescription"),
       icon: Plug,
     },
-    {
-      id: "voice-connections",
-      path: "/settings/voice-connections",
-      label: t("voice.title"),
-      description: t("settings.voiceConnectionsDescription"),
-      icon: Mic,
-    },
-    ...(MCP_ENABLED ? [{
-      id: "mcp-servers",
-      path: "/settings/mcp-servers",
-      label: t("settings.mcpServers"),
-      description: t("settings.mcpServersDescription"),
-      icon: Server,
-    }] : []),
     ...(CREDITS_ENABLED ? [{
       id: "credits",
       path: "/settings/credits",

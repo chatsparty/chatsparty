@@ -23,7 +23,6 @@ export interface ConversationStartData {
     content: string;
     file_type: string;
   }>;
-  project_id?: string;
 }
 
 class SocketService {
@@ -32,7 +31,13 @@ class SocketService {
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      console.log('🔵 SocketService.connect called', {
+        alreadyConnected: !!this.socket?.connected,
+        apiBaseUrl: API_BASE_URL
+      });
+
       if (this.socket?.connected) {
+        console.log('🟢 Socket already connected');
         resolve();
         return;
       }
@@ -48,17 +53,17 @@ class SocketService {
       });
 
       this.socket.on('connect', () => {
-        console.log('Socket.IO connected');
+        console.log('🟢 Socket.IO connected');
         resolve();
       });
 
       this.socket.on('connect_error', (error) => {
-        console.error('Socket.IO connection error:', error);
+        console.error('🔴 Socket.IO connection error:', error);
         reject(error);
       });
 
       this.socket.on('disconnect', (reason) => {
-        console.log('Socket.IO disconnected:', reason);
+        console.log('🟡 Socket.IO disconnected:', reason);
       });
 
       // Set up event listeners for multi-agent chat
@@ -118,8 +123,15 @@ class SocketService {
   }
 
   startConversation(data: ConversationStartData): void {
+    console.log('🔵 SocketService.startConversation called', {
+      conversationId: data.conversation_id,
+      agentIds: data.agent_ids,
+      initialMessage: data.initial_message,
+      socketConnected: !!this.socket?.connected
+    });
+
     if (!this.socket) {
-      console.error('Socket not connected');
+      console.error('🔴 Socket not connected');
       return;
     }
 
@@ -130,6 +142,7 @@ class SocketService {
       token: token || undefined
     };
 
+    console.log('🟡 Emitting start_multi_agent_conversation', conversationData);
     this.socket.emit('start_multi_agent_conversation', conversationData);
   }
 
@@ -139,18 +152,28 @@ class SocketService {
   }
 
   sendMessage(conversationId: string, message: string, agentIds: string[]): void {
+    console.log('🔵 SocketService.sendMessage called', {
+      conversationId,
+      message,
+      agentIds,
+      socketConnected: !!this.socket?.connected
+    });
+
     if (!this.socket) {
-      console.error('Socket not connected');
+      console.error('🔴 Socket not connected');
       return;
     }
 
     const token = localStorage.getItem('access_token');
-    this.socket.emit('send_message', {
+    const messageData = {
       conversation_id: conversationId,
       message: message,
       agent_ids: agentIds,
       token: token || undefined
-    });
+    };
+
+    console.log('🟡 Emitting send_message', messageData);
+    this.socket.emit('send_message', messageData);
   }
 
   joinConversation(conversationId: string): void {

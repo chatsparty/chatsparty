@@ -14,9 +14,7 @@ import type {
   CreateConnectionRequest,
   ModelConnection,
 } from "@/types/connection";
-import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { MCP_ENABLED } from "@/config/features";
 
 interface ConnectionFormProps {
   connection?: ModelConnection;
@@ -39,10 +37,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
     model_name: connection?.model_name || "",
     api_key: connection?.api_key || "",
     base_url: connection?.base_url || "",
-    mcp_server_url: connection?.mcp_server_url || "",
-    mcp_server_config: connection?.mcp_server_config || {},
-    available_tools: connection?.available_tools || [],
-    mcp_capabilities: connection?.mcp_capabilities || undefined,
   });
 
   const [providers, setProviders] = useState<
@@ -60,29 +54,40 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(true);
 
-  const [testingMcp, setTestingMcp] = useState(false);
-  const [mcpTestResult, setMcpTestResult] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
-
   useEffect(() => {
-    const fetchProviders = async () => {
-      try {
-        const response = await axios.get("/chat/providers");
-        setProviders(response.data.providers || {});
-      } catch (error: unknown) {
-        if (axios.isAxiosError(error)) {
-          console.error("Failed to fetch providers:", error.message);
-        } else {
-          console.error("Failed to fetch providers:", error);
+    const initProviders = () => {
+      // Set hardcoded providers instead of fetching from backend
+      setProviders({
+        openai: {
+          models: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
+          requires_api_key: true,
+          supports_tools: true,
+          connection_type: "api"
+        },
+        anthropic: {
+          models: ["claude-3-sonnet-20240229", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
+          requires_api_key: true,
+          supports_tools: true,
+          connection_type: "api"
+        },
+        google: {
+          models: ["gemini-pro", "gemini-pro-vision"],
+          requires_api_key: true,
+          supports_tools: false,
+          connection_type: "api"
+        },
+        ollama: {
+          models: ["llama2", "codellama", "mistral"],
+          requires_api_key: false,
+          base_url_required: true,
+          supports_tools: false,
+          connection_type: "local"
         }
-      } finally {
-        setLoadingProviders(false);
-      }
+      });
+      setLoadingProviders(false);
     };
 
-    fetchProviders();
+    initProviders();
   }, []);
 
   useEffect(() => {
@@ -103,13 +108,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const submitData = { ...formData };
-    if (isMcpProvider && !submitData.model_name) {
-      submitData.model_name = "mcp-server";
-    }
-
-    await onSubmit(submitData);
+    await onSubmit(formData);
   };
 
   const selectedProvider = formData.provider
@@ -117,47 +116,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
     : null;
   const requiresApiKey = selectedProvider?.requires_api_key || false;
   const requiresBaseUrl = selectedProvider?.base_url_required || false;
-  const isMcpProvider = formData.provider === "mcp";
-
-  const handleMcpTest = async () => {
-    if (!formData.mcp_server_url) {
-      setMcpTestResult({
-        success: false,
-        message: "Please enter an MCP server URL",
-      });
-      return;
-    }
-
-    setTestingMcp(true);
-    setMcpTestResult(null);
-
-    try {
-      const response = await axios.post("/connections/mcp/test", {
-        server_url: formData.mcp_server_url,
-        server_config: formData.mcp_server_config,
-      });
-
-      setMcpTestResult({
-        success: response.data.success,
-        message: response.data.message,
-      });
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        setMcpTestResult({
-          success: false,
-          message:
-            error.response?.data?.detail || "Failed to test MCP connection",
-        });
-      } else {
-        setMcpTestResult({
-          success: false,
-          message: "Failed to test MCP connection",
-        });
-      }
-    } finally {
-      setTestingMcp(false);
-    }
-  };
 
   if (isDefaultConnection) {
     return (
@@ -246,7 +204,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {Object.keys(providers)
-                    .filter(provider => MCP_ENABLED || provider !== "mcp")
+                    .filter(provider => provider !== "mcp")
                     .map((provider) => (
                       <SelectItem key={provider} value={provider}>
                         {provider.charAt(0).toUpperCase() + provider.slice(1)}
@@ -256,29 +214,27 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               </Select>
             </div>
 
-            {!isMcpProvider && (
-              <div>
-                <Label htmlFor="model" className="text-sm font-medium">
-                  Model *
-                </Label>
-                <Select
-                  value={formData.model_name}
-                  onValueChange={(value) => handleChange("model_name", value)}
-                  disabled={!formData.provider || availableModels.length === 0}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select a model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableModels.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <Label htmlFor="model" className="text-sm font-medium">
+                Model *
+              </Label>
+              <Select
+                value={formData.model_name}
+                onValueChange={(value) => handleChange("model_name", value)}
+                disabled={!formData.provider || availableModels.length === 0}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableModels.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
@@ -322,53 +278,6 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
           </Card>
         )}
 
-        {MCP_ENABLED && isMcpProvider && (
-          <Card>
-            <CardHeader>
-              <CardTitle>MCP Server Configuration</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="mcp_server_url" className="text-sm font-medium">
-                  MCP Server URL *
-                </Label>
-                <Input
-                  id="mcp_server_url"
-                  value={formData.mcp_server_url}
-                  onChange={(e) =>
-                    handleChange("mcp_server_url", e.target.value)
-                  }
-                  placeholder="ws://localhost:3000 or https://your-mcp-server.com"
-                  required
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleMcpTest}
-                  disabled={testingMcp || !formData.mcp_server_url}
-                  className="flex-1"
-                >
-                  {testingMcp ? "Testing..." : "Test MCP Connection"}
-                </Button>
-              </div>
-
-              {mcpTestResult && (
-                <div
-                  className={`p-3 rounded-lg text-sm ${
-                    mcpTestResult.success
-                      ? "bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200"
-                      : "bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200"
-                  }`}
-                >
-                  {mcpTestResult.message}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         <div className="flex justify-end space-x-3 pt-6">
           <Button type="button" variant="outline" onClick={onCancel}>
