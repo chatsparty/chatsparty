@@ -79,7 +79,7 @@ async function registerPlugins() {
       },
     },
     staticCSP: true,
-    transformStaticCSP: (header) => header,
+    transformStaticCSP: header => header,
     transformSpecification: (swaggerObject, request, reply) => {
       return swaggerObject;
     },
@@ -92,10 +92,10 @@ async function registerPlugins() {
   });
 
   // CORS
-  const corsOrigins = config.CORS_ORIGIN 
+  const corsOrigins = config.CORS_ORIGIN
     ? config.CORS_ORIGIN.split(',').map(origin => origin.trim())
     : true;
-    
+
   await app.register(cors, {
     origin: corsOrigins,
     credentials: true,
@@ -111,23 +111,27 @@ async function registerPlugins() {
 // Register routes
 async function registerRoutes() {
   // Health check
-  app.get('/health', {
-    schema: {
-      description: 'Health check endpoint',
-      tags: ['Health'],
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            status: { type: 'string' },
-            timestamp: { type: 'string' },
+  app.get(
+    '/health',
+    {
+      schema: {
+        description: 'Health check endpoint',
+        tags: ['Health'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              status: { type: 'string' },
+              timestamp: { type: 'string' },
+            },
           },
         },
       },
     },
-  }, async (_request, _reply) => {
-    return { status: 'ok', timestamp: new Date().toISOString() };
-  });
+    async (_request, _reply) => {
+      return { status: 'ok', timestamp: new Date().toISOString() };
+    }
+  );
 
   // API routes
   await app.register(userRoutes, { prefix: '/api/users' });
@@ -138,7 +142,7 @@ async function registerRoutes() {
   await app.register(creditRoutes, { prefix: '/api/credits' });
   await app.register(storageRoutes, { prefix: '/api' });
   await app.register(chatRoutes, { prefix: '/api' });
-  
+
   // Frontend compatibility aliases (without /api prefix)
   await app.register(connectionRoutes, { prefix: '/connections' });
   await app.register(defaultConnectionRoutes, { prefix: '' });
@@ -166,12 +170,12 @@ async function start() {
     // Initialize Socket.IO after server is listening
     const server = app.server;
     const io = websocketService.initializeSocketIO(server);
-    
+
     // Setup chat handlers for each connection
-    io.on('connection', (socket) => {
+    io.on('connection', socket => {
       setupChatHandlers(socket);
     });
-    
+
     console.info('Socket.IO server initialized');
   } catch (err) {
     app.log.error(err);

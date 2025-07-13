@@ -17,13 +17,19 @@ enum Gender {
   NEUTRAL
 }
 
+enum AuthProviderType {
+  LOCAL
+  GOOGLE
+}
+
 // User model with credit system
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
   password        String?   // Made optional to support OAuth
   name            String?
-  provider        String?   // local, google, github, etc.
+  provider        AuthProviderType @default(LOCAL)
+  providerId      String?   // Unique ID from the OAuth provider
   isActive        Boolean   @default(true)
   isVerified      Boolean   @default(false)
   
@@ -47,6 +53,7 @@ model User {
   podcastJobs        PodcastJob[]
   credits            Credit[]
   
+  @@unique([provider, providerId])
   @@index([email])
 }
 
