@@ -133,7 +133,7 @@ async function registerRoutes() {
   await app.register(defaultConnectionRoutes, { prefix: '/api' });
   await app.register(creditRoutes, { prefix: '/api/credits' });
   await app.register(storageRoutes, { prefix: '/api' });
-  await app.register(chatRoutes, { prefix: '/api' });
+  await app.register(chatRoutes, { prefix: '/chat' });
 
   await app.register(connectionRoutes, { prefix: '/connections' });
   await app.register(defaultConnectionRoutes, { prefix: '' });
