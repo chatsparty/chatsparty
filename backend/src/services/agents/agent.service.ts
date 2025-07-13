@@ -13,8 +13,7 @@ import {
   validateAgentPrompt,
   validateAgentCharacteristics,
   validateAIConfig,
-  validateChatStyle,
-  validateVoiceConfig
+  validateChatStyle
 } from './agent.validation';
 import { Agent as MastraAgent } from '../ai/types';
 import { agentManager } from '../ai/agent.manager';
@@ -52,11 +51,6 @@ export class AgentService {
       const chatStyleError = validateChatStyle(input.chatStyle);
       if (chatStyleError) {
         return { success: false, error: chatStyleError };
-      }
-
-      const voiceConfigError = validateVoiceConfig(input.voiceConfig);
-      if (voiceConfigError) {
-        return { success: false, error: voiceConfigError };
       }
 
       // Check agent limit
@@ -112,7 +106,7 @@ export class AgentService {
             if (!input.aiConfig || !input.aiConfig.provider) {
               input.aiConfig = {
                 ...input.aiConfig,
-                provider: defaultConn.provider,
+                provider: defaultConn.provider as any,
                 modelName: defaultConn.modelName,
               };
             }
@@ -125,21 +119,6 @@ export class AgentService {
         return { success: false, error: 'Invalid or inactive connection' };
       }
 
-      // Validate voice connection if provided
-      if (input.voiceConfig?.voiceEnabled && input.voiceConfig.voiceConnectionId) {
-        const voiceConnection = await this.prisma.voiceConnection.findFirst({
-          where: {
-            id: input.voiceConfig.voiceConnectionId,
-            userId,
-            isActive: true,
-          },
-        });
-
-        if (!voiceConnection) {
-          return { success: false, error: 'Invalid or inactive voice connection' };
-        }
-      }
-
       // Create the agent
       const agent = await this.prisma.agent.create({
         data: {
@@ -150,13 +129,7 @@ export class AgentService {
           gender: input.gender || 'NEUTRAL',
           aiConfig: input.aiConfig,
           chatStyle: input.chatStyle,
-          voiceEnabled: input.voiceConfig?.voiceEnabled || false,
-          voiceConnectionId: input.voiceConfig?.voiceConnectionId,
-          podcastSettings: input.voiceConfig?.podcastSettings,
           userId,
-        },
-        include: {
-          voiceConnection: true,
         },
       });
 
@@ -170,7 +143,6 @@ export class AgentService {
         chatStyle: agent.chatStyle as any,
         connectionId: agent.connectionId,
         gender: agent.gender as any,
-        voiceConfig: input.voiceConfig,
       };
 
       await agentManager.registerAgent(mastraAgent);
@@ -197,9 +169,6 @@ export class AgentService {
         where: {
           id: agentId,
           userId,
-        },
-        include: {
-          voiceConnection: true,
         },
       });
 
@@ -246,16 +215,9 @@ export class AgentService {
         where.connectionId = filters.connectionId;
       }
 
-      if (filters.voiceEnabled !== undefined) {
-        where.voiceEnabled = filters.voiceEnabled;
-      }
-
       const [agents, total] = await Promise.all([
         this.prisma.agent.findMany({
           where,
-          include: {
-            voiceConnection: true,
-          },
           skip,
           take: limit,
           orderBy: {
@@ -264,14 +226,6 @@ export class AgentService {
         }),
         this.prisma.agent.count({ where }),
       ]);
-
-      console.log('🔍 Raw agents from database:', agents.map(a => ({ 
-        id: a.id, 
-        name: a.name, 
-        connectionId: a.connectionId,
-        hasConnectionId: 'connectionId' in a,
-        keys: Object.keys(a)
-      })));
 
       return {
         success: true,
@@ -348,13 +302,6 @@ export class AgentService {
         }
       }
 
-      if (input.voiceConfig) {
-        const voiceConfigError = validateVoiceConfig(input.voiceConfig);
-        if (voiceConfigError) {
-          return { success: false, error: voiceConfigError };
-        }
-      }
-
       // Validate connection if changing
       if (input.connectionId) {
         let connection = await this.prisma.connection.findFirst({
@@ -383,7 +330,7 @@ export class AgentService {
               if (!input.aiConfig || !input.aiConfig.provider) {
                 input.aiConfig = {
                   ...input.aiConfig,
-                  provider: defaultConn.provider,
+                  provider: defaultConn.provider as any,
                   modelName: defaultConn.modelName,
                 };
               }
@@ -393,21 +340,6 @@ export class AgentService {
 
         if (!connection) {
           return { success: false, error: 'Invalid or inactive connection' };
-        }
-      }
-
-      // Validate voice connection if changing
-      if (input.voiceConfig?.voiceEnabled && input.voiceConfig.voiceConnectionId) {
-        const voiceConnection = await this.prisma.voiceConnection.findFirst({
-          where: {
-            id: input.voiceConfig.voiceConnectionId,
-            userId,
-            isActive: true,
-          },
-        });
-
-        if (!voiceConnection) {
-          return { success: false, error: 'Invalid or inactive voice connection' };
         }
       }
 
@@ -421,19 +353,10 @@ export class AgentService {
       if (input.gender !== undefined) updateData.gender = input.gender;
       if (input.aiConfig !== undefined) updateData.aiConfig = input.aiConfig;
       if (input.chatStyle !== undefined) updateData.chatStyle = input.chatStyle;
-      
-      if (input.voiceConfig !== undefined) {
-        updateData.voiceEnabled = input.voiceConfig.voiceEnabled || false;
-        updateData.voiceConnectionId = input.voiceConfig.voiceConnectionId;
-        updateData.podcastSettings = input.voiceConfig.podcastSettings;
-      }
 
       const agent = await this.prisma.agent.update({
         where: { id: agentId },
         data: updateData,
-        include: {
-          voiceConnection: true,
-        },
       });
 
       // Update agent in Mastra AI manager
@@ -446,12 +369,6 @@ export class AgentService {
         chatStyle: agent.chatStyle as any,
         connectionId: agent.connectionId,
         gender: agent.gender as any,
-        voiceConfig: agent.voiceConnectionId && agent.voiceConnection ? {
-          voiceEnabled: agent.voiceEnabled,
-          voiceConnectionId: agent.voiceConnectionId,
-          selectedVoiceId: agent.voiceConnection.voiceId || undefined,
-          podcastSettings: agent.podcastSettings as Record<string, any> || undefined,
-        } : undefined,
       };
 
       await agentManager.registerAgent(mastraAgent);
@@ -515,9 +432,6 @@ export class AgentService {
         where: {
           userId,
           connectionId,
-        },
-        include: {
-          voiceConnection: true,
         },
         orderBy: {
           createdAt: 'desc',

@@ -127,6 +127,12 @@ export const useSocketConversation = ({
       console.log('🟢 Socket Event: Agent message:', data);
       if (!data.conversation_id) return;
       
+      // Skip user messages since they're already added when sent
+      if (data.speaker?.toLowerCase() === 'user' || data.agent_id === 'user') {
+        console.log('🟡 Skipping user message from socket to avoid duplication');
+        return;
+      }
+      
       setConversations(prev => 
         prev.map(conv => {
           if (conv.id === data.conversation_id) {

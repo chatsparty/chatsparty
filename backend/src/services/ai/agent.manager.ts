@@ -193,16 +193,78 @@ export class AgentManager {
     }));
 
     // Get model for this agent
+    console.log(`Generating response for agent ${agent.name}:`, {
+      provider: agent.aiConfig.provider,
+      modelName: agent.aiConfig.modelName,
+      messagesCount: messages.length,
+    });
+    
     const model = getModel(agent.aiConfig.provider, agent.aiConfig.modelName);
 
     // Generate response
-    const result = await generateText({
-      model,
-      messages,
-      system: getAgentSystemPrompt(agent),
-      temperature: 0.7,
-      maxTokens: 1000,
+    let result;
+    try {
+      result = await generateText({
+        model,
+        messages,
+        system: getAgentSystemPrompt(agent),
+        temperature: 0.7,
+        maxTokens: 1000,
+      });
+    } catch (error) {
+      console.error(`Error generating text for agent ${agent.name}:`, error);
+      throw error;
+    }
+
+    // Log the response for debugging
+    console.log(`Agent ${agent.name} (${agentId}) response:`, {
+      hasText: !!result.text,
+      textLength: result.text?.length || 0,
+      firstChars: result.text?.substring(0, 50) || 'EMPTY',
     });
+
+    // Validate response is not empty
+    if (!result.text || result.text.trim() === '') {
+      console.warn(`Agent ${agent.name} generated empty response. Retrying...`);
+      
+      // For Google models, we can't add system messages mid-conversation
+      // Instead, add a user message prompting for a response
+      const isGoogleModel = agent.aiConfig.provider === 'google' || agent.aiConfig.provider === 'vertex_ai';
+      
+      const retryMessages: CoreMessage[] = isGoogleModel ? [
+        ...messages,
+        {
+          role: 'user',
+          content: 'Please continue the conversation with a substantive response.',
+        },
+      ] : [
+        ...messages,
+        {
+          role: 'system',
+          content: 'Please provide a substantive response to continue the conversation.',
+        },
+      ];
+      
+      try {
+        const retryResult = await generateText({
+          model,
+          messages: retryMessages,
+          system: getAgentSystemPrompt(agent),
+          temperature: 0.8, // Slightly higher temperature for variety
+          maxTokens: 1000,
+        });
+        
+        if (!retryResult.text || retryResult.text.trim() === '') {
+          console.error(`Agent ${agent.name} generated empty response after retry`);
+          return `Hey everyone!`; // Simple fallback for greetings
+        }
+        
+        return retryResult.text;
+      } catch (retryError) {
+        console.error(`Error during retry for agent ${agent.name}:`, retryError);
+        return `Hey there!`; // Simple fallback
+      }
+    }
 
     return result.text;
   }

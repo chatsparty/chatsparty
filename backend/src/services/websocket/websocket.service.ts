@@ -193,7 +193,12 @@ export class WebSocketService {
       status: 'completed'
     });
 
-    this.activeConversations.delete(conversationId);
+    // Don't delete the conversation - keep it available for future messages
+    // Just mark it as not actively streaming
+    const conversation = this.activeConversations.get(conversationId);
+    if (conversation) {
+      conversation.isActive = false;
+    }
   }
 
   async emitError(conversationId: string, errorMessage: string): Promise<void> {

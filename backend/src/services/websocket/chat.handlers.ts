@@ -101,14 +101,8 @@ export function setupChatHandlers(socket: Socket): void {
         status: 'started'
       });
 
-      // Emit user's initial message
-      await websocketService.emitAgentMessage(
-        conversation_id,
-        'user',
-        'User',
-        initial_message,
-        Date.now()
-      );
+      // Don't emit user's initial message as agent_message to avoid duplication
+      // The frontend will add it when starting the conversation
 
       console.log(`Starting multi-agent conversation ${conversation_id} with agents ${agent_ids}`);
 
@@ -264,7 +258,7 @@ export function setupChatHandlers(socket: Socket): void {
       }
 
       // First check if it's a database conversation ID
-      const dbConversation = await conversationService.getConversation(userId, conversation_id);
+      let dbConversation = await conversationService.getConversation(userId, conversation_id);
       
       let conversationData: any;
       let databaseConversationId: string = conversation_id;
@@ -294,26 +288,33 @@ export function setupChatHandlers(socket: Socket): void {
       } else {
         // Check if it's a client conversation ID in active conversations
         conversationData = websocketService.getActiveConversations().get(conversation_id);
-        if (!conversationData || !conversationData.isActive) {
+        if (!conversationData) {
           socket.emit('conversation_error', {
             conversation_id,
             error: 'Conversation not found or inactive'
           });
           return;
         }
-        // For new conversations, we need to find the database ID
-        // This should have been set when conversation_created was emitted
-        // For now, we'll continue with the client ID
+        
+        // Mark conversation as active again for new messages
+        conversationData.isActive = true;
+        
+        // Ensure socket is in the conversation room
+        socket.join(conversation_id);
+        
+        // Get the database ID if available
+        if (conversationData.databaseId) {
+          databaseConversationId = conversationData.databaseId;
+          // Try to get the database conversation
+          const dbConv = await conversationService.getConversation(userId, conversationData.databaseId);
+          if (dbConv.success && dbConv.data) {
+            dbConversation = dbConv;
+          }
+        }
       }
 
-      // Emit user message
-      await websocketService.emitAgentMessage(
-        conversation_id,
-        'user',
-        'User',
-        message,
-        Date.now()
-      );
+      // Don't emit user message as agent_message to avoid duplication
+      // The frontend will add it locally when sending
 
       // Save user message to database if we have a database ID
       if (dbConversation.success && dbConversation.data) {

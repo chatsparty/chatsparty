@@ -4,8 +4,8 @@ import { API_BASE_URL } from "./constants";
 
 export const fetchAgents = async (): Promise<Agent[]> => {
   try {
-    console.log('🔵 fetchAgents called, fetching from:', `${API_BASE_URL}/api/agents`);
-    const response = await axios.get(`${API_BASE_URL}/api/agents`);
+    console.log('🔵 fetchAgents called, fetching from:', '/chat/agents');
+    const response = await axios.get('/chat/agents');
     console.log('🟡 fetchAgents response:', response.data);
     
     // Handle the correct response format: { success: true, data: { agents: [...] } }
@@ -36,8 +36,8 @@ export const fetchConversations = async (
   if (agents.length === 0) return [];
 
   try {
-    console.log('🔵 fetchConversations called, fetching from:', `${API_BASE_URL}/api/conversations`);
-    const response = await axios.get(`${API_BASE_URL}/api/conversations`);
+    console.log('🔵 fetchConversations called, fetching from:', '/chat/conversations');
+    const response = await axios.get('/chat/conversations');
     console.log('🟡 fetchConversations response:', response.data);
     
     // Handle different response formats
@@ -118,7 +118,7 @@ export const fetchConversations = async (
 
 export const deleteConversation = async (conversationId: string): Promise<void> => {
   try {
-    await axios.delete(`${API_BASE_URL}/api/conversations/${conversationId}`);
+    await axios.delete(`/chat/conversations/${conversationId}`);
   } catch (error) {
     console.error(
       "Failed to delete conversation:",

@@ -9,10 +9,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useConnections } from "@/hooks/useConnections";
-import { Bot, Edit, Plus, Trash2 } from "lucide-react";
+import { Bot, Edit, Plus, Trash2, MessageSquare } from "lucide-react";
 import React from "react";
 import Avatar from "boring-avatars";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 interface Agent {
   id: string;
@@ -39,6 +40,7 @@ const AgentTable: React.FC<AgentTableProps> = ({
 }) => {
   const { t } = useTranslation();
   const { connections } = useConnections();
+  const navigate = useNavigate();
   const avatarColors = ["#000000", "#6B46C1", "#EC4899", "#F97316", "#FCD34D"];
 
   const handleDeleteClick = (e: React.MouseEvent, agentId: string) => {
@@ -193,6 +195,18 @@ const AgentTable: React.FC<AgentTableProps> = ({
                     </TableCell>
                     <TableCell className="text-end py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/chat');
+                          }}
+                          className="h-8 w-8 p-0 hover:bg-muted"
+                          title={t("agents.chat")}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import type { ActiveConversation, Agent } from '../types';
+import type { ActiveConversation, Agent, ConversationMessage } from '../types';
 import { createStreamMessageHandlers } from './streamHandlers';
 import { createAgentHelpers } from './helpers';
 import { useTracking } from '../../../hooks/useTracking';
@@ -102,11 +102,19 @@ export const useConversationActions = (
     });
     
     try {
+      // Create user message for the initial message
+      const userMessage: ConversationMessage = {
+        speaker: 'User',
+        agent_id: undefined,
+        message: finalMessage,
+        timestamp: Date.now() / 1000
+      };
+
       const newConversation: ActiveConversation = {
         id: conversationId,
         name: finalAgents.map(id => getAgentName(id)).join(' & '),
         agents: finalAgents,
-        messages: [],
+        messages: [userMessage],
         isActive: true
       };
 
@@ -240,6 +248,22 @@ export const useConversationActions = (
     }
 
     try {
+      // Add user message to the conversation immediately
+      const userMessage: ConversationMessage = {
+        speaker: 'User',
+        agent_id: undefined,
+        message: message,
+        timestamp: Date.now() / 1000
+      };
+      
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === conversationId 
+            ? { ...conv, messages: [...conv.messages, userMessage] }
+            : conv
+        )
+      );
+
       trackMessageSent({
         message_length: message.length,
         conversation_type: 'multi_agent',
@@ -255,7 +279,7 @@ export const useConversationActions = (
       trackError('message_send_error', error instanceof Error ? error.message : 'Unknown error', 'multi_agent_chat');
       throw error;
     }
-  }, [sendSocketMessage, trackMessageSent, trackError]);
+  }, [sendSocketMessage, trackMessageSent, trackError, setConversations]);
 
   const cleanup = useCallback(() => {
     abortControllersRef.current.forEach(controller => controller.abort());

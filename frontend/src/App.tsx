@@ -95,7 +95,7 @@ const Layout = () => {
 
   const tabs = [
     { path: "/chat/agents", label: t("navigation.agents") },
-    { path: "/multi-agent-chat", label: t("navigation.chat") },
+    { path: "/chat", label: t("navigation.chat") },
     { path: "/settings", label: t("navigation.settings") },
   ];
 
