@@ -16,6 +16,7 @@ import connectionRoutes from './services/connections/connection.routes';
 import creditRoutes from './services/credit/credit.routes';
 import { storageRoutes } from './services/storage/storage.routes';
 import { chatRoutes } from './services/chat/chat.routes';
+import { conversationRoutes } from './services/conversation/conversation.routes';
 import defaultConnectionRoutes from './services/connections/default-connection.routes';
 import { websocketService } from './services/websocket/websocket.service';
 import { setupChatHandlers } from './services/websocket/chat.handlers';
@@ -134,7 +135,8 @@ async function registerRoutes() {
   await app.register(defaultConnectionRoutes, { prefix: '/api' });
   await app.register(creditRoutes, { prefix: '/api/credits' });
   await app.register(storageRoutes, { prefix: '/api' });
-  await app.register(chatRoutes, { prefix: '/chat' });
+  await app.register(chatRoutes, { prefix: '/api' });
+  await app.register(conversationRoutes, { prefix: '/api' });
 
   await app.register(connectionRoutes, { prefix: '/connections' });
   await app.register(defaultConnectionRoutes, { prefix: '' });

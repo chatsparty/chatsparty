@@ -1,5 +1,7 @@
 import { Agent, Message, ConversationMessage } from '../ai/types';
 
+export type { ConversationMessage };
+
 // Chat request types
 export interface ChatRequest {
   message: string;
@@ -33,32 +35,6 @@ export interface MultiAgentChatResponse {
   conversationComplete: boolean;
 }
 
-// Conversation types
-export interface Conversation {
-  id: string;
-  userId: string;
-  title: string;
-  agentIds: string[];
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-  metadata?: Record<string, any>;
-}
-
-export interface ConversationFilters {
-  userId: string;
-  agentId?: string;
-  startDate?: Date;
-  endDate?: Date;
-  search?: string;
-}
-
-export interface ConversationListResponse {
-  conversations: Conversation[];
-  total: number;
-  page: number;
-  limit: number;
-}
 
 // Streaming types
 export interface StreamEvent {
@@ -119,12 +95,7 @@ export interface CreditUsage {
 
 // Chat session
 export interface ChatSession {
-  conversationId: string;
+  sessionId: string;
   userId: string;
-  agents: Agent[];
-  messages: Message[];
-  totalCreditsUsed: number;
-  isActive: boolean;
-  startedAt: Date;
-  lastActivityAt: Date;
+  startTime: Date;
 }

@@ -1,5 +1,5 @@
 import { AgentManager } from './agent.manager';
-import { runMultiAgentConversation } from './conversation.workflow';
+import { runMultiAgentConversation } from './multi-agent.workflow';
 import { agentService } from '../agents/agent.service';
 
 export interface StreamEvent {
@@ -42,13 +42,9 @@ class AIService {
 
     try {
       // Load agents from database
-      const agentResponses = await Promise.all(
+      const validAgents = await Promise.all(
         agentIds.map(id => agentService.getAgent(userId, id))
       );
-
-      const validAgents = agentResponses
-        .filter(response => response.success && response.data)
-        .map(response => response.data!);
       
       if (validAgents.length === 0) {
         yield {
@@ -69,8 +65,7 @@ class AIService {
           characteristics: agent.characteristics,
           aiConfig: agent.aiConfig,
           chatStyle: agent.chatStyle,
-          connectionId: agent.connectionId,
-            voiceConfig: agent.voiceConfig
+          connectionId: agent.connectionId
         });
       }
 
@@ -82,8 +77,7 @@ class AIService {
         characteristics: agent.characteristics,
         aiConfig: agent.aiConfig,
         chatStyle: agent.chatStyle,
-        connectionId: agent.connectionId,
-        voiceConfig: agent.voiceConfig
+        connectionId: agent.connectionId
       }));
 
       // Run the conversation

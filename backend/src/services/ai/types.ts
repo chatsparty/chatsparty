@@ -33,16 +33,6 @@ export const ChatStyleSchema = z.object({
 
 export type ChatStyle = z.infer<typeof ChatStyleSchema>;
 
-// Voice configuration
-export const VoiceConfigSchema = z.object({
-  voiceEnabled: z.boolean().default(false),
-  voiceConnectionId: z.string().optional(),
-  selectedVoiceId: z.string().optional(),
-  
-});
-
-export type VoiceConfig = z.infer<typeof VoiceConfigSchema>;
-
 // Agent schema
 export const AgentSchema = z.object({
   agentId: z.string(),
@@ -52,7 +42,6 @@ export const AgentSchema = z.object({
   aiConfig: ModelConfigurationSchema,
   chatStyle: ChatStyleSchema,
   connectionId: z.string(),
-  voiceConfig: VoiceConfigSchema.optional(),
 });
 
 export type Agent = z.infer<typeof AgentSchema>;
