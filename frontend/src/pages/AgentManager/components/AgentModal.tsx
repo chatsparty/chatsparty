@@ -24,21 +24,18 @@ interface Agent {
   id: string;
   name: string;
   characteristics?: string;
-  gender?: string;
   connectionId?: string;
 }
 
 interface FormData {
   name: string;
   characteristics: string;
-  gender: string;
   connection_id: string;
 }
 
 interface FormErrors {
   name?: string;
   characteristics?: string;
-  gender?: string;
   connection_id?: string;
 }
 
@@ -136,36 +133,6 @@ const AgentModal: React.FC<AgentModalProps> = ({
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="gender" className="text-sm font-medium">
-                  {t("agents.gender")} *
-                </Label>
-                <Select
-                  value={formData.gender || "neutral"}
-                  onValueChange={(value) => {
-                    const event = {
-                      target: { name: "gender", value },
-                    } as React.ChangeEvent<HTMLInputElement>;
-                    onInputChange(event);
-                  }}
-                >
-                  <SelectTrigger className={`mt-1 ${formErrors.gender ? 'border-red-500 focus:border-red-500' : ''}`}>
-                    <SelectValue placeholder={t("agents.selectGender")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MALE">{t("agents.male")}</SelectItem>
-                    <SelectItem value="FEMALE">{t("agents.female")}</SelectItem>
-                    <SelectItem value="NEUTRAL">{t("agents.neutral")}</SelectItem>
-                  </SelectContent>
-                </Select>
-                {formErrors.gender ? (
-                  <p className="text-sm text-red-500 mt-1">{formErrors.gender}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("agents.genderDescription")}
-                  </p>
-                )}
-              </div>
 
               <div>
                 <Label htmlFor="connection" className="text-sm font-medium">

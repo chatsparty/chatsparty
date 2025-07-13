@@ -12,7 +12,6 @@ export interface Agent {
   prompt: string;
   characteristics: string;
   connectionId: string;
-  gender: string;
   aiConfig: any;
   chatStyle?: ChatStyle;
   voiceEnabled: boolean;

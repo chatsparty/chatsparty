@@ -1,19 +1,19 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
-import { AgentService } from '../services/agents';
+import { AgentService } from '.';
 // Note: Schema validation imports removed as they are not used in route handlers
-// import { 
+// import {
 //   createAgentSchema,
 //   updateAgentSchema,
 //   deleteAgentSchema,
 //   getAgentSchema,
 //   listAgentsQuerySchema,
 // } from '../services/agents/agent.validation';
-import { 
-  CreateAgentInput, 
+import {
+  CreateAgentInput,
   UpdateAgentInput,
-  AgentFilters
-} from '../services/agents/agent.types';
+  AgentFilters,
+} from './agent.types';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -41,7 +41,6 @@ export async function agentRoutes(fastify: FastifyInstance) {
           properties: {
             name: { type: 'string' },
             characteristics: { type: 'string' },
-            gender: { type: 'string' },
             connectionId: { type: 'string' },
             aiConfig: { type: 'object' },
           },
@@ -59,8 +58,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                   prompt: { type: 'string' },
                   characteristics: { type: 'string' },
                   connectionId: { type: 'string' },
-                  gender: { type: 'string' },
-                  aiConfig: { type: 'object' },
+                        aiConfig: { type: 'object' },
                   chatStyle: { type: 'object' },
                   voiceEnabled: { type: 'boolean' },
                   createdAt: { type: 'string' },
@@ -73,7 +71,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
       },
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Body: CreateAgentInput }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Body: CreateAgentInput }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const result = await agentService.createAgent(userId, request.body);
 
@@ -114,8 +115,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                   prompt: { type: 'string' },
                   characteristics: { type: 'string' },
                   connectionId: { type: 'string' },
-                  gender: { type: 'string' },
-                  aiConfig: { type: 'object' },
+                        aiConfig: { type: 'object' },
                   chatStyle: { type: 'object' },
                   voiceEnabled: { type: 'boolean' },
                   createdAt: { type: 'string' },
@@ -128,7 +128,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
       },
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Params: { agentId: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { agentId: string } }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { agentId } = request.params;
       const result = await agentService.getAgent(userId, agentId);
@@ -185,8 +188,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                         prompt: { type: 'string' },
                         characteristics: { type: 'string' },
                         connectionId: { type: 'string' },
-                        gender: { type: 'string' },
-                        aiConfig: { type: 'object' },
+                                    aiConfig: { type: 'object' },
                         chatStyle: { type: 'object' },
                         voiceEnabled: { type: 'boolean' },
                         createdAt: { type: 'string' },
@@ -210,23 +212,37 @@ export async function agentRoutes(fastify: FastifyInstance) {
       },
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ 
-      Querystring: {
-        page?: number;
-        limit?: number;
-        name?: string;
-        connectionId?: string;
-        voiceEnabled?: string;
-      };
-    }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{
+        Querystring: {
+          page?: number;
+          limit?: number;
+          name?: string;
+          connectionId?: string;
+          voiceEnabled?: string;
+        };
+      }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
-      const { page = 1, limit = 20, name, connectionId, voiceEnabled } = request.query;
+      const {
+        page = 1,
+        limit = 20,
+        name,
+        connectionId,
+        voiceEnabled,
+      } = request.query;
 
       const filters: AgentFilters = {
         userId,
         name,
         connectionId,
-        voiceEnabled: voiceEnabled === 'true' ? true : voiceEnabled === 'false' ? false : undefined,
+        voiceEnabled:
+          voiceEnabled === 'true'
+            ? true
+            : voiceEnabled === 'false'
+              ? false
+              : undefined,
       };
 
       const result = await agentService.listAgents(filters, page, limit);
@@ -248,13 +264,20 @@ export async function agentRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ 
-      Params: { agentId: string };
-      Body: UpdateAgentInput;
-    }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{
+        Params: { agentId: string };
+        Body: UpdateAgentInput;
+      }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { agentId } = request.params;
-      const result = await agentService.updateAgent(userId, agentId, request.body);
+      const result = await agentService.updateAgent(
+        userId,
+        agentId,
+        request.body
+      );
 
       if (!result.success) {
         const statusCode = result.error === 'Agent not found' ? 404 : 400;
@@ -273,7 +296,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Params: { agentId: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { agentId: string } }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { agentId } = request.params;
       const result = await agentService.deleteAgent(userId, agentId);
@@ -294,10 +320,16 @@ export async function agentRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Params: { connectionId: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { connectionId: string } }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { connectionId } = request.params;
-      const result = await agentService.getAgentsByConnection(userId, connectionId);
+      const result = await agentService.getAgentsByConnection(
+        userId,
+        connectionId
+      );
 
       if (!result.success) {
         return reply.code(500).send(result);
@@ -316,10 +348,13 @@ export async function agentRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{
-      Params: { agentId: string };
-      Body: { name?: string };
-    }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{
+        Params: { agentId: string };
+        Body: { name?: string };
+      }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { agentId } = request.params;
       const { name } = request.body;

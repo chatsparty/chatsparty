@@ -6,7 +6,6 @@ interface Agent {
   id: string;
   name: string;
   characteristics?: string;
-  gender?: string;
   connectionId?: string;
 }
 
@@ -15,7 +14,6 @@ const getInitialFormData = (connections: ModelConnection[]): FormData => {
   return {
     name: '',
     characteristics: '',
-    gender: 'NEUTRAL',
     connection_id: chatspartyDefault ? 'chatsparty-default' : ''
   };
 };
@@ -64,7 +62,6 @@ export const useAgentForm = (connections: ModelConnection[]) => {
     setFormData({
       name: agent.name,
       characteristics: agent.characteristics || '',
-      gender: agent.gender || 'NEUTRAL',
       connection_id: agent.connectionId || ''
     });
     setIsModalOpen(true);

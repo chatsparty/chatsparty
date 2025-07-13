@@ -74,6 +74,46 @@ export const createConversationSchema = z.object({
   }),
 });
 
+// JSON Schema definitions for Fastify
+export const chatRequestJsonSchema = {
+  description: 'Single agent chat endpoint',
+  tags: ['Chat'],
+  security: [{ bearerAuth: [] }],
+  body: {
+    type: 'object',
+    required: ['message'],
+    properties: {
+      message: { type: 'string' },
+      agentId: { type: 'string' },
+      conversationId: { type: 'string' },
+      stream: { type: 'boolean' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            response: { type: 'string' },
+            conversationId: { type: 'string' },
+            messageId: { type: 'string' },
+          },
+        },
+      },
+    },
+    400: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        error: { type: 'string' },
+      },
+    },
+  },
+};
+
 // Validation helpers
 export type ChatRequestInput = z.infer<typeof chatRequestSchema.shape.body>;
 export type MultiAgentChatRequestInput = z.infer<typeof multiAgentChatRequestSchema.shape.body>;

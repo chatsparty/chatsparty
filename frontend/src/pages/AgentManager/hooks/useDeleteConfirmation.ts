@@ -4,7 +4,6 @@ interface Agent {
   id: string;
   name: string;
   characteristics?: string;
-  gender?: string;
   connectionId?: string;
   voice_config?: any;
 }

@@ -15,8 +15,6 @@ import {
   Plus,
   X,
   Search,
-  Download,
-  Mic,
 } from "lucide-react";
 import axios from "axios";
 import Avatar from "boring-avatars";
@@ -58,12 +56,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     string | null
   >(null);
 
-  const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
-  const [podcastJobId, setPodcastJobId] = useState<string | null>(null);
-  const [podcastStatus, setPodcastStatus] = useState<
-    "idle" | "generating" | "completed" | "failed"
-  >("idle");
-  const [podcastProgress, setPodcastProgress] = useState<number>(0);
   
   const [messageInput, setMessageInput] = useState("");
   const [selectedAgentsForMessage, setSelectedAgentsForMessage] = useState<string[]>([]);
@@ -214,173 +206,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
   };
 
-  const handleGeneratePodcast = async () => {
-    console.log(
-      "Starting podcast generation for conversation:",
-      activeConversation?.id
-    );
 
-    if (!activeConversation || activeConversation.messages.length === 0) {
-      showToast(t("toast.noMessagesPodcast"), "error");
-      return;
-    }
 
-    const agentMessagesCount = activeConversation.messages.filter(
-      (msg) => msg.agent_id && msg.agent_id.trim() !== ""
-    ).length;
-    console.log("Debug - Total messages:", activeConversation.messages.length);
-    console.log("Debug - Agent messages count:", agentMessagesCount);
-    console.log(
-      "Debug - Sample messages:",
-      activeConversation.messages.slice(0, 3)
-    );
 
-    if (agentMessagesCount === 0) {
-      showToast(t("toast.noAgentMessagesPodcast"), "error");
-      return;
-    }
-
-    try {
-      setIsGeneratingPodcast(true);
-      setPodcastStatus("generating");
-      setPodcastProgress(0);
-
-      const response = await axios.post("/podcast/generate", {
-        conversation_id: activeConversation.id,
-        include_intro: true,
-        include_outro: true,
-        background_music: false,
-        export_format: "mp3",
-      });
-
-      if (response.data.success) {
-        setPodcastJobId(response.data.job_id);
-        showToast(
-          t("toast.podcastStarted"),
-          "success"
-        );
-
-        pollPodcastStatus(response.data.job_id);
-      } else {
-        throw new Error(
-          response.data.message || "Failed to start podcast generation"
-        );
-      }
-    } catch (error) {
-      console.error("Failed to generate podcast:", error);
-
-      let errorMessage = "Failed to start podcast generation";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as any;
-        if (axiosError.response?.data?.detail) {
-          errorMessage = axiosError.response.data.detail;
-        } else if (axiosError.response?.data?.message) {
-          errorMessage = axiosError.response.data.message;
-        } else {
-          errorMessage = `Server error: ${
-            axiosError.response?.status || "Unknown"
-          }`;
-        }
-      }
-
-      showToast(errorMessage, "error");
-      setPodcastStatus("failed");
-      setIsGeneratingPodcast(false);
-    }
-  };
-
-  const pollPodcastStatus = async (jobId: string) => {
-    try {
-      const response = await axios.get(`/podcast/status/${jobId}`);
-      const status = response.data;
-
-      console.log(`Podcast status for job ${jobId}:`, status);
-      setPodcastProgress(status.progress || 0);
-
-      if (status.status === "completed") {
-        setPodcastStatus("completed");
-        setIsGeneratingPodcast(false);
-        showToast(
-          t("toast.podcastCompleted"),
-          "success"
-        );
-      } else if (status.status === "failed") {
-        setPodcastStatus("failed");
-        setIsGeneratingPodcast(false);
-        showToast(
-          t("toast.podcastFailed", { error: status.error_message }),
-          "error"
-        );
-      } else if (status.status === "processing" || status.status === "queued") {
-        setTimeout(() => pollPodcastStatus(jobId), 2000);
-      }
-    } catch (error) {
-      console.error("Failed to check podcast status:", error);
-      setPodcastStatus("failed");
-      setIsGeneratingPodcast(false);
-
-      let errorMessage = "Failed to check podcast status";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as any;
-        if (axiosError.response?.data?.detail) {
-          errorMessage = axiosError.response.data.detail;
-        }
-      }
-
-      showToast(errorMessage, "error");
-    }
-  };
-
-  const handleDownloadPodcast = async () => {
-    if (!podcastJobId) return;
-
-    try {
-      const response = await axios.get(`/podcast/download/${podcastJobId}`, {
-        responseType: "blob",
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `podcast_${activeConversation?.id?.slice(0, 8)}.mp3`
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      showToast(t("toast.podcastDownloaded"), "success");
-    } catch (error) {
-      console.error("Failed to download podcast:", error);
-
-      let errorMessage = "Failed to download podcast";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as any;
-        if (axiosError.response?.data?.detail) {
-          errorMessage = axiosError.response.data.detail;
-        }
-      }
-
-      showToast(errorMessage, "error");
-    }
-  };
-
-  useEffect(() => {
-    if (activeConversation?.id !== lastUpdatedConversationId) {
-      setPodcastStatus("idle");
-      setPodcastJobId(null);
-      setPodcastProgress(0);
-      setIsGeneratingPodcast(false);
-    }
-  }, [activeConversation?.id, lastUpdatedConversationId]);
 
   const handleSendMessage = async () => {
     console.log('🔵 handleSendMessage called', {
@@ -882,58 +710,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                   </Button>
                 )}
 
-                {activeConversation.messages.length > 0 && (
-                  <>
-                    {podcastStatus === "idle" && (
-                      <Button
-                        onClick={handleGeneratePodcast}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                        disabled={isGeneratingPodcast}
-                      >
-                        <Mic className="w-4 h-4" />
-                        {t("chat.generatePodcast")}
-                      </Button>
-                    )}
-
-                    {podcastStatus === "generating" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                        disabled
-                      >
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {t("chat.podcastProgress", { percent: Math.round(podcastProgress * 100) })}
-                      </Button>
-                    )}
-
-                    {podcastStatus === "completed" && (
-                      <Button
-                        onClick={handleDownloadPodcast}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50"
-                      >
-                        <Download className="w-4 h-4" />
-                        {t("chat.downloadPodcast")}
-                      </Button>
-                    )}
-
-                    {podcastStatus === "failed" && (
-                      <Button
-                        onClick={handleGeneratePodcast}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        <Mic className="w-4 h-4" />
-                        {t("chat.retryPodcast")}
-                      </Button>
-                    )}
-                  </>
-                )}
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>

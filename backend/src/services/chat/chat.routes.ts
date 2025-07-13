@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
-import { ChatService, ConversationService } from '../services/chat/index';
+import { ChatService, ConversationService } from './index';
 import {
   ChatRequestInput,
   MultiAgentChatRequestInput,
@@ -8,8 +8,9 @@ import {
   AddMessageInput,
   GetMessagesQuery,
   CreateConversationInput,
-} from '../services/chat/chat.validation';
-import { ConversationFilters, StreamEvent } from '../services/chat/chat.types';
+  chatRequestJsonSchema,
+} from './chat.validation';
+import { ConversationFilters, StreamEvent } from './chat.types';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -28,47 +29,13 @@ export async function chatRoutes(fastify: FastifyInstance) {
   }>(
     '/chat',
     {
-      schema: {
-        description: 'Single agent chat endpoint',
-        tags: ['Chat'],
-        security: [{ bearerAuth: [] }],
-        body: {
-          type: 'object',
-          required: ['message'],
-          properties: {
-            message: { type: 'string' },
-            agentId: { type: 'string' },
-            conversationId: { type: 'string' },
-            stream: { type: 'boolean' },
-          },
-        },
-        response: {
-          200: {
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              data: {
-                type: 'object',
-                properties: {
-                  response: { type: 'string' },
-                  conversationId: { type: 'string' },
-                  messageId: { type: 'string' },
-                },
-              },
-            },
-          },
-          400: {
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              error: { type: 'string' },
-            },
-          },
-        },
-      },
+      schema: chatRequestJsonSchema,
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Body: ChatRequestInput }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Body: ChatRequestInput }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const result = await chatService.chat(userId, request.body);
 
@@ -77,11 +44,16 @@ export async function chatRoutes(fastify: FastifyInstance) {
       }
 
       // Handle streaming response
-      if (request.body.stream && result.data && typeof result.data === 'object' && Symbol.asyncIterator in result.data) {
+      if (
+        request.body.stream &&
+        result.data &&
+        typeof result.data === 'object' &&
+        Symbol.asyncIterator in result.data
+      ) {
         reply.raw.writeHead(200, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
+          Connection: 'keep-alive',
         });
 
         try {
@@ -109,7 +81,10 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Body: MultiAgentChatRequestInput }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Body: MultiAgentChatRequestInput }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const result = await chatService.multiAgentChat(userId, request.body);
 
@@ -118,11 +93,16 @@ export async function chatRoutes(fastify: FastifyInstance) {
       }
 
       // Handle streaming response
-      if (request.body.stream && result.data && typeof result.data === 'object' && Symbol.asyncIterator in result.data) {
+      if (
+        request.body.stream &&
+        result.data &&
+        typeof result.data === 'object' &&
+        Symbol.asyncIterator in result.data
+      ) {
         reply.raw.writeHead(200, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
+          Connection: 'keep-alive',
         });
 
         try {
@@ -150,10 +130,13 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Body: CreateConversationInput }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Body: CreateConversationInput }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { title, agentIds, metadata } = request.body;
-      
+
       const result = await conversationService.createConversation(
         userId,
         title,
@@ -177,10 +160,16 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Params: { conversationId: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { conversationId: string } }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { conversationId } = request.params;
-      const result = await conversationService.getConversation(userId, conversationId);
+      const result = await conversationService.getConversation(
+        userId,
+        conversationId
+      );
 
       if (!result.success) {
         return reply.code(404).send(result);
@@ -198,9 +187,13 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest<{ Querystring: ConversationListQuery }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Querystring: ConversationListQuery }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
-      const { page, limit, agentId, startDate, endDate, search } = request.query;
+      const { page, limit, agentId, startDate, endDate, search } =
+        request.query;
 
       const filters: ConversationFilters = {
         userId,
@@ -210,7 +203,11 @@ export async function chatRoutes(fastify: FastifyInstance) {
         search,
       };
 
-      const result = await conversationService.listConversations(filters, page, limit);
+      const result = await conversationService.listConversations(
+        filters,
+        page,
+        limit
+      );
 
       if (!result.success) {
         return reply.code(500).send(result);
@@ -228,10 +225,16 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { conversationId: string } }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { conversationId } = request.params;
-      const result = await conversationService.deleteConversation(userId, conversationId);
+      const result = await conversationService.deleteConversation(
+        userId,
+        conversationId
+      );
 
       if (!result.success) {
         return reply.code(404).send(result);
@@ -250,13 +253,22 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{
+        Params: { conversationId: string };
+        Body: AddMessageInput;
+      }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { conversationId } = request.params;
       const { message, role, agentId } = request.body;
 
       // Verify conversation belongs to user
-      const convResult = await conversationService.getConversation(userId, conversationId);
+      const convResult = await conversationService.getConversation(
+        userId,
+        conversationId
+      );
       if (!convResult.success) {
         return reply.code(404).send({
           success: false,
@@ -271,7 +283,10 @@ export async function chatRoutes(fastify: FastifyInstance) {
         timestamp: Date.now(),
       };
 
-      const result = await conversationService.addMessage(conversationId, messageObj);
+      const result = await conversationService.addMessage(
+        conversationId,
+        messageObj
+      );
 
       if (!result.success) {
         return reply.code(400).send(result);
@@ -290,12 +305,21 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{
+        Params: { conversationId: string };
+        Querystring: GetMessagesQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { conversationId } = request.params;
       const { limit, offset } = request.query;
 
-      const result = await conversationService.getConversation(userId, conversationId);
+      const result = await conversationService.getConversation(
+        userId,
+        conversationId
+      );
 
       if (!result.success) {
         return reply.code(404).send(result);
@@ -339,7 +363,10 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {
       preHandler: fastify.auth([fastify.verifyJWT]),
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { conversationId: string } }>,
+      reply: FastifyReply
+    ) => {
       const userId = request.user!.userId;
       const { conversationId } = request.params;
       const result = await chatService.endSession(userId, conversationId);

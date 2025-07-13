@@ -70,8 +70,7 @@ class AIService {
           aiConfig: agent.aiConfig,
           chatStyle: agent.chatStyle,
           connectionId: agent.connectionId,
-          gender: agent.gender,
-          voiceConfig: agent.voiceConfig
+            voiceConfig: agent.voiceConfig
         });
       }
 
@@ -84,7 +83,6 @@ class AIService {
         aiConfig: agent.aiConfig,
         chatStyle: agent.chatStyle,
         connectionId: agent.connectionId,
-        gender: agent.gender,
         voiceConfig: agent.voiceConfig
       }));
 
@@ -110,7 +108,6 @@ class AIService {
           };
         } else if (event.type === 'status') {
           // Status update
-          console.log('Conversation status:', event.message);
         } else if (event.type === 'error') {
           // Error occurred
           yield {
@@ -121,7 +118,6 @@ class AIService {
           };
         } else if (event.type === 'conversation_complete') {
           // Conversation completed
-          console.log('Conversation complete:', event.message);
         }
       }
 

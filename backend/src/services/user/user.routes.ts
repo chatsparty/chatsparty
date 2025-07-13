@@ -1,25 +1,19 @@
 import { FastifyPluginAsync } from 'fastify';
-import { authenticate } from '../middleware/auth';
-import { UserService } from '../services/user/user.service';
-import { withValidation } from '../utils/validation';
+import { authenticate } from '../../middleware/auth';
+import { UserService } from './user.service';
 import {
-  registerSchema,
-  loginSchema,
-  // Note: Following schema imports removed as they are not used in route handlers
-  // updateUserSchema,
-  // changePasswordSchema,
-  // addCreditSchema,
-  // useCreditSchema,
-  // userIdSchema,
-  // paginationSchema,
-} from '../services/user/user.validation';
+  RegisterInput,
+  LoginInput,
+  UpdateUserInput,
+  ChangePasswordInput,
+  AddCreditInput,
+  UseCreditInput,
+} from './user.validation';
 
-// User routes plugin
-const userRoutes: FastifyPluginAsync = async (fastify) => {
+const userRoutes: FastifyPluginAsync = async fastify => {
   const userService = new UserService();
 
-  // Register new user
-  fastify.post(
+  fastify.post<{ Body: RegisterInput }>(
     '/register',
     {
       schema: {
@@ -47,7 +41,7 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const result = await userService.register(request.body);
+      const result = await userService.register(request.body as RegisterInput);
 
       if (!result.success) {
         return reply.status(400).send({
@@ -60,8 +54,7 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Login user
-  fastify.post(
+  fastify.post<{ Body: LoginInput }>(
     '/login',
     {
       schema: {
@@ -88,7 +81,7 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const result = await userService.login(request.body);
+      const result = await userService.login(request.body as LoginInput);
 
       if (!result.success) {
         return reply.status(401).send({
@@ -101,7 +94,6 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Get current user
   fastify.get(
     '/me',
     {
@@ -123,14 +115,16 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Update current user
-  fastify.patch(
+  fastify.patch<{ Body: UpdateUserInput }>(
     '/me',
     {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.updateUser(request.user!.userId, request.body);
+      const result = await userService.updateUser(
+        request.user!.userId,
+        request.body as UpdateUserInput
+      );
 
       if (!result.success) {
         return reply.status(400).send({
@@ -143,14 +137,14 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Change password
-  fastify.post(
+  fastify.post<{ Body: ChangePasswordInput }>(
     '/me/change-password',
     {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const { currentPassword, newPassword } = request.body;
+      const { currentPassword, newPassword } =
+        request.body as ChangePasswordInput;
       const result = await userService.changePassword(
         request.user!.userId,
         currentPassword,
@@ -168,7 +162,6 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Get credit balance
   fastify.get(
     '/me/credits',
     {
@@ -188,14 +181,16 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Add credits (admin only - for now just allow self)
-  fastify.post(
+  fastify.post<{ Body: AddCreditInput }>(
     '/me/credits',
     {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.addCredits(request.user!.userId, request.body);
+      const result = await userService.addCredits(
+        request.user!.userId,
+        request.body as AddCreditInput
+      );
 
       if (!result.success) {
         return reply.status(400).send({
@@ -208,14 +203,16 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Use credits
-  fastify.post(
+  fastify.post<{ Body: UseCreditInput }>(
     '/me/credits/use',
     {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.useCredits(request.user!.userId, request.body);
+      const result = await userService.useCredits(
+        request.user!.userId,
+        request.body as UseCreditInput
+      );
 
       if (!result.success) {
         return reply.status(400).send({
@@ -228,7 +225,6 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Delete current user
   fastify.delete(
     '/me',
     {
@@ -248,16 +244,14 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // Get user by ID (admin route - for now allow viewing own profile only)
-  fastify.get(
+  fastify.get<{ Params: { id: string } }>(
     '/:id',
     {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const { id } = request.params;
+      const { id } = request.params as { id: string };
 
-      // Only allow users to view their own profile for now
       if (id !== request.user!.userId) {
         return reply.status(403).send({
           error: 'Forbidden',
@@ -278,40 +272,28 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // List users (admin route - disabled for now)
   fastify.get(
     '/',
     {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      // TODO: Add admin check
       return reply.status(403).send({
         error: 'Forbidden',
         message: 'Admin access required',
       });
-
-      // const result = await userService.listUsers(request.query);
-      // if (!result.success) {
-      //   return reply.status(500).send({
-      //     error: 'Internal Server Error',
-      //     message: result.error,
-      //   });
-      // }
-      // return reply.send(result.data);
     }
   );
 
   // Get user's agents
-  fastify.get(
+  fastify.get<{ Params: { id: string } }>(
     '/:id/agents',
     {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const { id } = request.params;
+      const { id } = request.params as { id: string };
 
-      // Only allow users to view their own agents
       if (id !== request.user!.userId) {
         return reply.status(403).send({
           error: 'Forbidden',
@@ -328,7 +310,6 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      // Extract only agents from the result
       const agents = (result.data as any).agents || [];
       return reply.send(agents);
     }

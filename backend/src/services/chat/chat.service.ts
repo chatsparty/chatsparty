@@ -90,7 +90,6 @@ export class ChatService {
           aiConfig: agentRecord.aiConfig,
           chatStyle: agentRecord.chatStyle,
           connectionId: agentRecord.connectionId,
-          gender: agentRecord.gender,
           voiceConfig: agentRecord.voiceConfig,
         };
       }
@@ -164,7 +163,6 @@ export class ChatService {
           aiConfig: agentRecord.aiConfig,
           chatStyle: agentRecord.chatStyle,
           connectionId: agentRecord.connectionId,
-          gender: agentRecord.gender,
           voiceConfig: agentRecord.voiceConfig,
         });
       }

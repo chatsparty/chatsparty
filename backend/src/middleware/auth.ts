@@ -14,7 +14,10 @@ declare module 'fastify' {
   }
 }
 
-export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
+export async function authenticate(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
   try {
     const authHeader = request.headers.authorization;
 
@@ -34,10 +37,8 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
       });
     }
 
-    // Verify JWT token
     const decoded = jwt.verify(token, config.JWT_SECRET) as JWTPayload;
 
-    // Optionally verify user still exists in database
     const user = await db.user.findUnique({
       where: { id: decoded.userId },
     });
@@ -49,7 +50,6 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
       });
     }
 
-    // Attach user to request
     request.user = decoded;
   } catch (_error) {
     return reply.status(401).send({
@@ -59,17 +59,20 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   }
 }
 
-// Helper to generate JWT token
 export function generateToken(payload: JWTPayload): string {
-  return jwt.sign(payload, config.JWT_SECRET, { expiresIn: config.JWT_EXPIRES_IN });
+  return jwt.sign(payload, config.JWT_SECRET, {
+    expiresIn: config.JWT_EXPIRES_IN as string,
+  });
 }
 
-// Optional middleware for routes that optionally use auth
-export async function optionalAuthenticate(request: FastifyRequest, _reply: FastifyReply) {
+export async function optionalAuthenticate(
+  request: FastifyRequest,
+  _reply: FastifyReply
+) {
   const authHeader = request.headers.authorization;
 
   if (!authHeader) {
-    return; // No auth provided, continue without user
+    return;
   }
 
   try {
@@ -77,7 +80,6 @@ export async function optionalAuthenticate(request: FastifyRequest, _reply: Fast
     const decoded = jwt.verify(token, config.JWT_SECRET) as JWTPayload;
     request.user = decoded;
   } catch (_error) {
-    // Invalid token, continue without user
     request.user = undefined;
   }
 }

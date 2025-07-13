@@ -17,14 +17,12 @@ const VALIDATION_RULES = {
 export interface FormData {
   name: string;
   characteristics: string;
-  gender: string;
   connection_id: string;
 }
 
 export interface FormErrors {
   name?: string;
   characteristics?: string;
-  gender?: string;
   connection_id?: string;
 }
 
@@ -59,12 +57,6 @@ export const useAgentValidation = (connections: ModelConnection[]) => {
         }
         break;
         
-      case 'gender':
-        if (!value) return t('errors.missingField');
-        if (!['MALE', 'FEMALE', 'NEUTRAL'].includes(value)) {
-          return t('errors.invalidInput');
-        }
-        break;
         
       case 'connection_id':
         // Make connection optional - backend will use default if not provided
@@ -92,7 +84,6 @@ export const useAgentValidation = (connections: ModelConnection[]) => {
     
     newErrors.name = validateField('name', formData.name);
     newErrors.characteristics = validateField('characteristics', formData.characteristics);
-    newErrors.gender = validateField('gender', formData.gender);
     newErrors.connection_id = validateField('connection_id', formData.connection_id);
     
     // Remove undefined entries from errors object
