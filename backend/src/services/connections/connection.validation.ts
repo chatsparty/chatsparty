@@ -113,11 +113,11 @@ export const testConnectionSchema = z
   );
 
 export const connectionIdSchema = z.object({
-  id: z.string().cuid('Invalid connection ID'),
+  id: z.string(),
 });
 
 export const setDefaultSchema = z.object({
-  connectionId: z.string().cuid('Invalid connection ID'),
+  connectionId: z.string(),
 });
 
 export const connectionQuerySchema = z.object({
@@ -138,10 +138,14 @@ export const paginationSchema = z.object({
 export const publicConnectionSchema = z.object({
   id: z.string(),
   name: z.string(),
+  description: z.string().nullable().optional(),
   provider: z.string(),
+  modelName: z.string(),
+  baseUrl: z.string().url().nullable().optional(),
+  isActive: z.boolean(),
   isDefault: z.boolean(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const listConnectionsResponseSchema = z.object({

@@ -73,7 +73,12 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
         });
       }
 
-      return reply.send(result.data);
+      if (result.data) {
+        return reply.send({
+          success: true,
+          data: result.data.connections,
+        });
+      }
     }
   );
 

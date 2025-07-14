@@ -14,21 +14,16 @@ export const updateAgentBodySchema = z.object({
 
 export const agentIdParamSchema = z.object({
   params: z.object({
-    agentId: z.string().cuid('Invalid agent ID format'),
+    agentId: z.string(),
   }),
 });
 
 export const listAgentsQuerySchema = z.object({
   query: z.object({
     page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce
-      .number()
-      .int()
-      .positive()
-      .max(100)
-      .default(20),
+    limit: z.coerce.number().int().positive().max(100).default(20),
     name: z.string().optional(),
-    connectionId: z.string().cuid().optional(),
+    connectionId: z.string().optional(),
     voiceEnabled: z
       .enum(['true', 'false'])
       .transform(val => val === 'true')
@@ -42,20 +37,20 @@ export const createAgentSchema = z.object({
 
 export const updateAgentSchema = z.object({
   params: z.object({
-    agentId: z.string().cuid('Invalid agent ID format'),
+    agentId: z.string(),
   }),
   body: UpdateAgentInputSchema,
 });
 
 export const deleteAgentSchema = z.object({
   params: z.object({
-    agentId: z.string().cuid('Invalid agent ID format'),
+    agentId: z.string(),
   }),
 });
 
 export const getAgentSchema = z.object({
   params: z.object({
-    agentId: z.string().cuid('Invalid agent ID format'),
+    agentId: z.string(),
   }),
 });
 

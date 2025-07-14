@@ -21,7 +21,10 @@ export const CreateAgentInputSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   prompt: z.string().min(1, 'Prompt is required').max(5000),
   characteristics: z.string().min(1, 'Characteristics are required').max(2000),
-  connectionId: z.string().cuid('Invalid connection ID'),
+  connectionId: z.string().refine(
+    (id) => id === 'default' || id.startsWith('system-default-') || /^c[^\s-]{8,}$/i.test(id),
+    'Connection ID must be "default", "system-default-{provider}", or a valid CUID'
+  ),
   aiConfig: ModelConfigurationSchema,
   chatStyle: ChatStyleSchema,
 });
@@ -30,7 +33,10 @@ export const UpdateAgentInputSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   prompt: z.string().min(1).max(5000).optional(),
   characteristics: z.string().min(1).max(2000).optional(),
-  connectionId: z.string().cuid().optional(),
+  connectionId: z.string().refine(
+    (id) => id === 'default' || id.startsWith('system-default-') || /^c[^\s-]{8,}$/i.test(id),
+    'Connection ID must be "default", "system-default-{provider}", or a valid CUID'
+  ).optional(),
   aiConfig: ModelConfigurationSchema.optional(),
   chatStyle: ChatStyleSchema.optional(),
 });
@@ -43,7 +49,10 @@ const querystringSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
   name: z.string().optional(),
-  connectionId: z.string().cuid().optional(),
+  connectionId: z.string().refine(
+    (id) => id === 'default' || id.startsWith('system-default-') || /^c[^\s-]{8,}$/i.test(id),
+    'Connection ID must be "default", "system-default-{provider}", or a valid CUID'
+  ).optional(),
 });
 
 const AgentResponseSchema = AgentSchema.extend({

@@ -9,33 +9,39 @@ import {
 } from './agent.types';
 import { Agent as MastraAgent } from '../ai/types';
 import { agentManager } from '../ai/agent.manager';
-import { DefaultConnectionService } from '../connections/default-connection.service';
+import { SystemDefaultConnectionService } from '../connections/system-default-connection.service';
 import { HttpError } from '../../utils/http-error';
 import { db } from '../../config/database';
 
 export class AgentService {
-  private defaultConnectionService: DefaultConnectionService;
+  private defaultConnectionService: SystemDefaultConnectionService;
 
   constructor(
     private prisma: PrismaClient,
-    defaultConnectionService: DefaultConnectionService
+    defaultConnectionService: SystemDefaultConnectionService
   ) {
     this.defaultConnectionService = defaultConnectionService;
   }
 
   private async validateConnection(userId: string, connectionId: string) {
+    console.log(`Validating connection - userId: ${userId}, connectionId: ${connectionId}`);
+    
     const connection = await this.prisma.connection.findFirst({
       where: { id: connectionId, userId, isActive: true },
     });
 
     if (connection) {
+      console.log(`Found user connection: ${connection.id}`);
       return connection;
     }
 
-    if (connectionId === 'default') {
+    if (connectionId === 'default' || connectionId.startsWith('system-default-')) {
+      console.log(`Attempting to get system default connection`);
       const defaultConnResponse =
         await this.defaultConnectionService.getSystemDefaultConnection();
 
+      console.log(`Default connection response:`, defaultConnResponse);
+      
       if (defaultConnResponse.success && defaultConnResponse.data) {
         return { ...defaultConnResponse.data, userId };
       } else {
@@ -61,7 +67,10 @@ export class AgentService {
       );
     }
 
-    const connection = await this.validateConnection(userId, input.connectionId);
+    const connection = await this.validateConnection(
+      userId,
+      input.connectionId
+    );
 
     const agent = await this.prisma.agent.create({
       data: {
@@ -100,7 +109,10 @@ export class AgentService {
     filters: AgentFilters,
     page: number,
     limit: number
-  ): Promise<{ agents: AgentResponse[]; pagination: { total: number; page: number; limit: number } }> {
+  ): Promise<{
+    agents: AgentResponse[];
+    pagination: { total: number; page: number; limit: number };
+  }> {
     const skip = (page - 1) * limit;
     const where: any = { userId: filters.userId };
 
@@ -175,8 +187,7 @@ export class AgentService {
     await this.prisma.agent.delete({ where: { id: agentId } });
     await agentManager.unregisterAgent(agentId);
   }
-
 }
 
-const defaultConnectionService = new DefaultConnectionService();
+const defaultConnectionService = new SystemDefaultConnectionService();
 export const agentService = new AgentService(db, defaultConnectionService);

@@ -8,7 +8,6 @@ import {
   getDefaultConnectionConfig,
   DefaultConnectionConfig,
 } from '../../config/default-connection.config';
-import { ConnectionRepository } from './connection.repository';
 import { ProviderFactory } from './providers/provider.factory';
 
 export interface DefaultConnection extends Omit<Connection, 'userId'> {

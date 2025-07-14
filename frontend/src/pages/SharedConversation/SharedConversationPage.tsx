@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import type { ConversationMessage } from '../MultiAgentChat/types';
-import MessageBubble from '../MultiAgentChat/components/MessageBubble';
-import axios from 'axios';
-import { API_BASE_URL } from '../../config/api';
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import type { ConversationMessage } from "../MultiAgentChat/types";
+import MessageBubble from "../MultiAgentChat/components/MessageBubble";
+import axios from "axios";
+import { API_BASE_URL } from "../../config/api";
 
 interface SharedConversation {
   id: string;
@@ -17,18 +17,23 @@ interface SharedConversation {
 const SharedConversationPage: React.FC = () => {
   const location = useLocation();
   // Extract conversation ID from pathname manually
-  const conversationId = location.pathname.split('/').pop();
-  const [conversation, setConversation] = useState<SharedConversation | null>(null);
+  const conversationId = location.pathname.split("/").pop();
+  const [conversation, setConversation] = useState<SharedConversation | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSharedConversation = async () => {
-      console.log('SharedConversationPage mounted, conversationId:', conversationId);
-      
+      console.log(
+        "SharedConversationPage mounted, conversationId:",
+        conversationId
+      );
+
       if (!conversationId) {
-        console.error('No conversation ID provided');
-        setError('Invalid conversation ID');
+        console.error("No conversation ID provided");
+        setError("Invalid conversation ID");
         setLoading(false);
         return;
       }
@@ -37,23 +42,33 @@ const SharedConversationPage: React.FC = () => {
       setError(null);
 
       try {
-        console.log('Fetching shared conversation:', `${API_BASE_URL}/chat/shared/conversations/${conversationId}`);
-        const response = await axios.get(`${API_BASE_URL}/chat/shared/conversations/${conversationId}`);
-        console.log('Shared conversation response:', response.data);
+        console.log(
+          "Fetching shared conversation:",
+          `${API_BASE_URL}/chat/shared/conversations/${conversationId}`
+        );
+        const response = await axios.get(
+          `${API_BASE_URL}/api/chat/shared/conversations/${conversationId}`
+        );
+        console.log("Shared conversation response:", response.data);
         setConversation(response.data);
       } catch (error: any) {
-        console.error('Error fetching shared conversation:', error);
-        console.error('Error details:', {
+        console.error("Error fetching shared conversation:", error);
+        console.error("Error details:", {
           status: error.response?.status,
           statusText: error.response?.statusText,
           data: error.response?.data,
-          message: error.message
+          message: error.message,
         });
-        
+
         if (error.response?.status === 404) {
-          setError('Conversation not found or not shared');
-        } else if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-          setError('Cannot connect to server. Please check if the backend is running.');
+          setError("Conversation not found or not shared");
+        } else if (
+          error.code === "NETWORK_ERROR" ||
+          error.message.includes("Network Error")
+        ) {
+          setError(
+            "Cannot connect to server. Please check if the backend is running."
+          );
         } else {
           setError(`Failed to load conversation: ${error.message}`);
         }
@@ -66,15 +81,28 @@ const SharedConversationPage: React.FC = () => {
   }, [conversationId]);
 
   const getAgentColor = (agentId: string | undefined): string => {
-    if (!agentId) return '#6b7280';
-    
+    if (!agentId) return "#6b7280";
+
     const colors = [
-      '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
-      '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
-      '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
-      '#ec4899', '#f43f5e'
+      "#ef4444",
+      "#f97316",
+      "#f59e0b",
+      "#eab308",
+      "#84cc16",
+      "#22c55e",
+      "#10b981",
+      "#14b8a6",
+      "#06b6d4",
+      "#0ea5e9",
+      "#3b82f6",
+      "#6366f1",
+      "#8b5cf6",
+      "#a855f7",
+      "#d946ef",
+      "#ec4899",
+      "#f43f5e",
     ];
-    
+
     let hash = 0;
     for (let i = 0; i < agentId.length; i++) {
       hash = agentId.charCodeAt(i) + ((hash << 5) - hash);
@@ -87,7 +115,9 @@ const SharedConversationPage: React.FC = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading shared conversation...</p>
+          <p className="text-muted-foreground">
+            Loading shared conversation...
+          </p>
         </div>
       </div>
     );
@@ -100,10 +130,12 @@ const SharedConversationPage: React.FC = () => {
           <div className="w-20 h-20 rounded-2xl bg-red-500/10 flex items-center justify-center mb-6 mx-auto">
             <span className="text-3xl">❌</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-4">Conversation Not Found</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-4">
+            Conversation Not Found
+          </h1>
           <p className="text-muted-foreground mb-6">{error}</p>
-          <a 
-            href="/" 
+          <a
+            href="/"
             className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
             Go to Home
@@ -127,7 +159,7 @@ const SharedConversationPage: React.FC = () => {
               ChatsParty
             </h1>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => (window.location.href = "/")}
               className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors cursor-pointer"
             >
               Create Your Own
