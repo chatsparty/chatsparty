@@ -5,13 +5,15 @@ import {
   PROVIDER_CONFIGS,
   TestConnectionResponse,
 } from '../connection.types';
-import { IProvider } from './provider.interface';
+import { BaseConnectionConfig, IProvider } from './provider.interface';
 
-export class OllamaProvider implements IProvider {
+export interface OllamaConnectionConfig extends BaseConnectionConfig {}
+
+export class OllamaProvider implements IProvider<OllamaConnectionConfig> {
   async testConnection(
-    _apiKey: string | null,
-    baseUrl?: string | null
+    config: OllamaConnectionConfig
   ): Promise<TestConnectionResponse> {
+    const { baseUrl } = config;
     try {
       const ollama = createOllama({
         baseURL: baseUrl ?? 'http://localhost:11434',
@@ -38,11 +40,7 @@ export class OllamaProvider implements IProvider {
     return PROVIDER_CONFIGS.ollama.supportedModels;
   }
 
-  getConnectionConfig(config: {
-    apiKey: string | null;
-    baseUrl: string | null;
-    modelName: string;
-  }) {
+  getConnectionConfig(config: OllamaConnectionConfig) {
     return {
       provider: 'ollama',
       apiKey: config.apiKey,

@@ -3,17 +3,20 @@ import {
   PROVIDER_CONFIGS,
   TestConnectionResponse,
 } from '../connection.types';
-import { IProvider } from './provider.interface';
+import { BaseConnectionConfig, IProvider } from './provider.interface';
 import { VertexAIProvider as VertexAIProviderSDK } from '../../ai/providers/vertex-ai.provider';
 import { getDefaultConnectionConfig } from '../../../config/default-connection.config';
 
-export class VertexAIProvider implements IProvider {
+export interface VertexAIConnectionConfig extends BaseConnectionConfig {
+  projectId: string | null;
+  location: string | null;
+}
+
+export class VertexAIProvider implements IProvider<VertexAIConnectionConfig> {
   async testConnection(
-    apiKey: string | null,
-    _baseUrl?: string | null,
-    projectId?: string | null,
-    location?: string | null
+    config: VertexAIConnectionConfig
   ): Promise<TestConnectionResponse> {
+    const { apiKey, projectId, location } = config;
     try {
       const defaultConfig = getDefaultConnectionConfig();
       if (!defaultConfig || defaultConfig.provider !== 'vertex_ai') {
@@ -60,13 +63,7 @@ export class VertexAIProvider implements IProvider {
     return PROVIDER_CONFIGS.vertex_ai.supportedModels;
   }
 
-  getConnectionConfig(config: {
-    apiKey: string | null;
-    baseUrl: string | null;
-    projectId: string | null;
-    location: string | null;
-    modelName: string;
-  }) {
+  getConnectionConfig(config: VertexAIConnectionConfig) {
     return {
       provider: 'vertex_ai',
       projectId: config.projectId,

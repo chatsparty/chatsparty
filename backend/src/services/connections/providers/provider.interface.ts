@@ -1,20 +1,15 @@
 import { TestConnectionResponse, ModelInfo } from '../connection.types';
 
-export interface IProvider {
-  testConnection(
-    apiKey: string | null,
-    baseUrl?: string | null,
-    projectId?: string | null,
-    location?: string | null
-  ): Promise<TestConnectionResponse>;
+export type BaseConnectionConfig = {
+  apiKey: string | null;
+  baseUrl: string | null;
+  modelName: string;
+};
+
+export interface IProvider<TConfig extends BaseConnectionConfig> {
+  testConnection(config: TConfig): Promise<TestConnectionResponse>;
 
   getAvailableModels(): ModelInfo[];
 
-  getConnectionConfig(config: {
-    apiKey: string | null;
-    baseUrl: string | null;
-    projectId: string | null;
-    location: string | null;
-    modelName: string;
-  }): any;
+  getConnectionConfig(config: TConfig): any;
 }

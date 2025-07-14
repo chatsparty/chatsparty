@@ -5,13 +5,15 @@ import {
   PROVIDER_CONFIGS,
   TestConnectionResponse,
 } from '../connection.types';
-import { IProvider } from './provider.interface';
+import { BaseConnectionConfig, IProvider } from './provider.interface';
 
-export class OpenAIProvider implements IProvider {
+export interface OpenAIConnectionConfig extends BaseConnectionConfig {}
+
+export class OpenAIProvider implements IProvider<OpenAIConnectionConfig> {
   async testConnection(
-    apiKey: string | null,
-    baseUrl?: string | null
+    config: OpenAIConnectionConfig
   ): Promise<TestConnectionResponse> {
+    const { apiKey, baseUrl } = config;
     if (!apiKey) {
       return {
         success: false,
@@ -46,11 +48,7 @@ export class OpenAIProvider implements IProvider {
     return PROVIDER_CONFIGS.openai.supportedModels;
   }
 
-  getConnectionConfig(config: {
-    apiKey: string | null;
-    baseUrl: string | null;
-    modelName: string;
-  }) {
+  getConnectionConfig(config: OpenAIConnectionConfig) {
     return {
       provider: 'openai',
       apiKey: config.apiKey,

@@ -254,10 +254,7 @@ export class ConnectionService {
       }
 
       const provider = ProviderFactory.createProvider(request.provider);
-      const testResult = await provider.testConnection(
-        request.apiKey ?? null,
-        request.baseUrl
-      );
+      const testResult = await provider.testConnection(request as any);
 
       return {
         success: true,
