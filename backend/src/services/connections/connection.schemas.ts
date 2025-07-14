@@ -1,144 +1,70 @@
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import {
+  createConnectionSchema as createConnectionZodSchema,
+  updateConnectionSchema as updateConnectionZodSchema,
+  testConnectionSchema as testConnectionZodSchema,
+  connectionIdSchema,
+  setDefaultSchema,
+  connectionQuerySchema,
+  paginationSchema,
+  listConnectionsResponseSchema,
+  publicConnectionSchema,
+} from './connection.validation';
+import { z } from 'zod';
+
+const tags = ['Connections'];
+const security = [{ bearerAuth: [] }];
+
 export const createConnectionSchema = {
-  tags: ['Connections'],
-  security: [{ bearerAuth: [] }],
-  body: {
-    type: 'object',
-    required: ['name', 'provider'],
-    properties: {
-      name: { type: 'string' },
-      provider: {
-        type: 'string',
-        enum: ['openai', 'anthropic', 'vertex_ai'],
-      },
-      config: { type: 'object' },
-      isDefault: { type: 'boolean' },
-    },
-  },
+  tags,
+  security,
+  body: zodToJsonSchema(createConnectionZodSchema),
   response: {
-    201: {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        name: { type: 'string' },
-        provider: { type: 'string' },
-        createdAt: { type: 'string' },
-        updatedAt: { type: 'string' },
-      },
-    },
+    201: zodToJsonSchema(publicConnectionSchema),
   },
 };
 
 export const listConnectionsSchema = {
-  tags: ['Connections'],
-  security: [{ bearerAuth: [] }],
-  querystring: {
-    type: 'object',
-    properties: {
-      page: { type: 'integer', minimum: 1 },
-      limit: { type: 'integer', minimum: 1, maximum: 100 },
-      provider: { type: 'string' },
-    },
-  },
+  tags,
+  security,
+  querystring: zodToJsonSchema(connectionQuerySchema.merge(paginationSchema)),
   response: {
-    200: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        data: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              provider: { type: 'string' },
-              isDefault: { type: 'boolean' },
-              createdAt: { type: 'string' },
-              updatedAt: { type: 'string' },
-            },
-          },
-        },
-      },
-    },
+    200: zodToJsonSchema(listConnectionsResponseSchema),
   },
 };
 
 export const getConnectionSchema = {
-  tags: ['Connections'],
-  security: [{ bearerAuth: [] }],
-  params: {
-    type: 'object',
-    required: ['id'],
-    properties: {
-      id: { type: 'string' },
-    },
-  },
+  tags,
+  security,
+  params: zodToJsonSchema(connectionIdSchema),
   response: {
-    200: {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        name: { type: 'string' },
-        provider: { type: 'string' },
-        availableModels: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-            },
-          },
-        },
-      },
-    },
+    200: zodToJsonSchema(
+      publicConnectionSchema.extend({
+        availableModels: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+          })
+        ),
+      })
+    ),
   },
 };
 
 export const updateConnectionSchema = {
-  tags: ['Connections'],
-  security: [{ bearerAuth: [] }],
-  params: {
-    type: 'object',
-    required: ['id'],
-    properties: {
-      id: { type: 'string' },
-    },
-  },
-  body: {
-    type: 'object',
-    properties: {
-      name: { type: 'string' },
-      description: { type: 'string' },
-      modelName: { type: 'string' },
-      apiKey: { type: 'string' },
-      baseUrl: { type: 'string' },
-      isActive: { type: 'boolean' },
-    },
-  },
+  tags,
+  security,
+  params: zodToJsonSchema(connectionIdSchema),
+  body: zodToJsonSchema(updateConnectionZodSchema),
   response: {
-    200: {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        name: { type: 'string' },
-        provider: { type: 'string' },
-        updatedAt: { type: 'string' },
-      },
-    },
+    200: zodToJsonSchema(publicConnectionSchema),
   },
 };
 
 export const deleteConnectionSchema = {
-  tags: ['Connections'],
-  security: [{ bearerAuth: [] }],
-  params: {
-    type: 'object',
-    required: ['id'],
-    properties: {
-      id: { type: 'string' },
-    },
-  },
+  tags,
+  security,
+  params: zodToJsonSchema(connectionIdSchema),
   response: {
     204: {
       type: 'null',
@@ -147,162 +73,93 @@ export const deleteConnectionSchema = {
 };
 
 export const testConnectionSchema = {
-  tags: ['Connections'],
-  security: [{ bearerAuth: [] }],
-  body: {
-    type: 'object',
-    required: ['provider'],
-    properties: {
-      provider: {
-        type: 'string',
-        enum: ['openai', 'anthropic', 'google', 'groq', 'ollama', 'vertex_ai'],
-      },
-      apiKey: { type: 'string' },
-      baseUrl: { type: 'string' },
-      modelName: { type: 'string' },
-    },
-  },
+  tags,
+  security,
+  body: zodToJsonSchema(testConnectionZodSchema),
   response: {
-    200: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-        availableModels: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-            },
-          },
-        },
-        error: { type: 'string' },
-      },
-    },
+    200: zodToJsonSchema(
+      z.object({
+        success: z.boolean(),
+        message: z.string(),
+        availableModels: z
+          .array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+            })
+          )
+          .optional(),
+        error: z.string().optional(),
+      })
+    ),
   },
 };
 
 export const setDefaultConnectionSchema = {
-  tags: ['Connections'],
-  security: [{ bearerAuth: [] }],
-  body: {
-    type: 'object',
-    required: ['connectionId'],
-    properties: {
-      connectionId: { type: 'string' },
-    },
-  },
+  tags,
+  security,
+  body: zodToJsonSchema(setDefaultSchema),
   response: {
-    200: {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        name: { type: 'string' },
-        provider: { type: 'string' },
-        isDefault: { type: 'boolean' },
-      },
-    },
+    200: zodToJsonSchema(publicConnectionSchema),
   },
 };
 
 export const getDefaultConnectionSchema = {
-  tags: ['Connections'],
-  security: [{ bearerAuth: [] }],
-  params: {
-    type: 'object',
-    required: ['provider'],
-    properties: {
-      provider: {
-        type: 'string',
-        enum: ['openai', 'anthropic', 'google', 'groq', 'ollama', 'vertex_ai'],
-      },
-    },
-  },
+  tags,
+  security,
+  params: zodToJsonSchema(z.object({ provider: z.string() })),
   response: {
-    200: {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        name: { type: 'string' },
-        provider: { type: 'string' },
-        isDefault: { type: 'boolean' },
-      },
-    },
+    200: zodToJsonSchema(publicConnectionSchema),
   },
 };
 
 export const getProviderInfoSchema = {
-  tags: ['Connections'],
-  params: {
-    type: 'object',
-    required: ['provider'],
-    properties: {
-      provider: {
-        type: 'string',
-        enum: ['openai', 'anthropic', 'google', 'groq', 'ollama', 'vertex_ai'],
-      },
-    },
-  },
+  tags,
+  params: zodToJsonSchema(z.object({ provider: z.string() })),
   response: {
-    200: {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        displayName: { type: 'string' },
-        requiresApiKey: { type: 'boolean' },
-        defaultModel: { type: 'string' },
-        customizable: { type: 'boolean' },
-      },
-    },
+    200: zodToJsonSchema(
+      z.object({
+        name: z.string(),
+        displayName: z.string(),
+        requiresApiKey: z.boolean(),
+        defaultModel: z.string(),
+        customizable: z.boolean(),
+      })
+    ),
   },
 };
 
 export const getProvidersSchema = {
-  tags: ['Connections'],
+  tags,
   response: {
-    200: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          displayName: { type: 'string' },
-          requiresApiKey: { type: 'boolean' },
-          defaultModel: { type: 'string' },
-          customizable: { type: 'boolean' },
-        },
-      },
-    },
+    200: zodToJsonSchema(
+      z.array(
+        z.object({
+          name: z.string(),
+          displayName: z.string(),
+          requiresApiKey: z.boolean(),
+          defaultModel: z.string(),
+          customizable: z.boolean(),
+        })
+      )
+    ),
   },
 };
 
 export const getProviderModelsSchema = {
-  tags: ['Connections'],
-  params: {
-    type: 'object',
-    required: ['provider'],
-    properties: {
-      provider: {
-        type: 'string',
-        enum: ['openai', 'anthropic', 'google', 'groq', 'ollama', 'vertex_ai'],
-      },
-    },
-  },
+  tags,
+  params: zodToJsonSchema(z.object({ provider: z.string() })),
   response: {
-    200: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          name: { type: 'string' },
-          description: { type: 'string' },
-          contextWindow: { type: 'number' },
-          maxTokens: { type: 'number' },
-        },
-      },
-    },
+    200: zodToJsonSchema(
+      z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          description: z.string().optional(),
+          contextWindow: z.number().optional(),
+          maxTokens: z.number().optional(),
+        })
+      )
+    ),
   },
 };

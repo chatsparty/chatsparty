@@ -7,7 +7,11 @@ export interface AppError extends Error {
   code?: string;
 }
 
-export function createError(message: string, statusCode: number = 500, code?: string): AppError {
+export function createError(
+  message: string,
+  statusCode: number = 500,
+  code?: string
+): AppError {
   const error: AppError = new Error(message);
   error.statusCode = statusCode;
   error.code = code;

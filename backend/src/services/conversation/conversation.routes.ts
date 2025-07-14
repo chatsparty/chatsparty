@@ -6,19 +6,13 @@ import {
   AddMessageInput,
   GetMessagesQuery,
   CreateConversationInput,
-  createConversationSchema,
-  getConversationSchema,
-  listConversationsSchema,
-  deleteConversationSchema,
-  addMessageSchema,
-  getMessagesSchema,
+  conversationSchemas,
 } from './conversation.validation';
 import { ConversationFilters } from './conversation.types';
 
 import { authMiddlewares } from '../../middleware/auth-middleware';
 
 export async function conversationRoutes(fastify: FastifyInstance) {
-  await authMiddlewares.requireAuth(fastify);
 
   const prisma = new PrismaClient();
   const conversationService = new ConversationService(prisma);
@@ -29,9 +23,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
   }>(
     '/conversations',
     {
-      schema: {
-        body: createConversationSchema.shape.body,
-      },
+      schema: conversationSchemas.createConversation,
     },
     async (
       request: FastifyRequest<{ Body: CreateConversationInput }>,
@@ -61,9 +53,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
   }>(
     '/conversations/:conversationId',
     {
-      schema: {
-        params: getConversationSchema.shape.params,
-      },
+      schema: conversationSchemas.getConversation,
     },
     async (
       request: FastifyRequest<{ Params: { conversationId: string } }>,
@@ -90,9 +80,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
   }>(
     '/conversations',
     {
-      schema: {
-        querystring: listConversationsSchema.shape.query,
-      },
+      schema: conversationSchemas.listConversations,
     },
     async (
       request: FastifyRequest<{ Querystring: ConversationListQuery }>,
@@ -130,9 +118,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
   }>(
     '/conversations/:conversationId',
     {
-      schema: {
-        params: deleteConversationSchema.shape.params,
-      },
+      schema: conversationSchemas.deleteConversation,
     },
     async (
       request: FastifyRequest<{ Params: { conversationId: string } }>,
@@ -160,10 +146,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
   }>(
     '/conversations/:conversationId/messages',
     {
-      schema: {
-        params: addMessageSchema.shape.params,
-        body: addMessageSchema.shape.body,
-      },
+      schema: conversationSchemas.addMessage,
     },
     async (
       request: FastifyRequest<{
@@ -215,10 +198,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
   }>(
     '/conversations/:conversationId/messages',
     {
-      schema: {
-        params: getMessagesSchema.shape.params,
-        querystring: getMessagesSchema.shape.query,
-      },
+      schema: conversationSchemas.getMessages,
     },
     async (
       request: FastifyRequest<{

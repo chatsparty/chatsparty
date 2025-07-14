@@ -45,8 +45,6 @@ export default async function creditRoutes(fastify: FastifyInstance) {
   const creditService = new CreditService();
   const modelPricingService = new ModelPricingService();
 
-  // Apply authentication to all routes
-  fastify.addHook('preHandler', authenticate);
 
   /**
    * Get current user's credit balance
@@ -71,7 +69,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = request.user.userId;
+      const userId = request.user!.userId;
       const result = await creditService.getCreditBalance(userId);
 
       if (!result.success) {
@@ -91,7 +89,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Querystring: IQueryOptions }>,
       reply: FastifyReply
     ) => {
-      const userId = request.user.userId;
+      const userId = request.user!.userId;
       const {
         limit = 50,
         offset = 0,
@@ -136,7 +134,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const userId = request.user.userId;
+      const userId = request.user!.userId;
       const { startDate, endDate } = request.query;
 
       const result = await creditService.getCreditStatistics(
@@ -162,7 +160,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Body: { amount: number } }>,
       reply: FastifyReply
     ) => {
-      const userId = request.user.userId;
+      const userId = request.user!.userId;
       const { amount } = request.body;
 
       if (!amount || amount <= 0) {
@@ -276,7 +274,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
     ) => {
       // For now, users can only add credits to their own account
       // In the future, this could be restricted to admin users who can add credits to any user
-      const userId = request.body.userId || request.user.userId;
+      const userId = request.body.userId || request.user!.userId;
       const { amount, transactionType, reason, description } = request.body;
 
       if (!amount || amount <= 0) {
@@ -324,7 +322,12 @@ export default async function creditRoutes(fastify: FastifyInstance) {
           });
       }
 
-      const result = await modelPricingService.upsertModelPricing(pricing);
+      const result = await modelPricingService.upsertModelPricing({
+        ...pricing,
+        costPer1kTokens: pricing.costPer1kTokens === undefined ? null : pricing.costPer1kTokens,
+        isDefaultModel: pricing.isDefaultModel === undefined ? false : pricing.isDefaultModel,
+        isActive: pricing.isActive === undefined ? true : pricing.isActive,
+      });
 
       if (!result.success) {
         return reply.status(400).send({ error: result.error });

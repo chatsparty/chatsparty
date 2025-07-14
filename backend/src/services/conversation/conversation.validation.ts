@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 // Conversation query schemas
 export const getConversationSchema = z.object({
@@ -53,6 +54,30 @@ export const createConversationSchema = z.object({
     metadata: z.record(z.any()).optional(),
   }),
 });
+
+// JSON Schema exports for Fastify
+export const conversationSchemas = {
+  createConversation: {
+    body: zodToJsonSchema(createConversationSchema.shape.body),
+  },
+  getConversation: {
+    params: zodToJsonSchema(getConversationSchema.shape.params),
+  },
+  listConversations: {
+    querystring: zodToJsonSchema(listConversationsSchema.shape.query),
+  },
+  deleteConversation: {
+    params: zodToJsonSchema(deleteConversationSchema.shape.params),
+  },
+  addMessage: {
+    params: zodToJsonSchema(addMessageSchema.shape.params),
+    body: zodToJsonSchema(addMessageSchema.shape.body),
+  },
+  getMessages: {
+    params: zodToJsonSchema(getMessagesSchema.shape.params),
+    querystring: zodToJsonSchema(getMessagesSchema.shape.query),
+  },
+};
 
 // Validation helpers
 export type ConversationListQuery = z.infer<typeof listConversationsSchema.shape.query>;

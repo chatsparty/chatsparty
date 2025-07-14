@@ -1,6 +1,5 @@
 import { FastifyInstance } from 'fastify';
 import { agentService } from './agent.service';
-import { authMiddlewares } from '../../middleware/auth-middleware';
 import {
   CreateAgentInput,
   UpdateAgentInput,
@@ -9,7 +8,6 @@ import {
 import { agentSchemas } from './agent.schemas';
 
 export async function agentRoutes(fastify: FastifyInstance) {
-  await authMiddlewares.requireAuth(fastify);
 
   fastify.post(
     '/agents',

@@ -60,7 +60,10 @@ export function withValidation(
     } catch (error) {
       return reply.status(500).send({
         error: 'Internal Server Error',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred',
       });
     }
   };
@@ -69,11 +72,7 @@ export function withValidation(
 /**
  * Type-safe request handler with validated inputs
  */
-export type ValidatedHandler<
-  TBody = any,
-  TParams = any,
-  TQuery = any,
-> = (
+export type ValidatedHandler<TBody = any, TParams = any, TQuery = any> = (
   request: FastifyRequest<{
     Body: TBody;
     Params: TParams;
