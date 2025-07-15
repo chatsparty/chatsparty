@@ -2,8 +2,7 @@
 
 [![License: Personal Use](https://img.shields.io/badge/License-Personal%20Use-blue.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/chatsparty/chatsparty.svg?style=social)](https://github.com/chatsparty/chatsparty/stargazers)
-
-<iframe style="border: none;" src="https://cards.producthunt.com/cards/products/1087593" width="500" height="405" frameborder="0" scrolling="no" allowfullscreen></iframe>
+[![Product Hunt](https://img.shields.io/badge/Product%20Hunt-Featured-orange?style=flat&logo=producthunt)](https://www.producthunt.com/products/chatsparty)
 
 > **The future of AI conversations is multi-perspective debates, not single-agent responses.**
 
