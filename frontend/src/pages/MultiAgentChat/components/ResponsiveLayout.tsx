@@ -14,8 +14,6 @@ import type { ActiveView } from "../hooks/useSidebarState";
 interface ResponsiveLayoutProps {
   isRTL: boolean;
   activeView: ActiveView;
-  isSidebarOpen: boolean;
-  isFileSidebarOpen: boolean;
   isDesktopFileSidebarOpen: boolean;
   attachedFiles: unknown[];
   activeConvName: string | undefined;
@@ -31,8 +29,6 @@ interface ResponsiveLayoutProps {
 export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
   isRTL,
   activeView,
-  isSidebarOpen,
-  isFileSidebarOpen,
   isDesktopFileSidebarOpen,
   attachedFiles,
   activeConvName,

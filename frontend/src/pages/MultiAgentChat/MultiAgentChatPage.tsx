@@ -32,12 +32,9 @@ const MultiAgentChatPage: React.FC = () => {
     handleFilesAttached,
     handleFileRemoved,
     handleExtractContent,
-    setAttachedFiles,
   } = useFileAttachments();
 
   const {
-    isSidebarOpen,
-    isFileSidebarOpen,
     isDesktopFileSidebarOpen,
     activeView,
     setIsDesktopFileSidebarOpen,
@@ -113,8 +110,6 @@ const MultiAgentChatPage: React.FC = () => {
       <ResponsiveLayout
         isRTL={isRTL}
         activeView={activeView}
-        isSidebarOpen={isSidebarOpen}
-        isFileSidebarOpen={isFileSidebarOpen}
         isDesktopFileSidebarOpen={isDesktopFileSidebarOpen}
         attachedFiles={attachedFiles}
         activeConvName={activeConv?.name}
