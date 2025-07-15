@@ -114,7 +114,7 @@ export type WorkflowEvent =
     }
   | { type: 'conversation_complete'; message: string }
   | { type: 'error'; message: string }
-  | { type: 'status'; message: string };
+  | { type: 'status'; message: string; agentId?: string; agentName?: string };
 
 export function getAgentSystemPrompt(agent: Agent): string {
   const styleInstructions: string[] = [];

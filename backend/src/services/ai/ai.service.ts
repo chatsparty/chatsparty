@@ -106,6 +106,17 @@ class AIService {
             timestamp: event.timestamp,
           };
         } else if (event.type === 'status') {
+          if (
+            event.message.includes('is thinking...') &&
+            event.agentId &&
+            event.agentName
+          ) {
+            yield {
+              type: 'thinking',
+              agentId: event.agentId,
+              agentName: event.agentName,
+            };
+          }
         } else if (event.type === 'error') {
           yield {
             type: 'error',

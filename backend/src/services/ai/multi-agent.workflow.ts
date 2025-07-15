@@ -327,6 +327,8 @@ export async function runMultiAgentConversation(
             yield {
               type: 'status',
               message: `${agent.name} is thinking...`,
+              agentId: agent.agentId,
+              agentName: agent.name,
             } as WorkflowEvent;
 
             if (state.turnCount > 0) {
