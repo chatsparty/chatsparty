@@ -1,32 +1,35 @@
-import { useState } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Card } from '../ui/card';
-import { useAuth } from '../../contexts/AuthContext';
-import { SocialLoginButtons } from './SocialLoginButtons';
+import { useState } from "react";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Card } from "../ui/card";
+import { useAuth } from "../../contexts/AuthContext";
+import { SocialLoginButtons } from "./SocialLoginButtons";
+import { Separator } from "../ui/separator";
 
 interface LoginFormProps {
   onToggleMode: () => void;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       await login(email, password);
     } catch (error: any) {
-      setError(error.response?.data?.detail || 'Login failed. Please try again.');
+      setError(
+        error.response?.data?.detail || "Login failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -75,20 +78,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
+        <Separator title="Or continue with" />
 
-        <SocialLoginButtons loading={loading} />
+        <SocialLoginButtons />
 
         <div className="text-center">
           <p className="text-muted-foreground">
-            Don't have an account?{' '}
+            Don't have an account?{" "}
             <button
               onClick={onToggleMode}
               className="text-primary hover:underline font-medium"

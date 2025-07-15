@@ -10,16 +10,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AuthProviderType {
+  LOCAL
+  GOOGLE
+}
+
 // User model with credit system
 model User {
-  id         String  @id @default(cuid())
-  email      String  @unique
-  password   String? // Made optional to support OAuth
-  name       String?
-  provider   String? // local, google, github, etc.
-  isActive   Boolean @default(true)
-  isVerified Boolean @default(false)
-
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String?   // Made optional to support OAuth
+  name            String?
+  provider        AuthProviderType @default(LOCAL)
+  providerId      String?   // Unique ID from the OAuth provider
+  isActive        Boolean   @default(true)
+  isVerified      Boolean   @default(false)
+  
   // Credit system fields
   creditsBalance     Int       @default(10000)
   creditsUsed        Int       @default(0)
@@ -39,9 +45,10 @@ model User {
   creditTransactions CreditTransaction[]
   agentRatings       AgentRating[]
   agentUsage         AgentUsage[]
-
-  credits Credit[]
-
+  
+  credits            Credit[]
+  
+  @@unique([provider, providerId])
   @@index([email])
 }
 

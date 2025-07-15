@@ -51,6 +51,9 @@ const envSchema = z.object({
   // Auth
   JWT_SECRET: z.string().default('your-secret-key-change-this'),
   JWT_EXPIRES_IN: z.string().default('7d'),
+
+  // OAuth
+  GOOGLE_CLIENT_ID: z.string().optional(),
 });
 
 // Parse and validate environment variables
