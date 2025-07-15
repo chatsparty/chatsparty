@@ -5,7 +5,7 @@ import { API_BASE_URL } from "./constants";
 export const fetchAgents = async (): Promise<Agent[]> => {
   try {
     console.log("🔵 fetchAgents called, fetching from:", "/chat/agents");
-    const response = await axios.get("/api/agents");
+    const response = await axios.get("/agents");
     console.log("🟡 fetchAgents response:", response.data);
 
     // Handle the correct response format: { success: true, data: { agents: [...] } }
@@ -48,7 +48,7 @@ export const fetchConversations = async (
       "🔵 fetchConversations called, fetching from:",
       "/chat/conversations"
     );
-    const response = await axios.get("/api/conversations");
+    const response = await axios.get("/conversations");
     console.log("🟡 fetchConversations response:", response.data);
 
     // Handle different response formats
@@ -150,7 +150,7 @@ export const deleteConversation = async (
   conversationId: string
 ): Promise<void> => {
   try {
-    await axios.delete(`/api/conversations/${conversationId}`);
+    await axios.delete(`/conversations/${conversationId}`);
   } catch (error) {
     console.error(
       "Failed to delete conversation:",

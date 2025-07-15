@@ -19,6 +19,7 @@ import { storageRoutes } from './services/storage/storage.routes';
 import { chatRoutes } from './services/chat/chat.routes';
 import { conversationRoutes } from './services/conversation/conversation.routes';
 import systemDefaultConnectionRoutes from './services/connections/system-default-connection.routes';
+import { marketplaceRoutes } from './services/marketplace/marketplace.routes';
 import { websocketService } from './services/websocket/websocket.service';
 import { setupChatHandlers } from './services/websocket/chat.handlers';
 
@@ -117,6 +118,7 @@ const apiRoutes = async (fastify: FastifyInstance) => {
   await fastify.register(storageRoutes);
   await fastify.register(chatRoutes);
   await fastify.register(conversationRoutes);
+  await fastify.register(marketplaceRoutes);
 };
 
 async function registerRoutes() {
@@ -142,10 +144,8 @@ async function registerRoutes() {
     }
   );
 
-  // Register public routes
-  await app.register(authRoutes, { prefix: '/auth' });
-
-  // Register all protected routes under the /api prefix
+  // Register all routes under the /api prefix
+  await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(apiRoutes, { prefix: '/api' });
 }
 

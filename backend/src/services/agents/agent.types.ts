@@ -49,14 +49,34 @@ export const AGENT_LIMITS = {
 } as const;
 
 export function formatAgentResponse(agent: AgentWithRelations): AgentResponse {
+  // Ensure aiConfig has required fields
+  const aiConfig = agent.aiConfig as any;
+  const validAiConfig: ModelConfiguration = {
+    provider: aiConfig?.provider || 'openai',
+    modelName: aiConfig?.modelName || aiConfig?.model || 'gpt-3.5-turbo',
+    connectionId: aiConfig?.connectionId || agent.connectionId,
+    apiKey: aiConfig?.apiKey,
+    baseUrl: aiConfig?.baseUrl,
+  };
+
+  // Ensure chatStyle has default values
+  const chatStyle = agent.chatStyle as any || {};
+  const validChatStyle: ChatStyle = {
+    friendliness: chatStyle?.friendliness || 'friendly',
+    responseLength: chatStyle?.responseLength || 'medium',
+    personality: chatStyle?.personality || 'balanced',
+    humor: chatStyle?.humor || 'light',
+    expertiseLevel: chatStyle?.expertiseLevel || 'expert',
+  };
+
   return {
     id: agent.id,
     name: agent.name,
     prompt: agent.prompt,
     characteristics: agent.characteristics,
     connectionId: agent.connectionId,
-    aiConfig: agent.aiConfig as ModelConfiguration,
-    chatStyle: agent.chatStyle as ChatStyle,
+    aiConfig: validAiConfig,
+    chatStyle: validChatStyle,
     createdAt: agent.createdAt,
     updatedAt: agent.updatedAt,
   };

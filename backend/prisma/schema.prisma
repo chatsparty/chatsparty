@@ -38,6 +38,8 @@ model User {
   voiceConnections   VoiceConnection[]
   projects           Project[]
   creditTransactions CreditTransaction[]
+  agentRatings       AgentRating[]
+  agentUsage         AgentUsage[]
   
   credits            Credit[]
   
@@ -60,6 +62,20 @@ model Agent {
   voiceConnectionId String?
   voiceEnabled      Boolean     @default(false)
   
+  // Marketplace fields
+  isPublic          Boolean     @default(false)
+  isTemplate        Boolean     @default(false)
+  category          String?     // brainstorming, writing, analysis, etc.
+  tags              String[]    @default([])
+  description       String?     @db.Text
+  usageCount        Int         @default(0)
+  rating            Float       @default(0.0)
+  ratingCount       Int         @default(0)
+  
+  // Template fields
+  templateId        String?     // Reference to original template if imported
+  isOriginal        Boolean     @default(true)
+  publishedAt       DateTime?
   
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -70,9 +86,18 @@ model Agent {
   voiceConnection   VoiceConnection? @relation(fields: [voiceConnectionId], references: [id])
   conversations     Conversation[]
   messages          Message[]
+  ratings           AgentRating[]
+  usage             AgentUsage[]
+  template          Agent?      @relation("AgentTemplate", fields: [templateId], references: [id])
+  imports           Agent[]     @relation("AgentTemplate")
   
   @@index([userId])
   @@index([voiceConnectionId])
+  @@index([isPublic])
+  @@index([category])
+  @@index([rating])
+  @@index([usageCount])
+  @@index([templateId])
 }
 
 // Connection model for AI provider connections
@@ -122,6 +147,7 @@ model Conversation {
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   project       Project?    @relation(fields: [projectId], references: [id])
   messageRecords Message[]   @relation("ConversationMessages")
+  agentUsage    AgentUsage[]
   
   
   @@index([userId])
@@ -340,4 +366,65 @@ model Credit {
   
   @@index([userId])
   @@index([expiresAt])
+}
+
+// Agent Rating model for marketplace reviews
+model AgentRating {
+  id              String    @id @default(cuid())
+  agentId         String
+  userId          String
+  rating          Int       // 1-5 star rating
+  review          String?   @db.Text
+  isHelpful       Boolean   @default(false)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  agent           Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([agentId, userId]) // One rating per user per agent
+  @@index([agentId])
+  @@index([userId])
+  @@index([rating])
+}
+
+// Agent Category model for marketplace categorization
+model AgentCategory {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  description     String?   @db.Text
+  icon            String?   // Icon identifier
+  color           String?   // Color hex code
+  sortOrder       Int       @default(0)
+  isActive        Boolean   @default(true)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([name])
+  @@index([sortOrder])
+}
+
+// Agent Usage Analytics model
+model AgentUsage {
+  id              String    @id @default(cuid())
+  agentId         String
+  userId          String
+  usageType       String    // imported, started_chat, message_sent
+  conversationId  String?
+  metadata        Json?     // Additional usage metadata
+  
+  createdAt       DateTime  @default(now())
+  
+  // Relations
+  agent           Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+  
+  @@index([agentId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([usageType])
 }

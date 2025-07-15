@@ -28,7 +28,7 @@ export const useAgentApi = () => {
 
   const fetchAgents = useCallback(async () => {
     try {
-      const response = await axios.get("/api/agents");
+      const response = await axios.get("/agents");
       const responseData = response.data;
 
       console.log('🔍 Agents API response:', responseData);
@@ -92,7 +92,7 @@ export const useAgentApi = () => {
           },
         };
 
-        await axios.post("/api/agents", payload);
+        await axios.post("/agents", payload);
 
         trackAgentCreated({
           agent_name: formData.name,
@@ -169,7 +169,7 @@ export const useAgentApi = () => {
           },
         };
 
-        await axios.put(`/api/agents/${agentId}`, payload);
+        await axios.put(`/agents/${agentId}`, payload);
         trackAgentUpdated(agentId, formData.name);
         showToast(t("agents.agentUpdated"), "success");
         await fetchAgents();
@@ -194,7 +194,7 @@ export const useAgentApi = () => {
     async (agent: Agent): Promise<boolean> => {
       setIsLoading(true);
       try {
-        await axios.delete(`/api/agents/${agent.id}`);
+        await axios.delete(`/agents/${agent.id}`);
         trackAgentDeleted(agent.id, agent.name);
         showToast(t("agents.agentDeleted"), "success");
         await fetchAgents();

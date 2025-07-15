@@ -114,6 +114,59 @@ const MultiAgentChatPage: React.FC = () => {
     }
   }, [conversationId]);
 
+  // Check for brainstorm session data from marketplace
+  useEffect(() => {
+    const brainstormData = localStorage.getItem('brainstormSession');
+    const useCaseData = localStorage.getItem('useCaseSession');
+    
+    if ((brainstormData || useCaseData) && !conversationId) {
+      try {
+        // Check brainstorm session first
+        if (brainstormData) {
+          const session = JSON.parse(brainstormData);
+          const sessionAge = Date.now() - session.timestamp;
+          
+          // Only use the session if it's less than 5 minutes old
+          if (sessionAge < 5 * 60 * 1000) {
+            // Clear the session data to prevent reuse
+            localStorage.removeItem('brainstormSession');
+            
+            // Auto-start the brainstorm conversation
+            if (session.agents && session.agents.length >= 2 && session.initialMessage) {
+              handleStartConversation(session.agents, session.initialMessage, 10);
+            }
+          } else {
+            // Clear expired session data
+            localStorage.removeItem('brainstormSession');
+          }
+        }
+        // Check use case session
+        else if (useCaseData) {
+          const session = JSON.parse(useCaseData);
+          const sessionAge = Date.now() - session.timestamp;
+          
+          // Only use the session if it's less than 5 minutes old
+          if (sessionAge < 5 * 60 * 1000) {
+            // Clear the session data to prevent reuse
+            localStorage.removeItem('useCaseSession');
+            
+            // Auto-start the use case conversation
+            if (session.agents && session.agents.length >= 2 && session.initialMessage) {
+              handleStartConversation(session.agents, session.initialMessage, 15); // Longer session for use cases
+            }
+          } else {
+            // Clear expired session data
+            localStorage.removeItem('useCaseSession');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to parse session data:', error);
+        localStorage.removeItem('brainstormSession');
+        localStorage.removeItem('useCaseSession');
+      }
+    }
+  }, [conversationId]);
+
   useEffect(() => {
     if (activeConversation && activeConversation !== conversationId) {
       navigate(`/chat/${activeConversation}`, { replace: true });

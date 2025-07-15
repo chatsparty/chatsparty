@@ -29,17 +29,17 @@ export const projectApi = {
   // ============= PROJECT CRUD =============
 
   async createProject(projectData: ProjectCreate): Promise<Project> {
-    const response = await api.post("/api/projects", projectData);
+    const response = await api.post("/projects", projectData);
     return response.data.project;
   },
 
   async getProjects(): Promise<Project[]> {
-    const response = await api.get("/api/projects");
+    const response = await api.get("/projects");
     return response.data.projects;
   },
 
   async getProject(projectId: string): Promise<Project> {
-    const response = await api.get(`/api/projects/${projectId}`);
+    const response = await api.get(`/projects/${projectId}`);
     return response.data.project;
   },
 
@@ -47,12 +47,12 @@ export const projectApi = {
     projectId: string,
     projectData: ProjectUpdate
   ): Promise<Project> {
-    const response = await api.put(`/api/projects/${projectId}`, projectData);
+    const response = await api.put(`/projects/${projectId}`, projectData);
     return response.data.project;
   },
 
   async deleteProject(projectId: string): Promise<void> {
-    await api.delete(`/api/projects/${projectId}`);
+    await api.delete(`/projects/${projectId}`);
   },
 
   // ============= VM WORKSPACE MANAGEMENT =============
@@ -60,7 +60,7 @@ export const projectApi = {
   async setupVMWorkspace(
     projectId: string
   ): Promise<{ vm_info: Record<string, unknown> }> {
-    const response = await api.post(`/api/projects/${projectId}/vm/setup`);
+    const response = await api.post(`/projects/${projectId}/vm/setup`);
     return response.data;
   },
 
@@ -69,14 +69,14 @@ export const projectApi = {
     command: VMCommand
   ): Promise<VMCommandResult> {
     const response = await api.post(
-      `/api/projects/${projectId}/vm/command`,
+      `/projects/${projectId}/vm/command`,
       command
     );
     return response.data.result;
   },
 
   async getProjectStatus(projectId: string): Promise<ProjectStatus> {
-    const response = await api.get(`/api/projects/${projectId}/status`);
+    const response = await api.get(`/projects/${projectId}/status`);
     return response.data.status;
   },
 
@@ -87,35 +87,35 @@ export const projectApi = {
     serviceData: ServiceCreate
   ): Promise<ProjectVMService> {
     const response = await api.post(
-      `/api/projects/${projectId}/services`,
+      `/projects/${projectId}/services`,
       serviceData
     );
     return response.data.service;
   },
 
   async getProjectServices(projectId: string): Promise<ProjectVMService[]> {
-    const response = await api.get(`/api/projects/${projectId}/services`);
+    const response = await api.get(`/projects/${projectId}/services`);
     return response.data.services;
   },
 
   async stopVMService(projectId: string, serviceId: string): Promise<void> {
-    await api.delete(`/api/projects/${projectId}/services/${serviceId}`);
+    await api.delete(`/projects/${projectId}/services/${serviceId}`);
   },
 
   async getActiveServices(projectId: string): Promise<ProjectVMService[]> {
-    const response = await api.get(`/api/projects/${projectId}/active-services`);
+    const response = await api.get(`/projects/${projectId}/active-services`);
     return response.data.active_services;
   },
 
   async stopServiceByPort(projectId: string, port: number): Promise<{ success: boolean; message: string }> {
-    const response = await api.post(`/api/projects/${projectId}/services/stop`, { port });
+    const response = await api.post(`/projects/${projectId}/services/stop`, { port });
     return response.data;
   },
 
   // ============= IDE MANAGEMENT =============
   
   async setupVSCodeServer(projectId: string): Promise<any> {
-    const response = await api.post(`/api/projects/${projectId}/ide/setup`, {
+    const response = await api.post(`/projects/${projectId}/ide/setup`, {
       ide_type: "vscode",
       port: 8080
     });
@@ -123,12 +123,12 @@ export const projectApi = {
   },
 
   async getVSCodeStatus(projectId: string): Promise<any> {
-    const response = await api.get(`/api/projects/${projectId}/ide/status`);
+    const response = await api.get(`/projects/${projectId}/ide/status`);
     return response.data;
   },
 
   async stopVSCodeServer(projectId: string): Promise<any> {
-    const response = await api.post(`/api/projects/${projectId}/ide/stop`);
+    const response = await api.post(`/projects/${projectId}/ide/stop`);
     return response.data;
   },
 
@@ -139,7 +139,7 @@ export const projectApi = {
     tab_size?: number;
     settings?: Record<string, any>;
   }): Promise<any> {
-    const response = await api.post(`/api/projects/${projectId}/ide/customize`, customization);
+    const response = await api.post(`/projects/${projectId}/ide/customize`, customization);
     return response.data;
   },
 
@@ -155,7 +155,7 @@ export const projectApi = {
     });
 
     const response = await api.post(
-      `/api/projects/${projectId}/files`,
+      `/projects/${projectId}/files`,
       formData,
       {
         headers: {
@@ -170,7 +170,7 @@ export const projectApi = {
     projectId: string,
     path: string = "/workspace"
   ): Promise<{ files: any }> {
-    const response = await api.get(`/api/projects/${projectId}/files`, {
+    const response = await api.get(`/projects/${projectId}/files`, {
       params: { path },
     });
     return response.data;
@@ -183,14 +183,14 @@ export const projectApi = {
     recursive: boolean = false
   ): Promise<{ success: boolean; message: string }> {
     console.log(`[PROJECT_API] 🗑️ Sending delete request:`);
-    console.log(`- URL: /api/projects/${projectId}/files/delete`);
+    console.log(`- URL: /projects/${projectId}/files/delete`);
     console.log(`- Payload:`, {
       path: filePath,
       is_folder: isFolder,
       recursive: recursive,
     });
 
-    const response = await api.delete(`/api/projects/${projectId}/files/delete`, {
+    const response = await api.delete(`/projects/${projectId}/files/delete`, {
       data: {
         path: filePath,
         is_folder: isFolder,
@@ -208,7 +208,7 @@ export const projectApi = {
     projectId: string,
     filePath: string
   ): Promise<{ success: boolean; content: string; file_path: string }> {
-    const response = await api.get(`/api/projects/${projectId}/files/read`, {
+    const response = await api.get(`/projects/${projectId}/files/read`, {
       params: { file_path: filePath },
     });
     return response.data;
@@ -219,7 +219,7 @@ export const projectApi = {
     filePath: string,
     content: string
   ): Promise<{ success: boolean; message: string; file_path: string }> {
-    const response = await api.post(`/api/projects/${projectId}/files/write`, {
+    const response = await api.post(`/projects/${projectId}/files/write`, {
       path: filePath,
       content: content,
     });
@@ -231,7 +231,7 @@ export const projectApi = {
     sourcePath: string,
     targetPath: string
   ): Promise<{ success: boolean; message: string }> {
-    const response = await api.post(`/api/projects/${projectId}/files/move`, {
+    const response = await api.post(`/projects/${projectId}/files/move`, {
       source_path: sourcePath,
       target_path: targetPath,
     });
@@ -245,7 +245,7 @@ export const projectApi = {
     conversationData: { agent_ids: string[] }
   ): Promise<{ conversation_id: string }> {
     const response = await api.post(
-      `/api/projects/${projectId}/conversations`,
+      `/projects/${projectId}/conversations`,
       conversationData
     );
     return response.data;

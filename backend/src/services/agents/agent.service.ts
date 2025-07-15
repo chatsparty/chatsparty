@@ -123,6 +123,8 @@ export class AgentService {
       where.connectionId = filters.connectionId;
     }
 
+    console.log('🔍 Listing agents with filters:', where);
+
     const [agents, total] = await this.prisma.$transaction([
       this.prisma.agent.findMany({
         where,
@@ -132,6 +134,11 @@ export class AgentService {
       }),
       this.prisma.agent.count({ where }),
     ]);
+
+    console.log('🔍 Found agents:', { count: agents.length, total, userId: filters.userId });
+    agents.forEach(agent => {
+      console.log('🔍 Agent:', { id: agent.id, name: agent.name, templateId: agent.templateId, isTemplate: agent.isTemplate });
+    });
 
     return {
       agents: agents.map(formatAgentResponse),

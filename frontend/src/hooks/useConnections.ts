@@ -19,9 +19,9 @@ export const useConnections = () => {
       // Fetch user connections and default connection in parallel
       const [userConnectionsResponse, defaultConnectionResponse] =
         await Promise.all([
-          axios.get("/api/connections"),
+          axios.get("/connections"),
           axios
-            .get("/api/system-default-connection")
+            .get("/system-default-connection")
             .catch(() => ({ data: { enabled: false, connection: null } })),
         ]);
 
@@ -69,7 +69,7 @@ export const useConnections = () => {
     connectionData: CreateConnectionRequest
   ): Promise<ModelConnection> => {
     try {
-      const response = await axios.post("/api/connections", connectionData);
+      const response = await axios.post("/connections", connectionData);
       const newConnection = response.data;
       setConnections((prev) => [...prev, newConnection]);
       return newConnection;
@@ -89,7 +89,7 @@ export const useConnections = () => {
         throw new Error("Cannot update system default connection");
       }
 
-      const response = await axios.put(`/api/connections/${id}`, updates);
+      const response = await axios.put(`/connections/${id}`, updates);
       const updatedConnection = response.data;
       setConnections((prev) =>
         prev.map((conn) => (conn.id === id ? updatedConnection : conn))
@@ -108,7 +108,7 @@ export const useConnections = () => {
         throw new Error("Cannot delete system default connection");
       }
 
-      await axios.delete(`/api/connections/${id}`);
+      await axios.delete(`/connections/${id}`);
       setConnections((prev) => prev.filter((conn) => conn.id !== id));
     } catch (err) {
       throw new Error("Failed to delete connection");
@@ -122,7 +122,7 @@ export const useConnections = () => {
       if (connection?.is_system_default) {
         // Use the default connection test endpoint
         const response = await axios.post(
-          "/api/system-default-connection/test"
+          "/system-default-connection/test"
         );
         return {
           success: response.data.success,
@@ -131,7 +131,7 @@ export const useConnections = () => {
         };
       }
 
-      const response = await axios.post(`/api/connections/${id}/test`);
+      const response = await axios.post(`/connections/${id}/test`);
       return response.data;
     } catch (err) {
       throw new Error("Failed to test connection");

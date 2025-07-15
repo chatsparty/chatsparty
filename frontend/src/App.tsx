@@ -27,6 +27,7 @@ import {
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
 import SharedConversationPage from "./pages/SharedConversation/SharedConversationPage";
+import { MarketplacePage } from "./pages/Marketplace/MarketplacePage";
 
 const Layout = () => {
   const { user, logout } = useAuth();
@@ -95,6 +96,7 @@ const Layout = () => {
 
   const tabs = [
     { path: "/chat/agents", label: t("navigation.agents") },
+    { path: "/marketplace", label: t("navigation.marketplace") },
     { path: "/chat", label: t("navigation.chat") },
     { path: "/settings", label: t("navigation.settings") },
   ];
@@ -215,6 +217,7 @@ const Layout = () => {
         <div className="flex-1 min-h-0 overflow-hidden">
           <Routes>
             <Route path="/chat/agents" element={<AgentManagerPage />} />
+            <Route path="/marketplace" element={<MarketplacePage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
             <Route path="/chat/:conversationId" element={<MultiAgentChatPage />} />
