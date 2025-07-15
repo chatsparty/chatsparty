@@ -4,7 +4,7 @@ import { FaGoogle, FaGithub } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import { useGoogleLogin } from "@react-oauth/google";
 
-export const SocialLoginButtons: React.FC = () => {
+const GoogleLoginButton: React.FC = () => {
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const { loginWithGoogle } = useAuth();
 
@@ -26,38 +26,33 @@ export const SocialLoginButtons: React.FC = () => {
   });
 
   return (
-    <div className="space-y-3">
-      <Button
-        variant="outline"
-        type="button"
-        className="w-full h-11 font-medium transition-all duration-200"
-        disabled={socialLoading !== null}
-        onClick={() => {
-          setSocialLoading("google");
-          handleGoogleLogin();
-        }}
-      >
-        {socialLoading === "google" ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-            Connecting...
-          </>
-        ) : (
-          <>
-            <FaGoogle className="mr-2 h-4 w-4" />
-            Continue with Google
-          </>
-        )}
-      </Button>
-      {/* <Button
-        variant="outline"
-        type="button"
-        className="w-full h-11 font-medium transition-all duration-200"
-        disabled
-      >
-        <FaGithub className="mr-2 h-4 w-4" />
-        Continue with GitHub
-      </Button> */}
-    </div>
+    <Button
+      variant="outline"
+      type="button"
+      className="w-full h-11 font-medium transition-all duration-200"
+      disabled={socialLoading !== null}
+      onClick={() => {
+        setSocialLoading("google");
+        handleGoogleLogin();
+      }}
+    >
+      {socialLoading === "google" ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+          Connecting...
+        </>
+      ) : (
+        <>
+          <FaGoogle className="mr-2 h-4 w-4" />
+          Continue with Google
+        </>
+      )}
+    </Button>
   );
+};
+
+export const SocialLoginButtons: React.FC = () => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  return <div className="space-y-3">{clientId && <GoogleLoginButton />}</div>;
 };

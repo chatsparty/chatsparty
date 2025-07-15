@@ -36,7 +36,6 @@ export class UserService {
     credentials: RegisterCredentials
   ): Promise<ServiceResponse<AuthResponse>> {
     try {
-      // Check if user already exists
       const existingUser = await this.db.user.findUnique({
         where: { email: credentials.email },
       });
@@ -48,10 +47,8 @@ export class UserService {
         };
       }
 
-      // Hash password
       const hashedPassword = await hashPassword(credentials.password);
 
-      // Create user
       const user = await this.db.user.create({
         data: {
           email: credentials.email,
@@ -61,18 +58,16 @@ export class UserService {
         },
       });
 
-      // Create initial bonus credits
       await this.db.credit.create({
         data: {
           userId: user.id,
           amount: 100,
           remaining: 100,
           type: 'bonus',
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       });
 
-      // Generate token
       const token = generateToken({
         userId: user.id,
         email: user.email,
@@ -103,7 +98,6 @@ export class UserService {
     credentials: LoginCredentials
   ): Promise<ServiceResponse<AuthResponse>> {
     try {
-      // Find user
       const user = await this.db.user.findUnique({
         where: { email: credentials.email },
       });
@@ -115,8 +109,7 @@ export class UserService {
         };
       }
 
-      // Check if user is a Google user
-      if (user.provider === AuthProviderType.GOOGLE) {
+      if (user.provider === AuthProviderType.GOOGLE && !user.password) {
         return {
           success: false,
           error:
@@ -124,7 +117,6 @@ export class UserService {
         };
       }
 
-      // Check if user has password (local auth)
       if (!user.password) {
         return {
           success: false,
@@ -132,7 +124,6 @@ export class UserService {
         };
       }
 
-      // Verify password
       const isValid = await verifyPassword(credentials.password, user.password);
 
       if (!isValid) {
@@ -142,7 +133,6 @@ export class UserService {
         };
       }
 
-      // Generate token
       const token = generateToken({
         userId: user.id,
         email: user.email,
@@ -173,7 +163,6 @@ export class UserService {
     accessToken: string
   ): Promise<ServiceResponse<AuthResponse>> {
     try {
-      // Use the access token to get user info from Google
       const userInfoResponse = await fetch(
         'https://www.googleapis.com/oauth2/v3/userinfo',
         {
@@ -197,7 +186,6 @@ export class UserService {
 
       const { email, name, sub: providerId } = payload;
 
-      // Check if user already exists
       let user = await this.db.user.findUnique({
         where: {
           provider_providerId: {
@@ -208,45 +196,45 @@ export class UserService {
       });
 
       if (!user) {
-        // If not, check if a local user with the same email exists
         const existingLocalUser = await this.db.user.findUnique({
           where: { email },
         });
+
         if (
           existingLocalUser &&
           existingLocalUser.provider === AuthProviderType.LOCAL
         ) {
-          return {
-            success: false,
-            error:
-              'User with this email already exists. Please login with your password.',
-          };
+          user = await this.db.user.update({
+            where: { id: existingLocalUser.id },
+            data: {
+              provider: AuthProviderType.GOOGLE,
+              providerId,
+              isVerified: true,
+            },
+          });
+        } else {
+          user = await this.db.user.create({
+            data: {
+              email,
+              name: name || '',
+              provider: AuthProviderType.GOOGLE,
+              providerId,
+              isVerified: true,
+            },
+          });
+
+          await this.db.credit.create({
+            data: {
+              userId: user.id,
+              amount: 100,
+              remaining: 100,
+              type: 'bonus',
+              expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            },
+          });
         }
-
-        // Create new user
-        user = await this.db.user.create({
-          data: {
-            email,
-            name: name || '',
-            provider: AuthProviderType.GOOGLE,
-            providerId,
-            isVerified: true,
-          },
-        });
-
-        // Grant initial credits for new Google users
-        await this.db.credit.create({
-          data: {
-            userId: user.id,
-            amount: 100,
-            remaining: 100,
-            type: 'bonus',
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-          },
-        });
       }
 
-      // Generate app token
       const appToken = generateToken({
         userId: user.id,
         email: user.email,
@@ -312,7 +300,6 @@ export class UserService {
     data: { name?: string; email?: string }
   ): Promise<ServiceResponse<User>> {
     try {
-      // Check if email is being changed and if it's already taken
       if (data.email) {
         const existingUser = await this.db.user.findFirst({
           where: {
@@ -367,7 +354,6 @@ export class UserService {
         };
       }
 
-      // Verify current password
       const isValid = await verifyPassword(currentPassword, user.password);
 
       if (!isValid) {
@@ -377,10 +363,8 @@ export class UserService {
         };
       }
 
-      // Hash new password
       const hashedPassword = await hashPassword(newPassword);
 
-      // Update password
       await this.db.user.update({
         where: { id: userId },
         data: { password: hashedPassword },
@@ -516,7 +500,6 @@ export class UserService {
     request: UseCreditRequest
   ): Promise<ServiceResponse<CreditBalance>> {
     try {
-      // Get available credits ordered by expiration
       const credits = await this.db.credit.findMany({
         where: {
           userId,
@@ -538,7 +521,6 @@ export class UserService {
         };
       }
 
-      // Deduct credits using FIFO
       let remainingToDeduct = request.amount;
 
       for (const credit of credits) {
@@ -557,7 +539,6 @@ export class UserService {
         remainingToDeduct -= deductAmount;
       }
 
-      // Return updated balance
       return this.getCreditBalance(userId);
     } catch (error) {
       console.error('Error using credits:', error);
