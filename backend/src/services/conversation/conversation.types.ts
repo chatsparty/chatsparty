@@ -1,7 +1,5 @@
 import { Message } from '../ai/types';
-import { ServiceResponse } from '../../types/service.types';
 
-// Conversation types
 export interface Conversation {
   id: string;
   userId: string;

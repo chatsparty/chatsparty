@@ -24,7 +24,12 @@ export const OAuthCallback: React.FC = () => {
         const pathParts = window.location.pathname.split("/");
         const provider = pathParts[pathParts.length - 1];
 
-        console.log("OAuth callback params:", { code, state, provider, pathname: window.location.pathname });
+        console.log("OAuth callback params:", {
+          code,
+          state,
+          provider,
+          pathname: window.location.pathname,
+        });
 
         if (!code || !state) {
           throw new Error("Missing required OAuth parameters");
@@ -34,20 +39,23 @@ export const OAuthCallback: React.FC = () => {
           throw new Error(`Invalid OAuth provider: ${provider}`);
         }
 
-        await handleOAuthCallback(provider as "google" | "github", code, state);
+        await handleOAuthCallback(provider as "google" | "github", code);
         console.log("OAuth callback successful, navigating to /agents");
         setSuccess(true);
-        // Small delay to show success state before navigation
         setTimeout(() => navigate("/chat/agents"), 500);
       } catch (error: any) {
         console.error("OAuth callback failed:", error);
         console.error("Error details:", {
           message: error.message,
           response: error.response,
-          status: error.response?.status
+          status: error.response?.status,
         });
         if (error.response) {
-          setError(error.response.data?.detail || error.message || "Authentication failed");
+          setError(
+            error.response.data?.detail ||
+              error.message ||
+              "Authentication failed"
+          );
         } else {
           setError(error.message || "Authentication failed");
         }
@@ -65,7 +73,7 @@ export const OAuthCallback: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-          
+
           <p className="text-sm text-muted-foreground">Authenticating...</p>
         </div>
       </div>
@@ -77,11 +85,23 @@ export const OAuthCallback: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-            <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-6 h-6 text-green-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
-          <p className="text-sm text-muted-foreground">Success! Redirecting...</p>
+          <p className="text-sm text-muted-foreground">
+            Success! Redirecting...
+          </p>
         </div>
       </div>
     );
@@ -92,16 +112,28 @@ export const OAuthCallback: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4 max-w-sm">
           <div className="w-12 h-12 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-            <svg className="w-6 h-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6 text-destructive"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </div>
-          
+
           <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">Authentication failed</p>
+            <p className="text-sm font-medium text-foreground">
+              Authentication failed
+            </p>
             <p className="text-sm text-muted-foreground">{error}</p>
           </div>
-          
+
           <p className="text-xs text-muted-foreground">Redirecting...</p>
         </div>
       </div>

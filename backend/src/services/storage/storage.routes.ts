@@ -7,7 +7,6 @@ import { FILE_SIZE_LIMITS } from './storage.validation';
  * Storage routes
  */
 export async function storageRoutes(fastify: FastifyInstance) {
-  // Register multipart support
   await fastify.register(import('@fastify/multipart'), {
     limits: {
       fileSize: FILE_SIZE_LIMITS.DEFAULT,
@@ -56,28 +55,24 @@ export async function storageRoutes(fastify: FastifyInstance) {
       }
 
       try {
-        // Validate file
         const file = {
           size: data.file.bytesRead,
           mimetype: data.mimetype,
           originalname: data.filename,
         };
 
-        // Basic validation
         storageService.validateFile(file, {
           maxSize: FILE_SIZE_LIMITS.DEFAULT,
         });
 
-        // Read file buffer
         const chunks: Buffer[] = [];
         for await (const chunk of data.file) {
           chunks.push(chunk);
         }
         const buffer = Buffer.concat(chunks);
 
-        // Upload file
         const result = await storageService.uploadUserFile(
-          user.id,
+          (user as any).id,
           data.filename,
           buffer,
           {
@@ -96,21 +91,15 @@ export async function storageRoutes(fastify: FastifyInstance) {
   /**
    * Upload a project file
    */
-  fastify.post(
+  fastify.post<{
+    Params: { projectId: string };
+  }>(
     '/storage/projects/:projectId/upload',
     {
       preHandler: authenticate,
     },
-    async (
-      request: FastifyRequest<{
-        Params: { projectId: string };
-      }>,
-      reply
-    ) => {
-      const _user = request.user!;
+    async (request, reply) => {
       const { projectId } = request.params;
-
-      // TODO: Verify user has access to this project
 
       const data = await request.file();
 
@@ -119,7 +108,6 @@ export async function storageRoutes(fastify: FastifyInstance) {
       }
 
       try {
-        // Validate file
         const file = {
           size: data.file.bytesRead,
           mimetype: data.mimetype,
@@ -130,14 +118,12 @@ export async function storageRoutes(fastify: FastifyInstance) {
           maxSize: FILE_SIZE_LIMITS.DEFAULT,
         });
 
-        // Read file buffer
         const chunks: Buffer[] = [];
         for await (const chunk of data.file) {
           chunks.push(chunk);
         }
         const buffer = Buffer.concat(chunks);
 
-        // Upload file
         const result = await storageService.uploadProjectFile(
           projectId,
           data.filename,
@@ -158,25 +144,21 @@ export async function storageRoutes(fastify: FastifyInstance) {
   /**
    * Download a file
    */
-  fastify.get(
+  fastify.get<{
+    Params: { key: string };
+    Querystring: { inline?: boolean };
+  }>(
     '/storage/download/:key',
     {
       preHandler: authenticate,
     },
-    async (
-      request: FastifyRequest<{
-        Params: { key: string };
-        Querystring: { inline?: boolean };
-      }>,
-      reply
-    ) => {
+    async (request, reply) => {
       const { key } = request.params;
       const { inline } = request.query;
 
       try {
         const { body, metadata } = await storageService.download(key);
 
-        // Set response headers
         reply.header('Content-Type', metadata.contentType);
         reply.header('Content-Length', metadata.size.toString());
 
@@ -202,17 +184,14 @@ export async function storageRoutes(fastify: FastifyInstance) {
   /**
    * Get file metadata
    */
-  fastify.get(
+  fastify.get<{
+    Params: { key: string };
+  }>(
     '/storage/metadata/:key',
     {
       preHandler: authenticate,
     },
-    async (
-      request: FastifyRequest<{
-        Params: { key: string };
-      }>,
-      reply
-    ) => {
+    async (request, reply) => {
       const { key } = request.params;
 
       try {
@@ -233,17 +212,14 @@ export async function storageRoutes(fastify: FastifyInstance) {
   /**
    * Delete a file
    */
-  fastify.delete(
+  fastify.delete<{
+    Params: { key: string };
+  }>(
     '/storage/:key',
     {
       preHandler: authenticate,
     },
-    async (
-      request: FastifyRequest<{
-        Params: { key: string };
-      }>,
-      reply
-    ) => {
+    async (request, reply) => {
       const { key } = request.params;
 
       try {
@@ -259,26 +235,22 @@ export async function storageRoutes(fastify: FastifyInstance) {
   /**
    * List files
    */
-  fastify.get(
+  fastify.get<{
+    Querystring: {
+      prefix?: string;
+      maxKeys?: number;
+      continuationToken?: string;
+      delimiter?: string;
+    };
+  }>(
     '/storage/list',
     {
       preHandler: authenticate,
     },
-    async (
-      request: FastifyRequest<{
-        Querystring: {
-          prefix?: string;
-          maxKeys?: number;
-          continuationToken?: string;
-          delimiter?: string;
-        };
-      }>,
-      reply
-    ) => {
+    async (request, reply) => {
       const user = request.user!;
 
-      // List user's files by default
-      const prefix = request.query.prefix || `users/${user.id}/`;
+      const prefix = request.query.prefix || `users/${(user as any).id}/`;
 
       try {
         const result = await storageService.list({
@@ -297,21 +269,18 @@ export async function storageRoutes(fastify: FastifyInstance) {
   /**
    * Get signed URL
    */
-  fastify.post(
+  fastify.post<{
+    Body: {
+      key: string;
+      operation: 'get' | 'put';
+      expiresIn?: number;
+    };
+  }>(
     '/storage/signed-url',
     {
       preHandler: authenticate,
     },
-    async (
-      request: FastifyRequest<{
-        Body: {
-          key: string;
-          operation: 'get' | 'put';
-          expiresIn?: number;
-        };
-      }>,
-      reply
-    ) => {
+    async (request, reply) => {
       const { key, operation, expiresIn = 3600 } = request.body;
 
       try {
@@ -344,9 +313,10 @@ export async function storageRoutes(fastify: FastifyInstance) {
       const user = request.user!;
 
       try {
-        const usage = await storageService.getUserStorageUsage(user.id);
+        const usage = await storageService.getUserStorageUsage(
+          (user as any).id
+        );
 
-        // Format size for display
         const formattedSize = formatFileSize(usage.totalSize);
 
         return {

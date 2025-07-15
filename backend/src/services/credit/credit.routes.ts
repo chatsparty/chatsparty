@@ -5,7 +5,6 @@ import {
   TransactionType,
   TransactionReason,
 } from './index';
-import { authenticate } from '../../middleware/auth';
 
 interface IQueryOptions {
   limit?: number;
@@ -44,7 +43,6 @@ interface IModelPricingBody {
 export default async function creditRoutes(fastify: FastifyInstance) {
   const creditService = new CreditService();
   const modelPricingService = new ModelPricingService();
-
 
   /**
    * Get current user's credit balance
@@ -261,8 +259,6 @@ export default async function creditRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Admin routes (could be protected with additional role-based middleware)
-
   /**
    * Add credits to user account (admin only)
    */
@@ -272,8 +268,6 @@ export default async function creditRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Body: IAddCreditsBody & { userId?: string } }>,
       reply: FastifyReply
     ) => {
-      // For now, users can only add credits to their own account
-      // In the future, this could be restricted to admin users who can add credits to any user
       const userId = request.body.userId || request.user!.userId;
       const { amount, transactionType, reason, description } = request.body;
 
@@ -315,17 +309,19 @@ export default async function creditRoutes(fastify: FastifyInstance) {
       const pricing = request.body;
 
       if (!pricing.provider || !pricing.modelName || !pricing.costPerMessage) {
-        return reply
-          .status(400)
-          .send({
-            error: 'Provider, model name, and cost per message are required',
-          });
+        return reply.status(400).send({
+          error: 'Provider, model name, and cost per message are required',
+        });
       }
 
       const result = await modelPricingService.upsertModelPricing({
         ...pricing,
-        costPer1kTokens: pricing.costPer1kTokens === undefined ? null : pricing.costPer1kTokens,
-        isDefaultModel: pricing.isDefaultModel === undefined ? false : pricing.isDefaultModel,
+        costPer1kTokens:
+          pricing.costPer1kTokens === undefined
+            ? null
+            : pricing.costPer1kTokens,
+        isDefaultModel:
+          pricing.isDefaultModel === undefined ? false : pricing.isDefaultModel,
         isActive: pricing.isActive === undefined ? true : pricing.isActive,
       });
 
@@ -368,7 +364,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
    */
   fastify.post(
     '/pricing/initialize',
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (_request: FastifyRequest, reply: FastifyReply) => {
       const result = await modelPricingService.initializeDefaultPricing();
 
       if (!result.success) {

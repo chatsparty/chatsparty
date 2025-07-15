@@ -471,8 +471,7 @@ export class ConnectionService {
 
   private async _findUserConnectionOrThrow(
     userId: string,
-    connectionId: string,
-    prisma?: Prisma.TransactionClient
+    connectionId: string
   ): Promise<Connection> {
     const connection = await this._findUserConnection(userId, connectionId);
     if (!connection) {

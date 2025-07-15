@@ -30,7 +30,6 @@ interface AgentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (agentId: string, customizations?: any) => Promise<void>;
-  onRate: (agentId: string, rating: number, review?: string) => Promise<void>;
 }
 
 export const AgentModal: React.FC<AgentModalProps> = ({
@@ -38,7 +37,6 @@ export const AgentModal: React.FC<AgentModalProps> = ({
   isOpen,
   onClose,
   onImport,
-  onRate,
 }) => {
   const { t } = useTranslation();
   const [importing, setImporting] = useState(false);

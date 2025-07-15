@@ -1,4 +1,9 @@
-import { FastifyRequest, FastifyReply, RouteHandlerMethod } from 'fastify';
+import {
+  FastifyRequest,
+  FastifyReply,
+  RouteHandlerMethod,
+  FastifyInstance,
+} from 'fastify';
 import { ZodSchema } from 'zod';
 
 interface ValidationSchemas {
@@ -14,9 +19,12 @@ export function withValidation(
   schemas: ValidationSchemas,
   handler: RouteHandlerMethod
 ): RouteHandlerMethod {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
+  return async function (
+    this: FastifyInstance,
+    request: FastifyRequest,
+    reply: FastifyReply
+  ) {
     try {
-      // Validate body
       if (schemas.body) {
         const validation = schemas.body.safeParse(request.body);
         if (!validation.success) {
@@ -29,7 +37,6 @@ export function withValidation(
         request.body = validation.data;
       }
 
-      // Validate params
       if (schemas.params) {
         const validation = schemas.params.safeParse(request.params);
         if (!validation.success) {
@@ -42,7 +49,6 @@ export function withValidation(
         request.params = validation.data;
       }
 
-      // Validate query
       if (schemas.query) {
         const validation = schemas.query.safeParse(request.query);
         if (!validation.success) {
@@ -55,7 +61,6 @@ export function withValidation(
         request.query = validation.data;
       }
 
-      // Call the actual handler
       return handler.call(this, request, reply);
     } catch (error) {
       return reply.status(500).send({

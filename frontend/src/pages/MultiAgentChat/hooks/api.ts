@@ -1,6 +1,5 @@
 import axios from "axios";
 import type { Agent, ActiveConversation } from "../types";
-import { API_BASE_URL } from "./constants";
 
 export const fetchAgents = async (): Promise<Agent[]> => {
   try {
@@ -8,7 +7,6 @@ export const fetchAgents = async (): Promise<Agent[]> => {
     const response = await axios.get("/agents");
     console.log("🟡 fetchAgents response:", response.data);
 
-    // Handle the correct response format: { success: true, data: { agents: [...] } }
     if (
       response.data &&
       response.data.success &&
@@ -34,7 +32,7 @@ export const fetchAgents = async (): Promise<Agent[]> => {
       "Failed to fetch agents:",
       error instanceof Error ? error.message : String(error)
     );
-    return []; // Return empty array on error instead of throwing
+    return [];
   }
 };
 
@@ -51,7 +49,6 @@ export const fetchConversations = async (
     const response = await axios.get("/conversations");
     console.log("🟡 fetchConversations response:", response.data);
 
-    // Handle different response formats
     let dbConversations: any[] = [];
 
     if (
@@ -60,7 +57,6 @@ export const fetchConversations = async (
       response.data.data &&
       Array.isArray(response.data.data.conversations)
     ) {
-      // Backend response format: { success: true, data: { conversations: [...], total, page, limit } }
       dbConversations = response.data.data.conversations;
     } else if (
       response.data &&
@@ -87,7 +83,6 @@ export const fetchConversations = async (
     console.log("🟡 dbConversations is array:", Array.isArray(dbConversations));
     console.log("🟡 dbConversations length:", dbConversations?.length);
 
-    // Additional safety check
     if (!dbConversations || !Array.isArray(dbConversations)) {
       console.warn("🔴 dbConversations is not an array:", dbConversations);
       return [];
@@ -113,7 +108,6 @@ export const fetchConversations = async (
             return agent?.name || agentId;
           }) || [];
 
-        // Convert backend message format to frontend format
         const frontendMessages = (conv.messages || []).map((msg) => ({
           speaker: msg.agentId
             ? agents.find((a) => a.id === msg.agentId)?.name || msg.agentId
@@ -142,7 +136,7 @@ export const fetchConversations = async (
       "Failed to fetch conversations:",
       error instanceof Error ? error.message : String(error)
     );
-    return []; // Return empty array instead of throwing to prevent app crash
+    return [];
   }
 };
 

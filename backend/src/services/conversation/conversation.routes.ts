@@ -10,14 +10,10 @@ import {
 } from './conversation.validation';
 import { ConversationFilters } from './conversation.types';
 
-import { authMiddlewares } from '../../middleware/auth-middleware';
-
 export async function conversationRoutes(fastify: FastifyInstance) {
-
   const prisma = new PrismaClient();
   const conversationService = new ConversationService(prisma);
 
-  // Create a new shared conversation
   fastify.post<{
     Body: CreateConversationInput;
   }>(
@@ -47,7 +43,6 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Get a specific conversation
   fastify.get<{
     Params: { conversationId: string };
   }>(
@@ -74,7 +69,6 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // List conversations
   fastify.get<{
     Querystring: ConversationListQuery;
   }>(
@@ -112,7 +106,6 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Delete a conversation
   fastify.delete<{
     Params: { conversationId: string };
   }>(
@@ -139,7 +132,6 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Add a message to a conversation
   fastify.post<{
     Params: { conversationId: string };
     Body: AddMessageInput;
@@ -159,7 +151,6 @@ export async function conversationRoutes(fastify: FastifyInstance) {
       const { conversationId } = request.params;
       const { message, role, agentId } = request.body;
 
-      // Verify conversation belongs to user
       const convResult = await conversationService.getConversation(
         userId,
         conversationId
@@ -191,7 +182,6 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Get messages from a conversation
   fastify.get<{
     Params: { conversationId: string };
     Querystring: GetMessagesQuery;
@@ -232,7 +222,6 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Get conversation count
   fastify.get(
     '/conversations/count',
     {},

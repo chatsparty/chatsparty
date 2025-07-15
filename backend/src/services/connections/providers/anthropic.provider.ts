@@ -5,13 +5,13 @@ import {
   PROVIDER_CONFIGS,
   TestConnectionResponse,
 } from '../connection.types';
-import { IProvider } from './provider.interface';
+import { IProvider, BaseConnectionConfig } from './provider.interface';
 
-export class AnthropicProvider implements IProvider {
+export class AnthropicProvider implements IProvider<BaseConnectionConfig> {
   async testConnection(
-    apiKey: string | null,
-    baseUrl?: string | null
+    config: BaseConnectionConfig
   ): Promise<TestConnectionResponse> {
+    const { apiKey, baseUrl } = config;
     if (!apiKey) {
       return {
         success: false,
@@ -46,11 +46,7 @@ export class AnthropicProvider implements IProvider {
     return PROVIDER_CONFIGS.anthropic.supportedModels;
   }
 
-  getConnectionConfig(config: {
-    apiKey: string | null;
-    baseUrl: string | null;
-    modelName: string;
-  }) {
+  getConnectionConfig(config: BaseConnectionConfig) {
     return {
       provider: 'anthropic',
       apiKey: config.apiKey,

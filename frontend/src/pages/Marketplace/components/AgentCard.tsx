@@ -28,14 +28,12 @@ interface AgentCardProps {
   agent: MarketplaceAgent;
   onClick: () => void;
   onImport: () => void;
-  onRate: (rating: number, review?: string) => void;
 }
 
 export const AgentCard: React.FC<AgentCardProps> = ({
   agent,
   onClick,
   onImport,
-  onRate,
 }) => {
   const { t } = useTranslation();
 

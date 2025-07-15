@@ -28,14 +28,12 @@ interface AgentListItemProps {
   agent: MarketplaceAgent;
   onClick: () => void;
   onImport: () => void;
-  onRate: (rating: number, review?: string) => void;
 }
 
 export const AgentListItem: React.FC<AgentListItemProps> = ({
   agent,
   onClick,
   onImport,
-  onRate,
 }) => {
   const { t } = useTranslation();
 

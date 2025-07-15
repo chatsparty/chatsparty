@@ -108,12 +108,11 @@ export class SystemDefaultConnectionService {
       const provider = ProviderFactory.createProvider(
         this.defaultConfig.provider
       );
-      const result = await provider.testConnection(
-        this.defaultConfig.apiKey ?? null,
-        this.defaultConfig.baseUrl ?? null,
-        this.defaultConfig.projectId ?? null,
-        this.defaultConfig.location ?? null
-      );
+      const result = await provider.testConnection({
+        apiKey: this.defaultConfig.apiKey ?? null,
+        baseUrl: this.defaultConfig.baseUrl ?? null,
+        modelName: 'default'
+      });
 
       return {
         success: true,
@@ -149,8 +148,6 @@ export class SystemDefaultConnectionService {
       const config = provider.getConnectionConfig({
         apiKey: this.defaultConfig.apiKey ?? null,
         baseUrl: this.defaultConfig.baseUrl ?? null,
-        projectId: this.defaultConfig.projectId ?? null,
-        location: this.defaultConfig.location ?? null,
         modelName: this.defaultConfig.modelName,
       });
 

@@ -12,7 +12,11 @@ import {
   FileValidationOptions,
 } from './storage.types';
 import { getStorageProvider } from './storage.factory';
-import { validateFile, sanitizeStorageKey, getFileExtension } from './storage.validation';
+import {
+  validateFile,
+  sanitizeStorageKey,
+  getFileExtension,
+} from './storage.validation';
 import { PrismaClient } from '@prisma/client';
 
 export class StorageService implements IStorageService {
@@ -32,15 +36,12 @@ export class StorageService implements IStorageService {
     body: Buffer | Uint8Array | string | Readable,
     options?: UploadOptions
   ): Promise<UploadResult> {
-    // Sanitize the key
     const sanitizedKey = sanitizeStorageKey(key);
-    
-    // Upload to storage provider
+
     const metadata = await this.provider.upload(sanitizedKey, body, options);
-    
-    // Generate public URL if applicable
+
     const url = await this.getPublicUrl(sanitizedKey);
-    
+
     return {
       key: sanitizedKey,
       url,
@@ -57,11 +58,10 @@ export class StorageService implements IStorageService {
     body: Buffer | Uint8Array | string | Readable,
     options?: UploadOptions
   ): Promise<UploadResult> {
-    // Generate a unique key for the user's file
     const fileExtension = getFileExtension(filename);
     const uniqueId = nanoid(10);
     const key = `users/${userId}/files/${uniqueId}${fileExtension}`;
-    
+
     return this.upload(key, body, options);
   }
 
@@ -74,18 +74,18 @@ export class StorageService implements IStorageService {
     body: Buffer | Uint8Array | string | Readable,
     options?: UploadOptions
   ): Promise<UploadResult> {
-    // Generate a key for the project file
     const key = `projects/${projectId}/files/${filename}`;
-    
+
     const result = await this.upload(key, body, options);
-    
-    // Create a database record for the project file
-    const fileSize = Buffer.isBuffer(body) 
-      ? body.length 
-      : body instanceof Uint8Array 
-      ? body.length 
-      : Buffer.from(body).length;
-    
+
+    const fileSize = Buffer.isBuffer(body)
+      ? body.length
+      : body instanceof Uint8Array
+        ? body.length
+        : typeof body === 'string'
+          ? Buffer.from(body).length
+          : 0;
+
     await this.prisma.projectFile.create({
       data: {
         projectId,
@@ -95,14 +95,17 @@ export class StorageService implements IStorageService {
         fileSize: BigInt(fileSize),
       },
     });
-    
+
     return result;
   }
 
   /**
    * Download a file
    */
-  async download(key: string, options?: DownloadOptions): Promise<{
+  async download(
+    key: string,
+    options?: DownloadOptions
+  ): Promise<{
     body: Buffer;
     metadata: FileMetadata;
   }> {
@@ -132,7 +135,7 @@ export class StorageService implements IStorageService {
   async deleteUserFiles(userId: string): Promise<void> {
     const prefix = `users/${userId}/`;
     const files = await this.list({ prefix });
-    
+
     if (files.files.length > 0) {
       const keys = files.files.map(file => file.filename);
       await this.deleteMany(keys);
@@ -145,12 +148,11 @@ export class StorageService implements IStorageService {
   async deleteProjectFiles(projectId: string): Promise<void> {
     const prefix = `projects/${projectId}/`;
     const files = await this.list({ prefix });
-    
+
     if (files.files.length > 0) {
       const keys = files.files.map(file => file.filename);
       await this.deleteMany(keys);
-      
-      // Delete database records
+
       await this.prisma.projectFile.deleteMany({
         where: { projectId },
       });
@@ -188,10 +190,8 @@ export class StorageService implements IStorageService {
    * Get public URL for a file (if applicable)
    */
   async getPublicUrl(key: string): Promise<string | undefined> {
-    // For now, return signed URL for 'get' operation
-    // This can be customized based on storage provider and ACL settings
     try {
-      return await this.getSignedUrl(key, 'get', 86400); // 24 hours
+      return await this.getSignedUrl(key, 'get', 86400);
     } catch {
       return undefined;
     }
@@ -234,10 +234,12 @@ export class StorageService implements IStorageService {
   }> {
     const prefix = `users/${userId}/`;
     const files = await this.list({ prefix });
-    
+
     const totalSize = files.files.reduce((sum, file) => sum + file.size, 0);
-    const fileCount = files.files.filter(file => file.contentType !== 'application/x-directory').length;
-    
+    const fileCount = files.files.filter(
+      file => file.contentType !== 'application/x-directory'
+    ).length;
+
     return { totalSize, fileCount };
   }
 
@@ -252,13 +254,15 @@ export class StorageService implements IStorageService {
       where: { projectId },
       select: { fileSize: true },
     });
-    
-    const totalSize = files.reduce((sum, file) => sum + Number(file.fileSize), 0);
+
+    const totalSize = files.reduce(
+      (sum, file) => sum + Number(file.fileSize),
+      0
+    );
     const fileCount = files.length;
-    
+
     return { totalSize, fileCount };
   }
 }
 
-// Export singleton instance
 export const storageService = new StorageService();

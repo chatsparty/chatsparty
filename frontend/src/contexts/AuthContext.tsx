@@ -31,8 +31,11 @@ interface AuthContextType {
     lastName?: string
   ) => Promise<void>;
   loginWithGoogle: (token: string) => Promise<void>;
+  loginWithOAuth: (provider: string) => Promise<void>;
+  handleOAuthCallback: (provider: string, code: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  authConfig: AuthConfig | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,7 +106,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Set default auth config instead of fetching from backend
         setAuthConfig({
           social_auth_only: false,
           google_enabled: false,
@@ -185,12 +187,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.setItem("refresh_token", refresh_token);
       setToken(access_token);
 
-      // The user object is already in the response, but we'll fetch from /me
-      // to keep the logic consistent and get the full user object.
       const userResponse = await axios.get("/auth/me");
       setUser(userResponse.data);
     } catch (error) {
       console.error("Google login failed:", error);
+      throw error;
+    }
+  };
+
+  const loginWithOAuth = async (provider: string) => {
+    try {
+      window.location.href = `${API_BASE_URL}/auth/${provider}`;
+    } catch (error) {
+      console.error(`${provider} OAuth login failed:`, error);
+      throw error;
+    }
+  };
+
+  const handleOAuthCallback = async (provider: string, code: string) => {
+    try {
+      const response = await axios.post(`/auth/${provider}/callback`, { code });
+
+      const { access_token, refresh_token } = response.data;
+
+      localStorage.setItem("access_token", access_token);
+      localStorage.setItem("refresh_token", refresh_token);
+      setToken(access_token);
+
+      const userResponse = await axios.get("/auth/me");
+      setUser(userResponse.data);
+    } catch (error) {
+      console.error(`${provider} OAuth callback failed:`, error);
       throw error;
     }
   };
@@ -210,8 +237,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         login,
         register,
         loginWithGoogle,
+        loginWithOAuth,
+        handleOAuthCallback,
         logout,
         loading,
+        authConfig,
       }}
     >
       {children}

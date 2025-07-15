@@ -1,5 +1,4 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
@@ -29,7 +28,6 @@ export const BrainstormTemplates: React.FC<BrainstormTemplatesProps> = ({
   templates,
   onStartSession,
 }) => {
-  const { t } = useTranslation();
 
   return (
     <div>

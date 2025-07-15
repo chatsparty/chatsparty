@@ -5,13 +5,13 @@ import {
   PROVIDER_CONFIGS,
   TestConnectionResponse,
 } from '../connection.types';
-import { IProvider } from './provider.interface';
+import { IProvider, BaseConnectionConfig } from './provider.interface';
 
-export class GoogleProvider implements IProvider {
+export class GoogleProvider implements IProvider<BaseConnectionConfig> {
   async testConnection(
-    apiKey: string | null,
-    _baseUrl?: string | null
+    config: BaseConnectionConfig
   ): Promise<TestConnectionResponse> {
+    const { apiKey } = config;
     if (!apiKey) {
       return {
         success: false,
@@ -43,11 +43,7 @@ export class GoogleProvider implements IProvider {
     return PROVIDER_CONFIGS.google.supportedModels;
   }
 
-  getConnectionConfig(config: {
-    apiKey: string | null;
-    baseUrl: string | null;
-    modelName: string;
-  }) {
+  getConnectionConfig(config: BaseConnectionConfig) {
     return {
       provider: 'google',
       apiKey: config.apiKey,

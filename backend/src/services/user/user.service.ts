@@ -1,5 +1,4 @@
 import { PrismaClient, AuthProviderType } from '@prisma/client';
-import { OAuth2Client } from 'google-auth-library';
 import { db } from '../../config/database';
 import { generateToken } from '../../middleware/auth';
 import { hashPassword, verifyPassword } from '../../utils/crypto';
@@ -18,15 +17,12 @@ import {
   UserQueryOptions,
   PaginationOptions,
 } from './user.types';
-import { config } from '../../config/env';
 
 export class UserService {
   private db: PrismaClient;
-  private googleClient: OAuth2Client;
 
   constructor(database?: PrismaClient) {
     this.db = database || db;
-    this.googleClient = new OAuth2Client(config.GOOGLE_CLIENT_ID);
   }
 
   /**

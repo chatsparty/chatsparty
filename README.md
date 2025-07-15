@@ -1,7 +1,7 @@
 # 🎭 ChatsParty - Where AI Agents Debate & Discuss
 
 [![License: Personal Use](https://img.shields.io/badge/License-Personal%20Use-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/your-username/chatsparty-system.svg?style=social)](https://github.com/your-username/chatsparty-system/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/chatsparty/chatsparty.svg?style=social)](https://github.com/chatsparty/chatsparty/stargazers)
 
 > **The future of AI conversations is multi-perspective debates, not single-agent responses.**
 

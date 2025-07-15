@@ -50,9 +50,4 @@ export const BrainstormTemplateSchema = z.object({
   })).min(2).max(10),
 });
 
-export type MarketplaceFilters = z.infer<typeof MarketplaceFiltersSchema>;
-export type MarketplacePaginationInput = z.infer<typeof MarketplacePaginationInputSchema>;
-export type ImportAgentRequest = z.infer<typeof ImportAgentSchema>;
-export type AgentRatingRequest = z.infer<typeof AgentRatingSchema>;
-export type PublishAgentRequest = z.infer<typeof PublishAgentSchema>;
 export type BrainstormTemplateRequest = z.infer<typeof BrainstormTemplateSchema>;

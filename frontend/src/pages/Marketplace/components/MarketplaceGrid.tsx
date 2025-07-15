@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
-import { Badge } from '../../../components/ui/badge';
 import { AgentCard } from './AgentCard';
 import { AgentListItem } from './AgentListItem';
 import { AgentModal } from './AgentModal';
@@ -40,8 +39,7 @@ interface MarketplaceGridProps {
   viewMode: 'grid' | 'list';
   pagination: MarketplacePagination;
   onPageChange: (page: number) => void;
-  onImportAgent: (agent: MarketplaceAgent) => Promise<void>;
-  onRateAgent: (agentId: string, rating: number, review?: string) => Promise<void>;
+  onImportAgent: (agentId: string, customizations?: any) => Promise<void>;
 }
 
 export const MarketplaceGrid: React.FC<MarketplaceGridProps> = ({
@@ -51,7 +49,6 @@ export const MarketplaceGrid: React.FC<MarketplaceGridProps> = ({
   pagination,
   onPageChange,
   onImportAgent,
-  onRateAgent,
 }) => {
   const { t } = useTranslation();
   const [selectedAgent, setSelectedAgent] = useState<MarketplaceAgent | null>(null);
@@ -68,12 +65,9 @@ export const MarketplaceGrid: React.FC<MarketplaceGridProps> = ({
   };
 
   const handleImport = async (agent: MarketplaceAgent) => {
-    await onImportAgent(agent);
+    await onImportAgent(agent.id);
   };
 
-  const handleRate = async (agentId: string, rating: number, review?: string) => {
-    await onRateAgent(agentId, rating, review);
-  };
 
   const renderPagination = () => {
     if (pagination.pages <= 1) return null;
@@ -183,7 +177,6 @@ export const MarketplaceGrid: React.FC<MarketplaceGridProps> = ({
               agent={agent}
               onClick={() => handleAgentClick(agent)}
               onImport={() => handleImport(agent)}
-              onRate={(rating, review) => handleRate(agent.id, rating, review)}
             />
           ))}
         </div>
@@ -198,7 +191,6 @@ export const MarketplaceGrid: React.FC<MarketplaceGridProps> = ({
               agent={agent}
               onClick={() => handleAgentClick(agent)}
               onImport={() => handleImport(agent)}
-              onRate={(rating, review) => handleRate(agent.id, rating, review)}
             />
           ))}
         </div>
@@ -213,8 +205,7 @@ export const MarketplaceGrid: React.FC<MarketplaceGridProps> = ({
           agent={selectedAgent}
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          onImport={handleImport}
-          onRate={handleRate}
+          onImport={() => handleImport(selectedAgent)}
         />
       )}
     </div>

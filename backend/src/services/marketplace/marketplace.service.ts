@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { 
-  MarketplaceFilters, 
-  MarketplacePaginationInput, 
-  ImportAgentRequest, 
+import {
+  MarketplaceFilters,
+  MarketplacePaginationInput,
+  ImportAgentRequest,
   AgentRatingRequest,
   PublishAgentRequest,
   MarketplaceAgent,
@@ -10,7 +10,7 @@ import {
   ImportAgentResponse,
   AgentRatingResponse,
   BrainstormTemplate,
-  UseCaseTemplate 
+  UseCaseTemplate,
 } from './marketplace.types';
 import { HttpError } from '../../utils/http-error';
 
@@ -24,7 +24,6 @@ export class MarketplaceService {
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 
-    // Build where clause
     const where: any = {
       isPublic: true,
       isTemplate: true,
@@ -69,7 +68,6 @@ export class MarketplaceService {
       ];
     }
 
-    // Build order by clause
     const orderBy: any = {};
     switch (filters.sortBy) {
       case 'popular':
@@ -123,7 +121,7 @@ export class MarketplaceService {
     ]);
 
     const marketplaceAgents: MarketplaceAgent[] = agents
-      .filter(agent => agent.user) // Filter out agents without user
+      .filter(agent => agent.user)
       .map(agent => ({
         id: agent.id,
         name: agent.name,
@@ -136,7 +134,10 @@ export class MarketplaceService {
         usageCount: agent.usageCount,
         createdAt: agent.createdAt,
         publishedAt: agent.publishedAt!,
-        user: agent.user,
+        user: {
+          id: agent.user!.id,
+          name: agent.user!.name || '',
+        },
         aiConfig: agent.aiConfig,
         chatStyle: agent.chatStyle,
       }));
@@ -205,7 +206,10 @@ export class MarketplaceService {
       usageCount: agent.usageCount,
       createdAt: agent.createdAt,
       publishedAt: agent.publishedAt!,
-      user: agent.user,
+      user: {
+        id: agent.user!.id,
+        name: agent.user!.name || '',
+      },
       aiConfig: agent.aiConfig,
       chatStyle: agent.chatStyle,
     };
@@ -215,8 +219,11 @@ export class MarketplaceService {
     userId: string,
     request: ImportAgentRequest
   ): Promise<ImportAgentResponse> {
-    console.log('🔍 Import agent request:', { userId, agentId: request.agentId });
-    
+    console.log('🔍 Import agent request:', {
+      userId,
+      agentId: request.agentId,
+    });
+
     const templateAgent = await this.prisma.agent.findFirst({
       where: {
         id: request.agentId,
@@ -229,9 +236,11 @@ export class MarketplaceService {
       throw new HttpError('Template agent not found', 404);
     }
 
-    console.log('🔍 Template agent found:', { id: templateAgent.id, name: templateAgent.name });
+    console.log('🔍 Template agent found:', {
+      id: templateAgent.id,
+      name: templateAgent.name,
+    });
 
-    // Check if user already has this agent
     const existingImport = await this.prisma.agent.findFirst({
       where: {
         userId,
@@ -239,13 +248,15 @@ export class MarketplaceService {
       },
     });
 
-    console.log('🔍 Existing import check:', { found: !!existingImport, existingId: existingImport?.id });
+    console.log('🔍 Existing import check:', {
+      found: !!existingImport,
+      existingId: existingImport?.id,
+    });
 
     if (existingImport) {
       throw new HttpError('Agent already imported', 409);
     }
 
-    // Get user's default connection or system default
     const userConnection = await this.prisma.connection.findFirst({
       where: {
         userId,
@@ -254,17 +265,14 @@ export class MarketplaceService {
       },
     });
 
-    // Use default connection ID if no user connection found
     const connectionId = userConnection?.id || 'default';
-    
-    // Create default AI config if none provided
+
     const defaultAiConfig = {
       provider: 'openai',
       modelName: 'gpt-3.5-turbo',
       connectionId: connectionId,
     };
 
-    // Create imported agent
     console.log('🔍 Creating imported agent with data:', {
       name: request.customizations?.name || templateAgent.name,
       userId,
@@ -278,7 +286,9 @@ export class MarketplaceService {
       data: {
         name: request.customizations?.name || templateAgent.name,
         prompt: templateAgent.prompt,
-        characteristics: request.customizations?.characteristics || templateAgent.characteristics,
+        characteristics:
+          request.customizations?.characteristics ||
+          templateAgent.characteristics,
         connectionId: connectionId,
         aiConfig: request.customizations?.aiConfig || defaultAiConfig,
         chatStyle: request.customizations?.chatStyle || templateAgent.chatStyle,
@@ -295,9 +305,12 @@ export class MarketplaceService {
       },
     });
 
-    console.log('🔍 Imported agent created:', { id: importedAgent.id, name: importedAgent.name, userId: importedAgent.userId });
+    console.log('🔍 Imported agent created:', {
+      id: importedAgent.id,
+      name: importedAgent.name,
+      userId: importedAgent.userId,
+    });
 
-    // Update usage count and create usage record
     await Promise.all([
       this.prisma.agent.update({
         where: { id: request.agentId },
@@ -347,12 +360,10 @@ export class MarketplaceService {
       throw new HttpError('Agent not found', 404);
     }
 
-    // Check if user is rating their own agent
     if (agent.userId === userId) {
       throw new HttpError('Cannot rate your own agent', 400);
     }
 
-    // Upsert rating
     const rating = await this.prisma.agentRating.upsert({
       where: {
         agentId_userId: {
@@ -372,14 +383,14 @@ export class MarketplaceService {
       },
     });
 
-    // Recalculate agent rating
     const ratings = await this.prisma.agentRating.findMany({
       where: { agentId: request.agentId },
       select: { rating: true },
     });
 
-    const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
-    
+    const avgRating =
+      ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+
     await this.prisma.agent.update({
       where: { id: request.agentId },
       data: {
@@ -442,20 +453,20 @@ export class MarketplaceService {
   }
 
   async getBrainstormTemplates(): Promise<BrainstormTemplate[]> {
-    // This would be implemented with predefined templates
-    // For now, return hardcoded templates
     return [
       {
         id: 'brainstorm-business-strategy',
         name: 'Business Strategy Session',
-        description: 'Expert agents help you develop comprehensive business strategies',
+        description:
+          'Expert agents help you develop comprehensive business strategies',
         category: 'business',
         duration: '45-60 minutes',
         agents: [
           {
             role: 'Strategic Facilitator',
             name: 'Strategy Guide',
-            description: 'Guides strategic thinking and facilitates discussions',
+            description:
+              'Guides strategic thinking and facilitates discussions',
             agentId: 'template-strategy-facilitator',
           },
           {
@@ -473,7 +484,8 @@ export class MarketplaceService {
           {
             role: 'Innovation Catalyst',
             name: 'Innovation Spark',
-            description: 'Generates creative solutions and innovative approaches',
+            description:
+              'Generates creative solutions and innovative approaches',
             agentId: 'template-innovation-catalyst',
           },
         ],
@@ -483,7 +495,8 @@ export class MarketplaceService {
       {
         id: 'brainstorm-creative-campaign',
         name: 'Creative Campaign Brainstorm',
-        description: 'Design compelling campaigns with creative and strategic input',
+        description:
+          'Design compelling campaigns with creative and strategic input',
         category: 'creative',
         duration: '30-45 minutes',
         agents: [
@@ -523,11 +536,18 @@ export class MarketplaceService {
       {
         id: 'product-planning',
         name: 'Product Feature Planning',
-        description: 'Plan and prioritize product features with expert guidance',
+        description:
+          'Plan and prioritize product features with expert guidance',
         category: 'product',
-        agents: ['template-ux-designer', 'template-technical-lead', 'template-customer-advocate', 'template-data-analyst'],
+        agents: [
+          'template-ux-designer',
+          'template-technical-lead',
+          'template-customer-advocate',
+          'template-data-analyst',
+        ],
         scenario: 'What features should we add to improve user engagement?',
-        expectedOutcome: 'Prioritized feature roadmap with technical feasibility',
+        expectedOutcome:
+          'Prioritized feature roadmap with technical feasibility',
         estimatedDuration: '60-90 minutes',
       },
       {
@@ -535,8 +555,14 @@ export class MarketplaceService {
         name: 'Problem Solving Session',
         description: 'Systematic approach to complex problem resolution',
         category: 'analysis',
-        agents: ['template-systems-thinker', 'template-detail-detective', 'template-creative-problem-solver', 'template-solution-validator'],
-        scenario: 'Our customer retention is declining. What\'s the root cause and solution?',
+        agents: [
+          'template-systems-thinker',
+          'template-detail-detective',
+          'template-creative-problem-solver',
+          'template-solution-validator',
+        ],
+        scenario:
+          "Our customer retention is declining. What's the root cause and solution?",
         expectedOutcome: 'Problem diagnosis and actionable solution plan',
         estimatedDuration: '45-60 minutes',
       },

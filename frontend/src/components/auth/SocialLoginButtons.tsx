@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "../ui/button";
-import { FaGoogle, FaGithub } from "react-icons/fa";
+import { FaGoogle } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import { useGoogleLogin } from "@react-oauth/google";
 

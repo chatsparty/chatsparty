@@ -1,8 +1,7 @@
-import { Agent, Message, ConversationMessage } from '../ai/types';
+import { ConversationMessage } from '../ai/types';
 
 export type { ConversationMessage };
 
-// Chat request types
 export interface ChatRequest {
   message: string;
   agentId?: string;
@@ -18,7 +17,6 @@ export interface MultiAgentChatRequest {
   stream?: boolean;
 }
 
-// Chat response types
 export interface ChatResponse {
   message: string;
   agentId?: string;
@@ -35,8 +33,6 @@ export interface MultiAgentChatResponse {
   conversationComplete: boolean;
 }
 
-
-// Streaming types
 export interface StreamEvent {
   type: 'message' | 'error' | 'complete' | 'credit_update';
   data: any;
@@ -77,14 +73,12 @@ export interface CreditUpdateStreamEvent extends StreamEvent {
   };
 }
 
-// Service response types
 export interface ServiceResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// Credit tracking
 export interface CreditUsage {
   modelId: string;
   provider: string;
@@ -93,7 +87,6 @@ export interface CreditUsage {
   totalCredits: number;
 }
 
-// Chat session
 export interface ChatSession {
   sessionId: string;
   userId: string;
