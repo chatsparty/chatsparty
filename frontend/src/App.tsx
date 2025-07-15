@@ -19,14 +19,12 @@ import Avatar from "boring-avatars";
 import { useTranslation } from "react-i18next";
 import { getDirection } from "./i18n/config";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
-import {
-  AgentManagerPage,
-  LandingPage,
-  MultiAgentChatPage,
-} from "./pages";
+import { AgentManagerPage, LandingPage, MultiAgentChatPage } from "./pages";
 import { ConnectionManagerPage } from "./pages/ConnectionManager/ConnectionManagerPage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
 import SharedConversationPage from "./pages/SharedConversation/SharedConversationPage";
+import { MarketplacePage } from "./pages/Marketplace/MarketplacePage";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const Layout = () => {
   const { user, logout } = useAuth();
@@ -95,6 +93,7 @@ const Layout = () => {
 
   const tabs = [
     { path: "/chat/agents", label: t("navigation.agents") },
+    { path: "/marketplace", label: t("navigation.marketplace") },
     { path: "/chat", label: t("navigation.chat") },
     { path: "/settings", label: t("navigation.settings") },
   ];
@@ -193,7 +192,9 @@ const Layout = () => {
                         <div className="border-t border-border mt-1 pt-1">
                           <div className="px-3 py-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-foreground">{t("common.theme")}</span>
+                              <span className="text-sm text-foreground">
+                                {t("common.theme")}
+                              </span>
                               <ThemeToggle />
                             </div>
                           </div>
@@ -212,12 +213,16 @@ const Layout = () => {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-auto">
           <Routes>
             <Route path="/chat/agents" element={<AgentManagerPage />} />
+            <Route path="/marketplace" element={<MarketplacePage />} />
             <Route path="/connections" element={<ConnectionManagerPage />} />
             <Route path="/chat" element={<MultiAgentChatPage />} />
-            <Route path="/chat/:conversationId" element={<MultiAgentChatPage />} />
+            <Route
+              path="/chat/:conversationId"
+              element={<MultiAgentChatPage />}
+            />
             <Route
               path="/settings"
               element={<Navigate to="/settings/general" replace />}
@@ -248,7 +253,6 @@ const MainApp = () => {
       </div>
     );
   }
-
 
   if (location.pathname.startsWith("/shared/conversation/")) {
     console.log(
@@ -282,12 +286,27 @@ const MainApp = () => {
 };
 
 function App() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  console.log("clientId", clientId);
+  if (!clientId) {
+    // If no client ID is provided, render the app without Google OAuth
+    return (
+      <Router>
+        <AuthProvider>
+          <MainApp />
+        </AuthProvider>
+      </Router>
+    );
+  }
+
   return (
-    <Router>
-      <AuthProvider>
-        <MainApp />
-      </AuthProvider>
-    </Router>
+    <GoogleOAuthProvider clientId={clientId}>
+      <Router>
+        <AuthProvider>
+          <MainApp />
+        </AuthProvider>
+      </Router>
+    </GoogleOAuthProvider>
   );
 }
 

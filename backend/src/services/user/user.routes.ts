@@ -277,7 +277,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
     {
       preHandler: [authenticate],
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       return reply.status(403).send({
         error: 'Forbidden',
         message: 'Admin access required',
@@ -285,7 +285,6 @@ const userRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Get user's agents
   fastify.get<{ Params: { id: string } }>(
     '/:id/agents',
     {

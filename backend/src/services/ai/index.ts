@@ -2,7 +2,7 @@
 export * from './types';
 export * from './mastra.config';
 export * from './agent.manager';
-export * from './conversation.workflow';
+export * from './multi-agent.workflow';
 
 // Re-export key functions and instances for convenience
 export { agentManager } from './agent.manager';
@@ -16,4 +16,4 @@ export {
 export { 
   createMultiAgentWorkflow,
   runMultiAgentConversation 
-} from './conversation.workflow';
+} from './multi-agent.workflow';

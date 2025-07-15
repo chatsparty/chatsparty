@@ -15,7 +15,7 @@ const anthropic = config.ANTHROPIC_API_KEY
     })
   : null;
 
-export const mastra = new Mastra({});
+export const mastra: Mastra = new Mastra({});
 
 export const modelProviders = {
   openai,

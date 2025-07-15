@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import auth from '@fastify/auth';
@@ -6,8 +6,10 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { config } from './config/env';
 import { connectDatabase, disconnectDatabase } from './config/database';
-import { errorHandler } from './middleware/error';
+import { HttpError } from './utils/http-error';
+import { ZodError } from 'zod';
 import { authenticate } from './middleware/auth';
+import { applyAuthMiddleware } from './middleware/auth-middleware';
 import userRoutes from './services/user/user.routes';
 import authRoutes from './services/user/auth.routes';
 import { agentRoutes } from './services/agents/agent.routes';
@@ -15,7 +17,9 @@ import connectionRoutes from './services/connections/connection.routes';
 import creditRoutes from './services/credit/credit.routes';
 import { storageRoutes } from './services/storage/storage.routes';
 import { chatRoutes } from './services/chat/chat.routes';
-import defaultConnectionRoutes from './services/connections/default-connection.routes';
+import { conversationRoutes } from './services/conversation/conversation.routes';
+import systemDefaultConnectionRoutes from './services/connections/system-default-connection.routes';
+import { marketplaceRoutes } from './services/marketplace/marketplace.routes';
 import { websocketService } from './services/websocket/websocket.service';
 import { setupChatHandlers } from './services/websocket/chat.handlers';
 
@@ -59,6 +63,7 @@ async function registerPlugins() {
           },
         },
       },
+      security: [{ bearerAuth: [] }], // Apply security globally
     },
   });
 
@@ -78,9 +83,6 @@ async function registerPlugins() {
     },
     staticCSP: true,
     transformStaticCSP: header => header,
-    transformSpecification: (swaggerObject, _request, _reply) => {
-      return swaggerObject;
-    },
     transformSpecificationClone: true,
   });
 
@@ -102,6 +104,22 @@ async function registerPlugins() {
   await app.register(auth);
   app.decorate('verifyJWT', authenticate);
 }
+
+// Encapsulate all authenticated routes in a single plugin
+const apiRoutes = async (fastify: FastifyInstance) => {
+  // Apply the authentication middleware to all routes in this plugin
+  await applyAuthMiddleware(fastify, { requireAuth: true });
+
+  await fastify.register(userRoutes, { prefix: '/users' });
+  await fastify.register(agentRoutes);
+  await fastify.register(connectionRoutes, { prefix: '/connections' });
+  await fastify.register(systemDefaultConnectionRoutes);
+  await fastify.register(creditRoutes, { prefix: '/credits' });
+  await fastify.register(storageRoutes);
+  await fastify.register(chatRoutes);
+  await fastify.register(conversationRoutes);
+  await fastify.register(marketplaceRoutes);
+};
 
 async function registerRoutes() {
   app.get(
@@ -126,18 +144,9 @@ async function registerRoutes() {
     }
   );
 
-  await app.register(userRoutes, { prefix: '/api/users' });
-  await app.register(authRoutes, { prefix: '/auth' });
-  await app.register(agentRoutes, { prefix: '/api' });
-  await app.register(connectionRoutes, { prefix: '/api/connections' });
-  await app.register(defaultConnectionRoutes, { prefix: '/api' });
-  await app.register(creditRoutes, { prefix: '/api/credits' });
-  await app.register(storageRoutes, { prefix: '/api' });
-  await app.register(chatRoutes, { prefix: '/chat' });
-
-  await app.register(connectionRoutes, { prefix: '/connections' });
-  await app.register(defaultConnectionRoutes, { prefix: '' });
-  await app.register(agentRoutes, { prefix: '/chat' });
+  // Register all routes under the /api prefix
+  await app.register(authRoutes, { prefix: '/api/auth' });
+  await app.register(apiRoutes, { prefix: '/api' });
 }
 
 async function start() {
@@ -147,7 +156,29 @@ async function start() {
     await registerPlugins();
     await registerRoutes();
 
-    app.setErrorHandler(errorHandler);
+    app.setErrorHandler((error, request, reply) => {
+      if (error instanceof ZodError) {
+        reply.status(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: error.flatten(),
+        });
+      } else if (error instanceof HttpError) {
+        request.log.warn(error);
+        reply.status(error.statusCode).send({
+          statusCode: error.statusCode,
+          error: error.name,
+          message: error.message,
+        });
+      } else {
+        request.log.error(error);
+        reply.status(500).send({
+          statusCode: 500,
+          error: 'Internal Server Error',
+          message: 'An unexpected error occurred',
+        });
+      }
+    });
 
     const port = config.PORT || 4000;
     const host = config.HOST || '0.0.0.0';

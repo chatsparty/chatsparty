@@ -1,17 +1,20 @@
-import { 
-  Connection, 
-  PublicConnection, 
+import {
+  Connection,
+  PublicConnection,
   ServiceResponse,
-  AIProvider
+  AIProvider,
 } from './connection.types';
-import { getDefaultConnectionConfig, DefaultConnectionConfig } from '../../config/default-connection.config';
-import { VertexAIProvider } from '../ai/providers/vertex-ai.provider';
+import {
+  getDefaultConnectionConfig,
+  DefaultConnectionConfig,
+} from '../../config/default-connection.config';
+import { ProviderFactory } from './providers/provider.factory';
 
 export interface DefaultConnection extends Omit<Connection, 'userId'> {
   isSystemDefault: true;
 }
 
-export class DefaultConnectionService {
+export class SystemDefaultConnectionService {
   private defaultConfig: DefaultConnectionConfig | null;
 
   constructor() {
@@ -21,7 +24,9 @@ export class DefaultConnectionService {
   /**
    * Get the system default connection if enabled
    */
-  async getSystemDefaultConnection(): Promise<ServiceResponse<DefaultConnection | null>> {
+  async getSystemDefaultConnection(): Promise<
+    ServiceResponse<DefaultConnection | null>
+  > {
     try {
       if (!this.defaultConfig || !this.defaultConfig.enabled) {
         return {
@@ -37,7 +42,7 @@ export class DefaultConnectionService {
         provider: this.defaultConfig.provider,
         modelName: this.defaultConfig.modelName,
         apiKey: this.defaultConfig.apiKey || null,
-        apiKeyEncrypted: false, // System defaults are not encrypted
+        apiKeyEncrypted: false,
         baseUrl: this.defaultConfig.baseUrl || null,
         isActive: true,
         isDefault: true,
@@ -67,9 +72,11 @@ export class DefaultConnectionService {
     provider: AIProvider
   ): Promise<ServiceResponse<DefaultConnection | null>> {
     try {
-      if (!this.defaultConfig || 
-          !this.defaultConfig.enabled || 
-          this.defaultConfig.provider !== provider) {
+      if (
+        !this.defaultConfig ||
+        !this.defaultConfig.enabled ||
+        this.defaultConfig.provider !== provider
+      ) {
         return {
           success: true,
           data: null,
@@ -98,23 +105,27 @@ export class DefaultConnectionService {
         };
       }
 
-      // Test based on provider
-      switch (this.defaultConfig.provider) {
-        case 'vertex_ai':
-          return await this.testVertexAIDefaultConnection();
-        
-        // Add other providers as needed
-        default:
-          return {
-            success: false,
-            error: `Default connection testing not implemented for provider: ${this.defaultConfig.provider}`,
-          };
-      }
+      const provider = ProviderFactory.createProvider(
+        this.defaultConfig.provider
+      );
+      const result = await provider.testConnection({
+        apiKey: this.defaultConfig.apiKey ?? null,
+        baseUrl: this.defaultConfig.baseUrl ?? null,
+        modelName: 'default'
+      });
+
+      return {
+        success: true,
+        data: result.success,
+      };
     } catch (error) {
       console.error('Error testing default connection:', error);
       return {
         success: false,
-        error: 'Failed to test default connection',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to test default connection',
       };
     }
   }
@@ -131,47 +142,19 @@ export class DefaultConnectionService {
         };
       }
 
-      switch (this.defaultConfig.provider) {
-        case 'vertex_ai':
-          return {
-            success: true,
-            data: {
-              provider: 'vertex_ai',
-              projectId: this.defaultConfig.projectId,
-              location: this.defaultConfig.location,
-              modelName: this.defaultConfig.modelName,
-              apiKey: this.defaultConfig.apiKey,
-            },
-          };
+      const provider = ProviderFactory.createProvider(
+        this.defaultConfig.provider
+      );
+      const config = provider.getConnectionConfig({
+        apiKey: this.defaultConfig.apiKey ?? null,
+        baseUrl: this.defaultConfig.baseUrl ?? null,
+        modelName: this.defaultConfig.modelName,
+      });
 
-        case 'openai':
-          return {
-            success: true,
-            data: {
-              provider: 'openai',
-              apiKey: this.defaultConfig.apiKey,
-              modelName: this.defaultConfig.modelName,
-              baseUrl: this.defaultConfig.baseUrl,
-            },
-          };
-
-        case 'anthropic':
-          return {
-            success: true,
-            data: {
-              provider: 'anthropic',
-              apiKey: this.defaultConfig.apiKey,
-              modelName: this.defaultConfig.modelName,
-              baseUrl: this.defaultConfig.baseUrl,
-            },
-          };
-
-        default:
-          return {
-            success: false,
-            error: `Configuration not implemented for provider: ${this.defaultConfig.provider}`,
-          };
-      }
+      return {
+        success: true,
+        data: config,
+      };
     } catch (error) {
       console.error('Error getting default connection config:', error);
       return {
@@ -184,7 +167,9 @@ export class DefaultConnectionService {
   /**
    * Convert default connection to public format
    */
-  toPublicDefaultConnection(connection: DefaultConnection): PublicConnection & { isSystemDefault: boolean } {
+  toPublicDefaultConnection(
+    connection: DefaultConnection
+  ): PublicConnection & { isSystemDefault: boolean } {
     return {
       id: connection.id,
       name: connection.name,
@@ -212,35 +197,5 @@ export class DefaultConnectionService {
    */
   getDefaultProvider(): AIProvider | null {
     return this.defaultConfig?.provider || null;
-  }
-
-  private async testVertexAIDefaultConnection(): Promise<ServiceResponse<boolean>> {
-    try {
-      if (!this.defaultConfig?.projectId || !this.defaultConfig?.location) {
-        return {
-          success: false,
-          error: 'Vertex AI configuration incomplete: missing projectId or location',
-        };
-      }
-
-      const vertexProvider = new VertexAIProvider({
-        projectId: this.defaultConfig.projectId,
-        location: this.defaultConfig.location,
-        modelName: this.defaultConfig.modelName,
-        apiKey: this.defaultConfig.apiKey,
-      });
-
-      const result = await vertexProvider.testConnection();
-      
-      return {
-        success: true,
-        data: result.success,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error testing Vertex AI',
-      };
-    }
   }
 }

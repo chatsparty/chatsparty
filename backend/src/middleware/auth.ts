@@ -16,27 +16,21 @@ declare module 'fastify' {
 
 export async function authenticate(
   request: FastifyRequest,
-  reply: FastifyReply
+  _reply: FastifyReply
 ) {
+  const authHeader = request.headers.authorization;
+
+  if (!authHeader) {
+    throw new Error('No authorization header provided');
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+
+  if (!token) {
+    throw new Error('No token provided');
+  }
+
   try {
-    const authHeader = request.headers.authorization;
-
-    if (!authHeader) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'No authorization header provided',
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-
-    if (!token) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'No token provided',
-      });
-    }
-
     const decoded = jwt.verify(token, config.JWT_SECRET) as JWTPayload;
 
     const user = await db.user.findUnique({
@@ -44,25 +38,22 @@ export async function authenticate(
     });
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not found',
-      });
+      throw new Error('User not found');
     }
 
     request.user = decoded;
-  } catch (_error) {
-    return reply.status(401).send({
-      error: 'Unauthorized',
-      message: 'Invalid token',
-    });
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new Error('Invalid token');
+    }
+    throw error;
   }
 }
 
 export function generateToken(payload: JWTPayload): string {
   return jwt.sign(payload, config.JWT_SECRET, {
-    expiresIn: config.JWT_EXPIRES_IN as string,
-  });
+    expiresIn: config.JWT_EXPIRES_IN,
+  } as jwt.SignOptions);
 }
 
 export async function optionalAuthenticate(

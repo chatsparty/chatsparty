@@ -25,16 +25,20 @@ export const DEFAULT_CONNECTION_ENV_VARS = {
 // Get default connection configuration from environment
 export function getDefaultConnectionConfig(): DefaultConnectionConfig | null {
   const enabled = process.env[DEFAULT_CONNECTION_ENV_VARS.ENABLED] === 'true';
-  
+
   if (!enabled) {
     return null;
   }
 
-  const provider = process.env[DEFAULT_CONNECTION_ENV_VARS.PROVIDER] as AIProvider;
+  const provider = process.env[
+    DEFAULT_CONNECTION_ENV_VARS.PROVIDER
+  ] as AIProvider;
   const modelName = process.env[DEFAULT_CONNECTION_ENV_VARS.MODEL];
 
   if (!provider || !modelName) {
-    console.warn('Default connection enabled but missing required configuration');
+    console.warn(
+      'Default connection enabled but missing required configuration'
+    );
     return null;
   }
 
@@ -50,7 +54,9 @@ export function getDefaultConnectionConfig(): DefaultConnectionConfig | null {
 }
 
 // Validate default connection configuration
-export function validateDefaultConnectionConfig(config: DefaultConnectionConfig): { valid: boolean; error?: string } {
+export function validateDefaultConnectionConfig(
+  config: DefaultConnectionConfig
+): { valid: boolean; error?: string } {
   if (!config.enabled) {
     return { valid: true };
   }
@@ -63,7 +69,10 @@ export function validateDefaultConnectionConfig(config: DefaultConnectionConfig)
   switch (config.provider) {
     case 'vertex_ai':
       if (!config.projectId || !config.location) {
-        return { valid: false, error: 'Vertex AI requires projectId and location' };
+        return {
+          valid: false,
+          error: 'Vertex AI requires projectId and location',
+        };
       }
       break;
     case 'openai':
@@ -71,7 +80,10 @@ export function validateDefaultConnectionConfig(config: DefaultConnectionConfig)
     case 'google':
     case 'groq':
       if (!config.apiKey) {
-        return { valid: false, error: `${config.provider} requires an API key` };
+        return {
+          valid: false,
+          error: `${config.provider} requires an API key`,
+        };
       }
       break;
     case 'ollama':

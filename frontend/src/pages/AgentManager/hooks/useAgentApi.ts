@@ -28,15 +28,18 @@ export const useAgentApi = () => {
 
   const fetchAgents = useCallback(async () => {
     try {
-      const response = await axios.get("/chat/agents");
-
+      const response = await axios.get("/agents");
       const responseData = response.data;
 
-      if (responseData.success && responseData.data?.agents) {
-        setAgents(responseData.data.agents);
+      console.log('🔍 Agents API response:', responseData);
+
+      // Backend returns { agents: AgentResponse[], pagination: {...} }
+      if (responseData && responseData.agents && Array.isArray(responseData.agents)) {
+        console.log('🔍 Setting agents:', responseData.agents);
+        setAgents(responseData.agents);
       } else {
-        const data = responseData?.data || responseData;
-        setAgents(Array.isArray(data) ? data : []);
+        console.warn('🔍 Unexpected response structure:', responseData);
+        setAgents([]);
       }
     } catch (error) {
       console.error("Failed to fetch agents:", error);
@@ -89,7 +92,7 @@ export const useAgentApi = () => {
           },
         };
 
-        await axios.post("/chat/agents", payload);
+        await axios.post("/agents", payload);
 
         trackAgentCreated({
           agent_name: formData.name,
@@ -166,7 +169,7 @@ export const useAgentApi = () => {
           },
         };
 
-        await axios.put(`/chat/agents/${agentId}`, payload);
+        await axios.put(`/agents/${agentId}`, payload);
         trackAgentUpdated(agentId, formData.name);
         showToast(t("agents.agentUpdated"), "success");
         await fetchAgents();
@@ -191,7 +194,7 @@ export const useAgentApi = () => {
     async (agent: Agent): Promise<boolean> => {
       setIsLoading(true);
       try {
-        await axios.delete(`/chat/agents/${agent.id}`);
+        await axios.delete(`/agents/${agent.id}`);
         trackAgentDeleted(agent.id, agent.name);
         showToast(t("agents.agentDeleted"), "success");
         await fetchAgents();

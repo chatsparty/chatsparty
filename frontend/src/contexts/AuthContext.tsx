@@ -23,7 +23,6 @@ interface AuthConfig {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  authConfig: AuthConfig | null;
   login: (email: string, password: string) => Promise<void>;
   register: (
     email: string,
@@ -31,18 +30,17 @@ interface AuthContextType {
     firstName?: string,
     lastName?: string
   ) => Promise<void>;
-  loginWithOAuth: (provider: "google" | "github") => Promise<void>;
-  handleOAuthCallback: (
-    provider: "google" | "github",
-    code: string,
-    state: string
-  ) => Promise<void>;
+  loginWithGoogle: (token: string) => Promise<void>;
+  loginWithOAuth: (provider: string) => Promise<void>;
+  handleOAuthCallback: (provider: string, code: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  authConfig: AuthConfig | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+console.log("API requests are being sent to:", API_BASE_URL);
 axios.defaults.baseURL = API_BASE_URL;
 
 const authAxios = axios.create({
@@ -108,7 +106,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Set default auth config instead of fetching from backend
         setAuthConfig({
           social_auth_only: false,
           google_enabled: false,
@@ -180,43 +177,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  const loginWithOAuth = async (provider: "google" | "github") => {
+  const loginWithGoogle = async (googleToken: string) => {
     try {
-      const response = await axios.post("/auth/oauth/init", {
-        provider,
-      });
-
-      const { auth_url, state } = response.data;
-
-      sessionStorage.setItem("oauth_state", state);
-
-      window.location.href = auth_url;
-    } catch (error) {
-      console.error("OAuth init failed:", error);
-      throw error;
-    }
-  };
-
-  const handleOAuthCallback = async (
-    provider: "google" | "github",
-    code: string,
-    state: string
-  ) => {
-    try {
-      const storedState = sessionStorage.getItem("oauth_state");
-      
-      if (!storedState || storedState !== state) {
-        const existingToken = localStorage.getItem("access_token");
-        if (!existingToken) {
-          throw new Error("Invalid OAuth state");
-        }
-        console.warn("OAuth state mismatch but user already authenticated");
-      }
-
-      const response = await authAxios.post(`/auth/oauth/callback/${provider}`, {
-        code,
-        state,
-      });
+      const response = await axios.post("/auth/google", { token: googleToken });
 
       const { access_token, refresh_token } = response.data;
 
@@ -224,22 +187,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.setItem("refresh_token", refresh_token);
       setToken(access_token);
 
-      sessionStorage.removeItem("oauth_state");
-
-      const userResponse = await axios.get("/auth/me", {
-        headers: {
-          Authorization: `Bearer ${access_token}`
-        }
-      });
+      const userResponse = await axios.get("/auth/me");
       setUser(userResponse.data);
-    } catch (error: any) {
-      console.error("OAuth callback failed:", error);
-      console.error("Error details:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      sessionStorage.removeItem("oauth_state");
+    } catch (error) {
+      console.error("Google login failed:", error);
+      throw error;
+    }
+  };
+
+  const loginWithOAuth = async (provider: string) => {
+    try {
+      window.location.href = `${API_BASE_URL}/auth/${provider}`;
+    } catch (error) {
+      console.error(`${provider} OAuth login failed:`, error);
+      throw error;
+    }
+  };
+
+  const handleOAuthCallback = async (provider: string, code: string) => {
+    try {
+      const response = await axios.post(`/auth/${provider}/callback`, { code });
+
+      const { access_token, refresh_token } = response.data;
+
+      localStorage.setItem("access_token", access_token);
+      localStorage.setItem("refresh_token", refresh_token);
+      setToken(access_token);
+
+      const userResponse = await axios.get("/auth/me");
+      setUser(userResponse.data);
+    } catch (error) {
+      console.error(`${provider} OAuth callback failed:`, error);
       throw error;
     }
   };
@@ -247,24 +225,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
-    sessionStorage.removeItem("oauth_state");
-    setToken(null);
     setUser(null);
+    setToken(null);
   };
 
-  const value = {
-    user,
-    token,
-    authConfig,
-    login,
-    register,
-    loginWithOAuth,
-    handleOAuthCallback,
-    logout,
-    loading,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        register,
+        loginWithGoogle,
+        loginWithOAuth,
+        handleOAuthCallback,
+        logout,
+        loading,
+        authConfig,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {

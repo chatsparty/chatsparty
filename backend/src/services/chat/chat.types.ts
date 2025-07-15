@@ -1,6 +1,7 @@
-import { Agent, Message, ConversationMessage } from '../ai/types';
+import { ConversationMessage } from '../ai/types';
 
-// Chat request types
+export type { ConversationMessage };
+
 export interface ChatRequest {
   message: string;
   agentId?: string;
@@ -16,7 +17,6 @@ export interface MultiAgentChatRequest {
   stream?: boolean;
 }
 
-// Chat response types
 export interface ChatResponse {
   message: string;
   agentId?: string;
@@ -33,34 +33,6 @@ export interface MultiAgentChatResponse {
   conversationComplete: boolean;
 }
 
-// Conversation types
-export interface Conversation {
-  id: string;
-  userId: string;
-  title: string;
-  agentIds: string[];
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-  metadata?: Record<string, any>;
-}
-
-export interface ConversationFilters {
-  userId: string;
-  agentId?: string;
-  startDate?: Date;
-  endDate?: Date;
-  search?: string;
-}
-
-export interface ConversationListResponse {
-  conversations: Conversation[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-// Streaming types
 export interface StreamEvent {
   type: 'message' | 'error' | 'complete' | 'credit_update';
   data: any;
@@ -101,14 +73,12 @@ export interface CreditUpdateStreamEvent extends StreamEvent {
   };
 }
 
-// Service response types
 export interface ServiceResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// Credit tracking
 export interface CreditUsage {
   modelId: string;
   provider: string;
@@ -117,14 +87,8 @@ export interface CreditUsage {
   totalCredits: number;
 }
 
-// Chat session
 export interface ChatSession {
-  conversationId: string;
+  sessionId: string;
   userId: string;
-  agents: Agent[];
-  messages: Message[];
-  totalCreditsUsed: number;
-  isActive: boolean;
-  startedAt: Date;
-  lastActivityAt: Date;
+  startTime: Date;
 }

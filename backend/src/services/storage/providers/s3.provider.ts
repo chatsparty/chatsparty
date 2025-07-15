@@ -39,7 +39,7 @@ export class S3StorageProvider implements IStorageProvider {
       },
       region: config.region,
       endpoint: config.endpoint,
-      forcePathStyle: !!config.endpoint, // Use path-style for custom endpoints (like R2)
+      forcePathStyle: !!config.endpoint,
     });
     this.bucket = config.bucket;
   }
@@ -60,15 +60,17 @@ export class S3StorageProvider implements IStorageProvider {
       ContentDisposition: options?.contentDisposition,
     };
 
-    const _response = await this.client.send(new PutObjectCommand(putObjectParams));
+    await this.client.send(new PutObjectCommand(putObjectParams));
 
-    // Get the uploaded file metadata
     const metadata = await this.getMetadata(key);
 
     return metadata;
   }
 
-  async download(key: string, options?: DownloadOptions): Promise<{
+  async download(
+    key: string,
+    options?: DownloadOptions
+  ): Promise<{
     body: Buffer;
     metadata: FileMetadata;
   }> {
@@ -79,25 +81,25 @@ export class S3StorageProvider implements IStorageProvider {
 
     if (options?.range) {
       const { start, end } = options.range;
-      getObjectParams.Range = end !== undefined 
-        ? `bytes=${start}-${end}`
-        : `bytes=${start}-`;
+      getObjectParams.Range =
+        end !== undefined ? `bytes=${start}-${end}` : `bytes=${start}-`;
     }
 
-    const response = await this.client.send(new GetObjectCommand(getObjectParams));
+    const response = await this.client.send(
+      new GetObjectCommand(getObjectParams)
+    );
 
     if (!response.Body) {
       throw new Error('No body returned from S3');
     }
 
-    // Convert stream to buffer
     const chunks: Uint8Array[] = [];
     const stream = response.Body as Readable;
-    
+
     for await (const chunk of stream) {
       chunks.push(chunk);
     }
-    
+
     const body = Buffer.concat(chunks);
 
     const metadata: FileMetadata = {
@@ -142,12 +144,11 @@ export class S3StorageProvider implements IStorageProvider {
   async deleteMany(keys: string[]): Promise<void> {
     if (keys.length === 0) return;
 
-    // S3 allows batch deletion of up to 1000 objects
     const batchSize = 1000;
-    
+
     for (let i = 0; i < keys.length; i += batchSize) {
       const batch = keys.slice(i, i + batchSize);
-      
+
       await this.client.send(
         new DeleteObjectsCommand({
           Bucket: this.bucket,
@@ -164,7 +165,10 @@ export class S3StorageProvider implements IStorageProvider {
       await this.getMetadata(key);
       return true;
     } catch (error: any) {
-      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+      if (
+        error.name === 'NotFound' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
         return false;
       }
       throw error;
@@ -216,9 +220,10 @@ export class S3StorageProvider implements IStorageProvider {
     operation: 'get' | 'put',
     expiresIn: number = 3600
   ): Promise<string> {
-    const command = operation === 'get'
-      ? new GetObjectCommand({ Bucket: this.bucket, Key: key })
-      : new PutObjectCommand({ Bucket: this.bucket, Key: key });
+    const command =
+      operation === 'get'
+        ? new GetObjectCommand({ Bucket: this.bucket, Key: key })
+        : new PutObjectCommand({ Bucket: this.bucket, Key: key });
 
     return await getSignedUrl(this.client, command, { expiresIn });
   }

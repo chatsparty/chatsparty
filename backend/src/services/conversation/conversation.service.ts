@@ -5,8 +5,8 @@ import {
   Conversation,
   ConversationFilters,
   ConversationListResponse,
-  ServiceResponse,
-} from './chat.types';
+} from './conversation.types';
+import { ServiceResponse } from '../../types/service.types';
 import { Message } from '../ai/types';
 
 export class ConversationService {
@@ -28,14 +28,13 @@ export class ConversationService {
     try {
       const conversationId = uuidv4();
       
-      // Create conversation in database
       const conversation = await this.db.conversation.create({
         data: {
           id: conversationId,
           userId,
           title,
           agentIds,
-          participants: [userId, ...agentIds], // Include participants as required by schema
+          participants: [userId, ...agentIds],
           messages: [],
           metadata: metadata || {},
         },
@@ -188,7 +187,6 @@ export class ConversationService {
     message: Message
   ): Promise<ServiceResponse<void>> {
     try {
-      // First, get the current conversation to access existing messages
       const conversation = await this.db.conversation.findUnique({
         where: { id: conversationId },
         select: { messages: true }
@@ -201,13 +199,10 @@ export class ConversationService {
         };
       }
 
-      // Get existing messages array or initialize empty array
       const currentMessages = conversation.messages as Message[] || [];
       
-      // Append the new message
       const updatedMessages = [...currentMessages, message];
 
-      // Update the conversation with the new messages array
       await this.db.conversation.update({
         where: { id: conversationId },
         data: {
@@ -337,5 +332,4 @@ export class ConversationService {
   }
 }
 
-// Create singleton instance
 export const conversationService = new ConversationService();

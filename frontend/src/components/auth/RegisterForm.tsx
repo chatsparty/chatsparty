@@ -156,7 +156,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
           </Button>
         </form>
 
-        <SocialLoginButtons loading={loading} />
+        <SocialLoginButtons />
 
         <div className="text-center">
           <p className="text-muted-foreground">

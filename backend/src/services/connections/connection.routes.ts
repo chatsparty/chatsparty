@@ -1,5 +1,4 @@
 import { FastifyPluginAsync, FastifyRequest } from 'fastify';
-import { authenticate } from '../../middleware/auth';
 import { ConnectionService } from './connection.service';
 import {
   createConnectionSchema,
@@ -23,16 +22,13 @@ import {
   PaginationOptions,
 } from './connection.types';
 
-// Connection routes plugin
 const connectionRoutes: FastifyPluginAsync = async fastify => {
   const connectionService = new ConnectionService();
 
-  // Create a new connection
   fastify.post(
     '/',
     {
       schema: createConnectionSchema,
-      preHandler: [authenticate],
     },
     async (
       request: FastifyRequest<{ Body: CreateConnectionRequest }>,
@@ -54,12 +50,10 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // List connections
   fastify.get(
     '/',
     {
       schema: listConnectionsSchema,
-      preHandler: [authenticate],
     },
     async (
       request: FastifyRequest<{
@@ -79,16 +73,19 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
         });
       }
 
-      return reply.send(result.data);
+      if (result.data) {
+        return reply.send({
+          success: true,
+          data: result.data.connections,
+        });
+      }
     }
   );
 
-  // Get a specific connection
   fastify.get(
     '/:id',
     {
       schema: getConnectionSchema,
-      preHandler: [authenticate],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const result = await connectionService.getConnectionById(
@@ -107,12 +104,10 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Update a connection
   fastify.patch(
     '/:id',
     {
       schema: updateConnectionSchema,
-      preHandler: [authenticate],
     },
     async (
       request: FastifyRequest<{
@@ -138,12 +133,10 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Delete a connection
   fastify.delete(
     '/:id',
     {
       schema: deleteConnectionSchema,
-      preHandler: [authenticate],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const result = await connectionService.deleteConnection(
@@ -162,12 +155,10 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Test a connection
   fastify.post(
     '/test',
     {
       schema: testConnectionSchema,
-      preHandler: [authenticate],
     },
     async (request: FastifyRequest<{ Body: TestConnectionRequest }>, reply) => {
       const result = await connectionService.testConnection(request.body);
@@ -183,12 +174,10 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Set default connection
   fastify.post(
     '/default',
     {
       schema: setDefaultConnectionSchema,
-      preHandler: [authenticate],
     },
     async (
       request: FastifyRequest<{ Body: { connectionId: string } }>,
@@ -210,12 +199,10 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Get default connection for a provider
   fastify.get(
     '/default/:provider',
     {
       schema: getDefaultConnectionSchema,
-      preHandler: [authenticate],
     },
     async (
       request: FastifyRequest<{ Params: { provider: string } }>,
@@ -237,7 +224,6 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Get provider information
   fastify.get(
     '/providers/:provider',
     {
@@ -255,7 +241,6 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Get available providers
   fastify.get(
     '/providers',
     {
@@ -277,7 +262,6 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // Get models for a provider
   fastify.get(
     '/providers/:provider/models',
     {

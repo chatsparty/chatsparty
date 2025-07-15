@@ -1,40 +1,16 @@
 import { Agent } from '@prisma/client';
 import { z } from 'zod';
-import { 
-  ModelConfigurationSchema, 
-  ChatStyleSchema,
-  ModelConfiguration,
-  ChatStyle
-} from '../ai/types';
-
-// Agent creation input
-export const CreateAgentInputSchema = z.object({
-  name: z.string().min(1).max(100),
-  prompt: z.string().min(1).max(5000),
-  characteristics: z.string().min(1).max(2000),
-  connectionId: z.string().cuid(),
-  aiConfig: ModelConfigurationSchema,
-  chatStyle: ChatStyleSchema,
-});
+import {
+  CreateAgentInputSchema,
+  UpdateAgentInputSchema,
+} from './agent.schemas';
+import { ModelConfiguration, ChatStyle } from '../ai/types';
 
 export type CreateAgentInput = z.infer<typeof CreateAgentInputSchema>;
-
-// Agent update input
-export const UpdateAgentInputSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  prompt: z.string().min(1).max(5000).optional(),
-  characteristics: z.string().min(1).max(2000).optional(),
-  connectionId: z.string().cuid().optional(),
-  aiConfig: ModelConfigurationSchema.optional(),
-  chatStyle: ChatStyleSchema.optional(),
-});
-
 export type UpdateAgentInput = z.infer<typeof UpdateAgentInputSchema>;
 
-// Agent response type
 export interface AgentWithRelations extends Agent {}
 
-// Agent response formatting
 export interface AgentResponse {
   id: string;
   name: string;
@@ -47,27 +23,23 @@ export interface AgentResponse {
   updatedAt: Date;
 }
 
-// Agent query filters
 export interface AgentFilters {
   userId: string;
   name?: string;
   connectionId?: string;
 }
 
-// Agent service response types
 export interface AgentServiceResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// Agent validation errors
 export interface AgentValidationError {
   field: string;
   message: string;
 }
 
-// Agent limits
 export const AGENT_LIMITS = {
   MAX_NAME_LENGTH: 100,
   MAX_PROMPT_LENGTH: 5000,
@@ -76,16 +48,35 @@ export const AGENT_LIMITS = {
   DEFAULT_AGENTS_PER_PAGE: 20,
 } as const;
 
-// Helper function to format agent response
 export function formatAgentResponse(agent: AgentWithRelations): AgentResponse {
+  // Ensure aiConfig has required fields
+  const aiConfig = agent.aiConfig as any;
+  const validAiConfig: ModelConfiguration = {
+    provider: aiConfig?.provider || 'openai',
+    modelName: aiConfig?.modelName || aiConfig?.model || 'gpt-3.5-turbo',
+    connectionId: aiConfig?.connectionId || agent.connectionId,
+    apiKey: aiConfig?.apiKey,
+    baseUrl: aiConfig?.baseUrl,
+  };
+
+  // Ensure chatStyle has default values
+  const chatStyle = agent.chatStyle as any || {};
+  const validChatStyle: ChatStyle = {
+    friendliness: chatStyle?.friendliness || 'friendly',
+    responseLength: chatStyle?.responseLength || 'medium',
+    personality: chatStyle?.personality || 'balanced',
+    humor: chatStyle?.humor || 'light',
+    expertiseLevel: chatStyle?.expertiseLevel || 'expert',
+  };
+
   return {
     id: agent.id,
     name: agent.name,
     prompt: agent.prompt,
     characteristics: agent.characteristics,
     connectionId: agent.connectionId,
-    aiConfig: agent.aiConfig as ModelConfiguration,
-    chatStyle: agent.chatStyle as ChatStyle,
+    aiConfig: validAiConfig,
+    chatStyle: validChatStyle,
     createdAt: agent.createdAt,
     updatedAt: agent.updatedAt,
   };

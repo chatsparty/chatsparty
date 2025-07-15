@@ -27,12 +27,12 @@ export class VertexAIProvider {
   private auth: GoogleAuth;
   private endpoint: string;
 
-  constructor(private config: VertexAIConfig) {
+  constructor(private readonly config: VertexAIConfig) {
     this.auth = new GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/cloud-platform'],
     });
     
-    this.endpoint = `https://${config.location}-aiplatform.googleapis.com/v1/projects/${config.projectId}/locations/${config.location}/publishers/google/models/${config.modelName}:generateContent`;
+    this.endpoint = `https://${this.config.location}-aiplatform.googleapis.com/v1/projects/${this.config.projectId}/locations/${this.config.location}/publishers/google/models/${this.config.modelName}:generateContent`;
   }
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {

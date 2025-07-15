@@ -57,6 +57,7 @@ export interface UpdateConnectionRequest {
   apiKey?: string;
   baseUrl?: string;
   isActive?: boolean;
+  isDefault?: boolean;
 }
 
 export interface TestConnectionRequest {

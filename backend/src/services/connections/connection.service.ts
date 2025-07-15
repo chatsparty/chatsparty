@@ -1,5 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-import { db } from '../../config/database';
+import { Prisma } from '@prisma/client';
 import { encrypt, decrypt } from '../../utils/crypto';
 import {
   Connection,
@@ -17,17 +16,27 @@ import {
   PROVIDER_CONFIGS,
   ModelInfo,
 } from './connection.types';
-import { VertexAIProvider } from '../ai/providers/vertex-ai.provider';
-import { getDefaultConnectionConfig } from '../../config/default-connection.config';
-import { DefaultConnectionService } from './default-connection.service';
+import { SystemDefaultConnectionService } from './system-default-connection.service';
+import { ProviderFactory } from './providers/provider.factory';
+import {
+  ConnectionNotFoundError,
+  DuplicateConnectionError,
+  ConnectionValidationError,
+} from '../../utils/errors';
+
+import { ConnectionRepository } from './connection.repository';
 
 export class ConnectionService {
-  private db: PrismaClient;
-  private defaultConnectionService: DefaultConnectionService;
+  private repository: ConnectionRepository;
+  private systemDefaultConnectionService: SystemDefaultConnectionService;
 
-  constructor(database?: PrismaClient) {
-    this.db = database || db;
-    this.defaultConnectionService = new DefaultConnectionService();
+  constructor(
+    repository?: ConnectionRepository,
+    systemDefaultConnectionService?: SystemDefaultConnectionService
+  ) {
+    this.repository = repository || new ConnectionRepository();
+    this.systemDefaultConnectionService =
+      systemDefaultConnectionService || new SystemDefaultConnectionService();
   }
 
   /**
@@ -38,66 +47,37 @@ export class ConnectionService {
     request: CreateConnectionRequest
   ): Promise<ServiceResponse<Connection>> {
     try {
-      // Check if a connection with the same name already exists for this user
-      const existingConnection = await this.db.connection.findFirst({
-        where: {
-          userId,
-          name: request.name,
+      await this._validateConnectionName(userId, request.name);
+
+      const apiKeyData = this._prepareApiKeyData(request.apiKey);
+      const isDefault = await this.isFirstConnection(userId, request.provider);
+
+      const connection = await this.repository.create({
+        name: request.name,
+        description: request.description,
+        provider: request.provider,
+        modelName: request.modelName,
+        baseUrl: request.baseUrl,
+        isActive: request.isActive ?? true,
+        isDefault,
+        ...apiKeyData,
+        user: {
+          connect: {
+            id: userId,
+          },
         },
       });
 
-      if (existingConnection) {
-        return {
-          success: false,
-          error: 'A connection with this name already exists',
-        };
-      }
-
-      // Encrypt API key if provided
-      let encryptedApiKey: string | null = null;
-      let apiKeyEncrypted = false;
-
-      if (request.apiKey) {
-        encryptedApiKey = encrypt(request.apiKey);
-        apiKeyEncrypted = true;
-      }
-
-      // If this is the first connection for the user and provider, make it default
-      const existingProviderConnections = await this.db.connection.count({
-        where: {
-          userId,
-          provider: request.provider,
-        },
-      });
-
-      const isDefault = existingProviderConnections === 0;
-
-      // Create the connection
-      const connection = await this.db.connection.create({
-        data: {
-          userId,
-          name: request.name,
-          description: request.description,
-          provider: request.provider,
-          modelName: request.modelName,
-          apiKey: encryptedApiKey,
-          apiKeyEncrypted,
-          baseUrl: request.baseUrl,
-          isActive: request.isActive ?? true,
-          isDefault,
-        },
-      });
-
-      return {
-        success: true,
-        data: connection,
-      };
-    } catch (error) {
+      return { success: true, data: connection };
+    } catch (error: unknown) {
       console.error('Error creating connection:', error);
-      return {
-        success: false,
-        error: 'Failed to create connection',
-      };
+      if (
+        error instanceof DuplicateConnectionError ||
+        error instanceof ConnectionValidationError
+      ) {
+        return { success: false, error: error.message };
+      }
+      return { success: false, error: 'Failed to create connection' };
     }
   }
 
@@ -110,75 +90,29 @@ export class ConnectionService {
     request: UpdateConnectionRequest
   ): Promise<ServiceResponse<Connection>> {
     try {
-      // Check if connection exists and belongs to user
-      const existingConnection = await this.db.connection.findFirst({
-        where: {
-          id: connectionId,
-          userId,
-        },
-      });
+      await this._findUserConnectionOrThrow(userId, connectionId);
 
-      if (!existingConnection) {
-        return {
-          success: false,
-          error: 'Connection not found',
-        };
-      }
-
-      // If name is being updated, check for duplicates
       if (request.name) {
-        const duplicateConnection = await this.db.connection.findFirst({
-          where: {
-            userId,
-            name: request.name,
-            NOT: { id: connectionId },
-          },
-        });
-
-        if (duplicateConnection) {
-          return {
-            success: false,
-            error: 'A connection with this name already exists',
-          };
-        }
+        await this._validateConnectionName(userId, request.name, connectionId);
       }
 
-      // Prepare update data
-      const updateData: any = {
-        name: request.name,
-        description: request.description,
-        modelName: request.modelName,
-        baseUrl: request.baseUrl,
-        isActive: request.isActive,
-      };
-
-      // Encrypt API key if provided
+      const updateData: Prisma.ConnectionUpdateInput = { ...request };
       if (request.apiKey !== undefined) {
-        if (request.apiKey) {
-          updateData.apiKey = encrypt(request.apiKey);
-          updateData.apiKeyEncrypted = true;
-        } else {
-          updateData.apiKey = null;
-          updateData.apiKeyEncrypted = false;
-        }
+        Object.assign(updateData, this._prepareApiKeyData(request.apiKey));
       }
 
-      // Update the connection
-      const connection = await this.db.connection.update({
-        where: { id: connectionId },
-        data: updateData,
-      });
+      const connection = await this.repository.update(connectionId, updateData);
 
-      return {
-        success: true,
-        data: connection,
-      };
-    } catch (error) {
+      return { success: true, data: connection };
+    } catch (error: unknown) {
       console.error('Error updating connection:', error);
-      return {
-        success: false,
-        error: 'Failed to update connection',
-      };
+      if (
+        error instanceof ConnectionNotFoundError ||
+        error instanceof DuplicateConnectionError
+      ) {
+        return { success: false, error: error.message };
+      }
+      return { success: false, error: 'Failed to update connection' };
     }
   }
 
@@ -190,57 +124,19 @@ export class ConnectionService {
     connectionId: string
   ): Promise<ServiceResponse<void>> {
     try {
-      // Check if connection exists and belongs to user
-      const connection = await this.db.connection.findFirst({
-        where: {
-          id: connectionId,
-          userId,
-        },
-      });
-
-      if (!connection) {
-        return {
-          success: false,
-          error: 'Connection not found',
-        };
-      }
-
-      // Check if this is the default connection for the provider
-      if (connection.isDefault) {
-        // Find another active connection for the same provider
-        const alternativeConnection = await this.db.connection.findFirst({
-          where: {
-            userId,
-            provider: connection.provider,
-            isActive: true,
-            NOT: { id: connectionId },
-          },
-          orderBy: { createdAt: 'asc' },
-        });
-
-        // Set the alternative as default if found
-        if (alternativeConnection) {
-          await this.db.connection.update({
-            where: { id: alternativeConnection.id },
-            data: { isDefault: true },
-          });
-        }
-      }
-
-      // Delete the connection
-      await this.db.connection.delete({
-        where: { id: connectionId },
-      });
-
-      return {
-        success: true,
-      };
-    } catch (error) {
+      const connection = await this._findUserConnectionOrThrow(
+        userId,
+        connectionId
+      );
+      await this.handleDeletedConnection(userId, connection);
+      await this.repository.delete(connectionId);
+      return { success: true };
+    } catch (error: unknown) {
       console.error('Error deleting connection:', error);
-      return {
-        success: false,
-        error: 'Failed to delete connection',
-      };
+      if (error instanceof ConnectionNotFoundError) {
+        return { success: false, error: error.message };
+      }
+      return { success: false, error: 'Failed to delete connection' };
     }
   }
 
@@ -252,36 +148,24 @@ export class ConnectionService {
     connectionId: string
   ): Promise<ServiceResponse<ConnectionWithModels>> {
     try {
-      const connection = await this.db.connection.findFirst({
-        where: {
-          id: connectionId,
-          userId,
-        },
-      });
-
-      if (!connection) {
-        return {
-          success: false,
-          error: 'Connection not found',
-        };
-      }
-
-      // Add available models based on provider
+      const connection = await this._findUserConnectionOrThrow(
+        userId,
+        connectionId
+      );
+      const provider = ProviderFactory.createProvider(
+        connection.provider as AIProvider
+      );
       const connectionWithModels: ConnectionWithModels = {
         ...connection,
-        availableModels: this.getProviderModels(connection.provider as AIProvider),
+        availableModels: provider.getAvailableModels(),
       };
-
-      return {
-        success: true,
-        data: connectionWithModels,
-      };
-    } catch (error) {
+      return { success: true, data: connectionWithModels };
+    } catch (error: unknown) {
       console.error('Error getting connection:', error);
-      return {
-        success: false,
-        error: 'Failed to get connection',
-      };
+      if (error instanceof ConnectionNotFoundError) {
+        return { success: false, error: error.message };
+      }
+      return { success: false, error: 'Failed to get connection' };
     }
   }
 
@@ -303,8 +187,7 @@ export class ConnectionService {
         orderDirection = 'desc',
       } = options;
 
-      // Build where clause
-      const where: any = { userId };
+      const where: Prisma.ConnectionWhereInput = { userId };
 
       if (!includeInactive) {
         where.isActive = true;
@@ -318,22 +201,20 @@ export class ConnectionService {
         where.isDefault = true;
       }
 
-      // Get connections and total count
-      const [connections, total] = await Promise.all([
-        this.db.connection.findMany({
-          where,
-          skip: offset,
-          take: limit,
-          orderBy: { [orderBy]: orderDirection },
-        }),
-        this.db.connection.count({ where }),
-      ]);
+      const [connections, total] = await this.repository.findMany(userId, {
+        ...options,
+        includeInactive,
+        provider,
+        onlyDefaults,
+        limit,
+        offset,
+        orderBy,
+        orderDirection,
+      });
 
-      // Convert to public connections (remove sensitive data)
       const publicConnections = connections.map(this.toPublicConnection);
 
-      // Find default connection ID
-      const defaultConnection = connections.find((c) => c.isDefault);
+      const defaultConnection = connections.find(c => c.isDefault);
 
       return {
         success: true,
@@ -361,7 +242,6 @@ export class ConnectionService {
     try {
       const providerConfig = PROVIDER_CONFIGS[request.provider];
 
-      // Basic validation
       if (providerConfig.requiresApiKey && !request.apiKey) {
         return {
           success: true,
@@ -373,8 +253,8 @@ export class ConnectionService {
         };
       }
 
-      // Provider-specific testing logic
-      const testResult = await this.testProviderConnection(request);
+      const provider = ProviderFactory.createProvider(request.provider);
+      const testResult = await provider.testConnection(request as any);
 
       return {
         success: true,
@@ -397,49 +277,7 @@ export class ConnectionService {
     provider: AIProvider
   ): Promise<ServiceResponse<Connection>> {
     try {
-      const connection = await this.db.connection.findFirst({
-        where: {
-          userId,
-          provider,
-          isDefault: true,
-          isActive: true,
-        },
-      });
-
-      if (!connection) {
-        // Try to find any active connection for the provider
-        const anyConnection = await this.db.connection.findFirst({
-          where: {
-            userId,
-            provider,
-            isActive: true,
-          },
-          orderBy: { createdAt: 'asc' },
-        });
-
-        if (!anyConnection) {
-          return {
-            success: false,
-            error: `No active ${provider} connection found`,
-          };
-        }
-
-        // Set it as default
-        await this.db.connection.update({
-          where: { id: anyConnection.id },
-          data: { isDefault: true },
-        });
-
-        return {
-          success: true,
-          data: anyConnection,
-        };
-      }
-
-      return {
-        success: true,
-        data: connection,
-      };
+      return await this.getUserDefaultConnection(userId, provider);
     } catch (error) {
       console.error('Error getting default connection:', error);
       return {
@@ -457,49 +295,7 @@ export class ConnectionService {
     connectionId: string
   ): Promise<ServiceResponse<Connection>> {
     try {
-      // Get the connection
-      const connection = await this.db.connection.findFirst({
-        where: {
-          id: connectionId,
-          userId,
-        },
-      });
-
-      if (!connection) {
-        return {
-          success: false,
-          error: 'Connection not found',
-        };
-      }
-
-      if (!connection.isActive) {
-        return {
-          success: false,
-          error: 'Cannot set inactive connection as default',
-        };
-      }
-
-      // Remove default from other connections of the same provider
-      await this.db.connection.updateMany({
-        where: {
-          userId,
-          provider: connection.provider,
-          isDefault: true,
-          NOT: { id: connectionId },
-        },
-        data: { isDefault: false },
-      });
-
-      // Set this connection as default
-      const updatedConnection = await this.db.connection.update({
-        where: { id: connectionId },
-        data: { isDefault: true },
-      });
-
-      return {
-        success: true,
-        data: updatedConnection,
-      };
+      return await this.setUserDefaultConnection(userId, connectionId);
     } catch (error) {
       console.error('Error setting default connection:', error);
       return {
@@ -517,12 +313,10 @@ export class ConnectionService {
     connectionId: string
   ): Promise<ServiceResponse<string>> {
     try {
-      const connection = await this.db.connection.findFirst({
-        where: {
-          id: connectionId,
-          userId,
-        },
-      });
+      const connection = await this.repository.findUserConnection(
+        userId,
+        connectionId
+      );
 
       if (!connection) {
         return {
@@ -566,7 +360,8 @@ export class ConnectionService {
    * Get available models for a provider
    */
   getProviderModels(provider: AIProvider): ModelInfo[] {
-    return PROVIDER_CONFIGS[provider].supportedModels;
+    const providerInstance = ProviderFactory.createProvider(provider);
+    return providerInstance.getAvailableModels();
   }
 
   /**
@@ -588,151 +383,6 @@ export class ConnectionService {
   }
 
   /**
-   * Test provider-specific connection
-   */
-  private async testProviderConnection(
-    request: TestConnectionRequest
-  ): Promise<TestConnectionResponse> {
-    const { provider, apiKey, baseUrl, modelName: _modelName } = request;
-
-    try {
-      switch (provider) {
-        case 'openai':
-          return await this.testOpenAIConnection(apiKey!, baseUrl);
-
-        case 'anthropic':
-          return await this.testAnthropicConnection(apiKey!, baseUrl);
-
-        case 'google':
-          return await this.testGoogleConnection(apiKey!);
-
-        case 'groq':
-          return await this.testGroqConnection(apiKey!, baseUrl);
-
-        case 'ollama':
-          return await this.testOllamaConnection(baseUrl || 'http://localhost:11434');
-
-        case 'vertex_ai':
-          return await this.testVertexAIConnection(apiKey!);
-
-        default:
-          return {
-            success: false,
-            message: 'Unsupported provider',
-            error: `Provider ${provider} is not supported`,
-          };
-      }
-    } catch (error) {
-      console.error(`Error testing ${provider} connection:`, error);
-      return {
-        success: false,
-        message: `Failed to connect to ${provider}`,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
-
-  // Provider-specific test methods
-  private async testOpenAIConnection(
-    _apiKey: string,
-    _baseUrl?: string
-  ): Promise<TestConnectionResponse> {
-    // TODO: Implement actual API test
-    // For now, return mock success
-    return {
-      success: true,
-      message: 'OpenAI connection successful',
-      availableModels: PROVIDER_CONFIGS.openai.supportedModels,
-    };
-  }
-
-  private async testAnthropicConnection(
-    _apiKey: string,
-    _baseUrl?: string
-  ): Promise<TestConnectionResponse> {
-    // TODO: Implement actual API test
-    return {
-      success: true,
-      message: 'Anthropic connection successful',
-      availableModels: PROVIDER_CONFIGS.anthropic.supportedModels,
-    };
-  }
-
-  private async testGoogleConnection(_apiKey: string): Promise<TestConnectionResponse> {
-    // TODO: Implement actual API test
-    return {
-      success: true,
-      message: 'Google AI connection successful',
-      availableModels: PROVIDER_CONFIGS.google.supportedModels,
-    };
-  }
-
-  private async testGroqConnection(
-    _apiKey: string,
-    _baseUrl?: string
-  ): Promise<TestConnectionResponse> {
-    // TODO: Implement actual API test
-    return {
-      success: true,
-      message: 'Groq connection successful',
-      availableModels: PROVIDER_CONFIGS.groq.supportedModels,
-    };
-  }
-
-  private async testOllamaConnection(_baseUrl: string): Promise<TestConnectionResponse> {
-    // TODO: Implement actual API test to check if Ollama is running
-    return {
-      success: true,
-      message: 'Ollama connection successful',
-      availableModels: PROVIDER_CONFIGS.ollama.supportedModels,
-    };
-  }
-
-  private async testVertexAIConnection(_apiKey: string): Promise<TestConnectionResponse> {
-    try {
-      // For Vertex AI, we need additional configuration from environment or request
-      const defaultConfig = getDefaultConnectionConfig();
-      
-      if (!defaultConfig || defaultConfig.provider !== 'vertex_ai') {
-        return {
-          success: false,
-          message: 'Vertex AI configuration not found',
-          error: 'Please configure Vertex AI project ID and location in environment variables',
-        };
-      }
-
-      const vertexProvider = new VertexAIProvider({
-        projectId: defaultConfig.projectId!,
-        location: defaultConfig.location!,
-        modelName: defaultConfig.modelName,
-        apiKey: _apiKey,
-      });
-
-      const testResult = await vertexProvider.testConnection();
-      
-      if (testResult.success) {
-        return {
-          success: true,
-          message: 'Vertex AI connection successful',
-          availableModels: VertexAIProvider.getAvailableModels(),
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Vertex AI connection failed',
-          error: testResult.error,
-        };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Failed to test Vertex AI connection',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
-
-  /**
    * Get connection with default fallback
    * This method first tries to get a user's connection, and if not found or if the ID is 'default',
    * it falls back to the system default connection
@@ -740,86 +390,168 @@ export class ConnectionService {
   async getConnectionWithFallback(
     userId: string,
     connectionId: string
-  ): Promise<ServiceResponse<Connection | any>> {
+  ): Promise<ServiceResponse<Connection>> {
     try {
-      // Special case: if connectionId is 'default', directly use system default
-      if (connectionId === 'default') {
-        const defaultResult = await this.defaultConnectionService.getSystemDefaultConnection();
-        if (defaultResult.success && defaultResult.data) {
-          // Convert default connection to match Connection interface
-          const defaultConn = defaultResult.data;
-          return {
-            success: true,
-            data: {
-              id: defaultConn.id,
-              userId: userId, // Associate with current user for compatibility
-              name: defaultConn.name,
-              description: defaultConn.description,
-              provider: defaultConn.provider,
-              modelName: defaultConn.modelName,
-              apiKey: defaultConn.apiKey,
-              apiKeyEncrypted: defaultConn.apiKeyEncrypted,
-              baseUrl: defaultConn.baseUrl,
-              isActive: defaultConn.isActive,
-              isDefault: defaultConn.isDefault,
-              createdAt: defaultConn.createdAt,
-              updatedAt: defaultConn.updatedAt,
-            },
-          };
+      if (connectionId !== 'default') {
+        const userConnection = await this._findUserConnection(
+          userId,
+          connectionId
+        );
+        if (userConnection?.isActive) {
+          return { success: true, data: userConnection };
         }
       }
 
-      // Try to get user's connection first
-      const userConnection = await this.db.connection.findFirst({
-        where: {
-          id: connectionId,
-          userId,
-          isActive: true,
-        },
-      });
+      const defaultResult =
+        await this.systemDefaultConnectionService.getSystemDefaultConnection();
 
-      if (userConnection) {
-        return { success: true, data: userConnection };
-      }
-
-      // If not found, check if the ID matches a system default pattern
-      const defaultResult = await this.defaultConnectionService.getSystemDefaultConnection();
       if (defaultResult.success && defaultResult.data) {
         const defaultConn = defaultResult.data;
-        
-        if (connectionId === defaultConn.id) {
-          // Convert default connection to match Connection interface
-          return {
-            success: true,
-            data: {
-              id: defaultConn.id,
-              userId: userId, // Associate with current user for compatibility
-              name: defaultConn.name,
-              description: defaultConn.description,
-              provider: defaultConn.provider,
-              modelName: defaultConn.modelName,
-              apiKey: defaultConn.apiKey,
-              apiKeyEncrypted: defaultConn.apiKeyEncrypted,
-              baseUrl: defaultConn.baseUrl,
-              isActive: defaultConn.isActive,
-              isDefault: defaultConn.isDefault,
-              createdAt: defaultConn.createdAt,
-              updatedAt: defaultConn.updatedAt,
-            },
-          };
-        }
+        return {
+          success: true,
+          data: this.toUserConnection(defaultConn, userId),
+        };
       }
 
-      return {
-        success: false,
-        error: 'Connection not found',
-      };
+      return { success: false, error: 'Connection not found' };
     } catch (error) {
       console.error('Error getting connection with fallback:', error);
+      return { success: false, error: 'Failed to get connection' };
+    }
+  }
+
+  private toUserConnection(defaultConn: any, userId: string): Connection {
+    return {
+      id: defaultConn.id,
+      userId: userId,
+      name: defaultConn.name,
+      description: defaultConn.description,
+      provider: defaultConn.provider,
+      modelName: defaultConn.modelName,
+      apiKey: defaultConn.apiKey,
+      apiKeyEncrypted: defaultConn.apiKeyEncrypted,
+      baseUrl: defaultConn.baseUrl,
+      isActive: defaultConn.isActive,
+      isDefault: defaultConn.isDefault,
+      createdAt: defaultConn.createdAt,
+      updatedAt: defaultConn.updatedAt,
+    };
+  }
+
+  private async _findUserConnection(
+    userId: string,
+    connectionId: string
+  ): Promise<Connection | null> {
+    return this.repository.findUserConnection(userId, connectionId);
+  }
+  private async _validateConnectionName(
+    userId: string,
+    name: string,
+    connectionId?: string
+  ): Promise<void> {
+    const existingConnection = await this.repository.findByName(
+      userId,
+      name,
+      connectionId
+    );
+    if (existingConnection) {
+      throw new DuplicateConnectionError();
+    }
+  }
+
+  private _prepareApiKeyData(apiKey: string | null | undefined): {
+    apiKey: string | null;
+    apiKeyEncrypted: boolean;
+  } {
+    if (apiKey) {
+      return { apiKey: encrypt(apiKey), apiKeyEncrypted: true };
+    }
+    return { apiKey: null, apiKeyEncrypted: false };
+  }
+
+  private async _findUserConnectionOrThrow(
+    userId: string,
+    connectionId: string
+  ): Promise<Connection> {
+    const connection = await this._findUserConnection(userId, connectionId);
+    if (!connection) {
+      throw new ConnectionNotFoundError();
+    }
+    return connection;
+  }
+
+  private async isFirstConnection(
+    userId: string,
+    provider: AIProvider
+  ): Promise<boolean> {
+    const count = await this.repository.getCount(userId, provider);
+    return count === 0;
+  }
+
+  private async handleDeletedConnection(
+    userId: string,
+    connection: Connection
+  ): Promise<void> {
+    if (connection.isDefault) {
+      const alternative = await this.repository.findAlternativeDefault(
+        userId,
+        connection.provider,
+        connection.id
+      );
+
+      if (alternative) {
+        await this.repository.update(alternative.id, { isDefault: true });
+      }
+    }
+  }
+
+  private async getUserDefaultConnection(
+    userId: string,
+    provider: AIProvider
+  ): Promise<ServiceResponse<Connection>> {
+    const connection = await this.repository.findUserDefault(userId, provider);
+
+    if (connection) {
+      return { success: true, data: connection };
+    }
+
+    const anyConnection = await this.repository.findFirst(userId, provider);
+
+    if (!anyConnection) {
       return {
         success: false,
-        error: 'Failed to get connection',
+        error: `No active ${provider} connection found`,
       };
     }
+
+    await this.repository.update(anyConnection.id, { isDefault: true });
+
+    return { success: true, data: anyConnection };
+  }
+
+  private async setUserDefaultConnection(
+    userId: string,
+    connectionId: string
+  ): Promise<ServiceResponse<Connection>> {
+    const connection = await this.repository.findUserConnection(
+      userId,
+      connectionId
+    );
+
+    if (!connection) {
+      return { success: false, error: 'Connection not found' };
+    }
+
+    if (!connection.isActive) {
+      return {
+        success: false,
+        error: 'Cannot set inactive connection as default',
+      };
+    }
+
+    const updatedConnection =
+      await this.repository.setUserDefault(connectionId);
+
+    return { success: true, data: updatedConnection };
   }
 }

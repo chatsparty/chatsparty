@@ -10,6 +10,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AuthProviderType {
+  LOCAL
+  GOOGLE
+}
 
 // User model with credit system
 model User {
@@ -17,20 +21,21 @@ model User {
   email           String    @unique
   password        String?   // Made optional to support OAuth
   name            String?
-  provider        String?   // local, google, github, etc.
+  provider        AuthProviderType @default(LOCAL)
+  providerId      String?   // Unique ID from the OAuth provider
   isActive        Boolean   @default(true)
   isVerified      Boolean   @default(false)
   
   // Credit system fields
-  creditsBalance      Int       @default(10000)
-  creditsUsed         Int       @default(0)
-  creditsPurchased    Int       @default(0)
-  creditPlan          String?
-  lastCreditRefillAt  DateTime?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  creditsBalance     Int       @default(10000)
+  creditsUsed        Int       @default(0)
+  creditsPurchased   Int       @default(0)
+  creditPlan         String?
+  lastCreditRefillAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
   agents             Agent[]
   conversations      Conversation[]
@@ -38,92 +43,119 @@ model User {
   voiceConnections   VoiceConnection[]
   projects           Project[]
   creditTransactions CreditTransaction[]
+  agentRatings       AgentRating[]
+  agentUsage         AgentUsage[]
   
   credits            Credit[]
   
+  @@unique([provider, providerId])
   @@index([email])
 }
 
 // Agent model with AI configuration
 model Agent {
-  id                String      @id @default(cuid())
-  name              String
-  prompt            String      @db.Text
-  characteristics   String      @db.Text
-  connectionId      String
-  
+  id              String @id @default(cuid())
+  name            String
+  prompt          String @db.Text
+  characteristics String @db.Text
+  connectionId    String
+
   // JSON fields for configuration
-  aiConfig          Json        // Model configuration (renamed from model_config)
-  chatStyle         Json        // Chat style configuration
-  
+  aiConfig  Json // Model configuration (renamed from model_config)
+  chatStyle Json // Chat style configuration
+  maxTokens Int? // Max tokens for agent response
+
   // Voice configuration
   voiceConnectionId String?
-  voiceEnabled      Boolean     @default(false)
-  
-  
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  
+  voiceEnabled      Boolean @default(false)
+
+  // Marketplace fields
+  isPublic    Boolean  @default(false)
+  isTemplate  Boolean  @default(false)
+  category    String? // brainstorming, writing, analysis, etc.
+  tags        String[] @default([])
+  description String?  @db.Text
+  usageCount  Int      @default(0)
+  rating      Float    @default(0.0)
+  ratingCount Int      @default(0)
+
+  // Template fields
+  templateId  String? // Reference to original template if imported
+  isOriginal  Boolean   @default(true)
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  userId            String
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  voiceConnection   VoiceConnection? @relation(fields: [voiceConnectionId], references: [id])
-  conversations     Conversation[]
-  messages          Message[]
-  
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voiceConnection VoiceConnection? @relation(fields: [voiceConnectionId], references: [id])
+  conversations   Conversation[]
+  messages        Message[]
+  ratings         AgentRating[]
+  usage           AgentUsage[]
+  template        Agent?           @relation("AgentTemplate", fields: [templateId], references: [id])
+  imports         Agent[]          @relation("AgentTemplate")
+
   @@index([userId])
   @@index([voiceConnectionId])
+  @@index([isPublic])
+  @@index([category])
+  @@index([rating])
+  @@index([usageCount])
+  @@index([templateId])
 }
 
 // Connection model for AI provider connections
 model Connection {
-  id              String    @id @default(cuid())
+  id              String  @id @default(cuid())
   name            String
-  description     String?   @db.Text
-  provider        String    // openai, anthropic, google, etc.
+  description     String? @db.Text
+  provider        String // openai, anthropic, google, etc.
   modelName       String
   apiKey          String?
-  apiKeyEncrypted Boolean   @default(false)
+  apiKeyEncrypted Boolean @default(false)
   baseUrl         String?
-  isActive        Boolean   @default(true)
-  isDefault       Boolean   @default(false) // Platform default connection
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  isActive        Boolean @default(true)
+  isDefault       Boolean @default(false) // Platform default connection
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([provider])
 }
 
 // Conversation model
 model Conversation {
-  id            String      @id @default(cuid())
-  agentId       String?
-  userId        String
-  projectId     String?
-  participants  Json        // Array of participant IDs
-  isShared      Boolean     @default(false)
-  
+  id           String  @id @default(cuid())
+  agentId      String?
+  userId       String
+  projectId    String?
+  participants Json // Array of participant IDs
+  isShared     Boolean @default(false)
+
   // Chat-specific fields
-  title         String      @default("New Conversation")
-  agentIds      String[]    // Array of agent IDs for multi-agent conversations
-  messages      Json        @default("[]") // Array of messages stored as JSON
-  metadata      Json?       // Additional metadata
-  
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  
+  title    String   @default("New Conversation")
+  agentIds String[] // Array of agent IDs for multi-agent conversations
+  messages Json     @default("[]") // Array of messages stored as JSON
+  metadata Json? // Additional metadata
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  agent         Agent?      @relation(fields: [agentId], references: [id])
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project       Project?    @relation(fields: [projectId], references: [id])
-  messageRecords Message[]   @relation("ConversationMessages")
-  
-  
+  agent          Agent?       @relation(fields: [agentId], references: [id])
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project        Project?     @relation(fields: [projectId], references: [id])
+  messageRecords Message[]    @relation("ConversationMessages")
+  agentUsage     AgentUsage[]
+
   @@index([userId])
   @@index([agentId])
   @@index([projectId])
@@ -131,192 +163,190 @@ model Conversation {
 
 // Message model
 model Message {
-  id              Int         @id @default(autoincrement())
-  conversationId  String
-  agentId         String?
-  role            String      // user, assistant, system
-  content         String      @db.Text
-  speaker         String?
-  messageType     String      @default("message")
-  language        String?     // Detected language code (en, es, fr, etc.)
-  
-  createdAt       DateTime    @default(now())
-  
+  id             Int     @id @default(autoincrement())
+  conversationId String
+  agentId        String?
+  role           String // user, assistant, system
+  content        String  @db.Text
+  speaker        String?
+  messageType    String  @default("message")
+  language       String? // Detected language code (en, es, fr, etc.)
+
+  createdAt DateTime @default(now())
+
   // Relations
-  conversation    Conversation @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
-  agent           Agent?       @relation(fields: [agentId], references: [id])
-  
+  conversation Conversation @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
+  agent        Agent?       @relation(fields: [agentId], references: [id])
+
   @@index([conversationId])
   @@index([agentId])
 }
 
 // Voice Connection model
 model VoiceConnection {
-  id              String    @id @default(cuid())
-  name            String
-  description     String?   @db.Text
-  provider        String    // elevenlabs, openai, google, etc.
-  providerType    String    // tts, stt, both
-  
+  id           String  @id @default(cuid())
+  name         String
+  description  String? @db.Text
+  provider     String // elevenlabs, openai, google, etc.
+  providerType String // tts, stt, both
+
   // Voice settings
-  voiceId         String?
-  speed           Float     @default(1.0)
-  pitch           Float     @default(1.0)
-  stability       Float     @default(0.75)
-  clarity         Float     @default(0.8)
-  style           String    @default("conversational") // conversational, podcast, professional
-  
+  voiceId   String?
+  speed     Float   @default(1.0)
+  pitch     Float   @default(1.0)
+  stability Float   @default(0.75)
+  clarity   Float   @default(0.8)
+  style     String  @default("conversational") // conversational, podcast, professional
+
   // Authentication & Configuration
   apiKey          String?
-  apiKeyEncrypted Boolean   @default(false)
+  apiKeyEncrypted Boolean @default(false)
   baseUrl         String?
-  isActive        Boolean   @default(true)
-  isCloudProxy    Boolean   @default(false) // ChatsParty cloud proxy
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  isActive        Boolean @default(true)
+  isCloudProxy    Boolean @default(false) // ChatsParty cloud proxy
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agents          Agent[]
-  
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agents Agent[]
+
   @@index([userId])
   @@index([provider])
 }
 
-
-
 // Project model
 model Project {
-  id                String      @id @default(cuid())
-  name              String
-  description       String?     @db.Text
-  
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+
   // VM Integration
-  vmContainerId     String?
-  vmStatus          String      @default("inactive") // inactive, starting, active, error, stopped
-  vmConfiguration   Json?       // VM configuration (renamed from vm_config)
-  vmUrl             String?
-  
+  vmContainerId   String?
+  vmStatus        String  @default("inactive") // inactive, starting, active, error, stopped
+  vmConfiguration Json? // VM configuration (renamed from vm_config)
+  vmUrl           String?
+
   // Storage & Files
-  storageMountPath  String?
-  storageConfig     Json?
-  
+  storageMountPath String?
+  storageConfig    Json?
+
   // Project settings
-  isActive          Boolean     @default(true)
-  autoSyncFiles     Boolean     @default(true)
-  instructions      String?     @db.Text
-  
+  isActive      Boolean @default(true)
+  autoSyncFiles Boolean @default(true)
+  instructions  String? @db.Text
+
   // Timestamps
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  lastVmActivity    DateTime?
-  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastVmActivity DateTime?
+
   // Relations
-  userId            String
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectFiles      ProjectFile[]
-  conversations     Conversation[]
-  vmServices        ProjectVMService[]
-  
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectFiles  ProjectFile[]
+  conversations Conversation[]
+  vmServices    ProjectVMService[]
+
   @@index([userId])
 }
 
 // Project File model
 model ProjectFile {
-  id                String    @id @default(cuid())
-  projectId         String
-  filename          String
-  filePath          String    // Path in storage
-  vmPath            String?   // Path in VM
-  contentType       String
-  fileSize          BigInt
-  checksum          String?
-  
+  id          String  @id @default(cuid())
+  projectId   String
+  filename    String
+  filePath    String // Path in storage
+  vmPath      String? // Path in VM
+  contentType String
+  fileSize    BigInt
+  checksum    String?
+
   // File metadata
-  isSyncedToVm      Boolean   @default(false)
-  lastSyncAt        DateTime?
-  lastModifiedInVm  DateTime?
-  
+  isSyncedToVm     Boolean   @default(false)
+  lastSyncAt       DateTime?
+  lastModifiedInVm DateTime?
+
   // File permissions and access
-  isExecutable      Boolean   @default(false)
-  filePermissions   String?   // e.g., "755", "644"
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  
+  isExecutable    Boolean @default(false)
+  filePermissions String? // e.g., "755", "644"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   @@index([projectId])
 }
 
 // Project VM Service model
 model ProjectVMService {
-  id                String    @id @default(cuid())
-  projectId         String
-  serviceName       String    // e.g., "jupyter", "webapp", "database"
-  serviceType       String    // e.g., "web", "database", "notebook"
-  
+  id          String @id @default(cuid())
+  projectId   String
+  serviceName String // e.g., "jupyter", "webapp", "database"
+  serviceType String // e.g., "web", "database", "notebook"
+
   // Service configuration
-  port              Int?
-  command           String    @db.Text
-  workingDirectory  String?
-  environmentVars   Json?
-  
+  port             Int?
+  command          String  @db.Text
+  workingDirectory String?
+  environmentVars  Json?
+
   // Service status
-  status            String    @default("stopped") // stopped, starting, running, failed
-  processId         Int?
-  serviceUrl        String?
-  
+  status     String  @default("stopped") // stopped, starting, running, failed
+  processId  Int?
+  serviceUrl String?
+
   // Service metadata
-  autoStart         Boolean   @default(false)
-  restartPolicy     String    @default("no") // no, always, on-failure
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  lastStartedAt     DateTime?
-  
+  autoStart     Boolean @default(false)
+  restartPolicy String  @default("no") // no, always, on-failure
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastStartedAt DateTime?
+
   // Relations
-  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   @@index([projectId])
 }
 
 // Credit Transaction model for tracking credit usage
 model CreditTransaction {
-  id                  String    @id @default(cuid())
+  id                  String  @id @default(cuid())
   userId              String
-  amount              Int       // Positive for credits added, negative for credits used
-  transactionType     String    // purchase, usage, refund, bonus, etc.
-  reason              String    // e.g., "AI chat", "model usage", "purchase"
-  description         String?   @db.Text
-  transactionMetadata Json?     // Additional metadata about the transaction
-  balanceAfter        Int       // Balance after this transaction
-  
-  createdAt           DateTime  @default(now())
-  
+  amount              Int // Positive for credits added, negative for credits used
+  transactionType     String // purchase, usage, refund, bonus, etc.
+  reason              String // e.g., "AI chat", "model usage", "purchase"
+  description         String? @db.Text
+  transactionMetadata Json? // Additional metadata about the transaction
+  balanceAfter        Int // Balance after this transaction
+
+  createdAt DateTime @default(now())
+
   // Relations
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([createdAt])
 }
 
 // Model Credit Cost model for provider pricing
 model ModelCreditCost {
-  id              String    @id @default(cuid())
-  provider        String    // openai, anthropic, google, etc.
-  modelName       String    // gpt-4, claude-3, etc.
-  costPerMessage  Int       @default(1)
-  costPer1kTokens Int?      // Optional token-based pricing
-  isDefaultModel  Boolean   @default(false)
-  isActive        Boolean   @default(true)
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id              String  @id @default(cuid())
+  provider        String // openai, anthropic, google, etc.
+  modelName       String // gpt-4, claude-3, etc.
+  costPerMessage  Int     @default(1)
+  costPer1kTokens Int? // Optional token-based pricing
+  isDefaultModel  Boolean @default(false)
+  isActive        Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([provider, modelName])
   @@index([provider])
   @@index([isActive])
@@ -324,20 +354,81 @@ model ModelCreditCost {
 
 // Credit model for user credits
 model Credit {
-  id              String    @id @default(cuid())
-  userId          String
-  amount          Int       // Total amount of credits
-  used            Int       @default(0) // Amount used
-  remaining       Int       // Amount remaining
-  type            String    // subscription, topup, bonus
-  expiresAt       DateTime? // Optional expiration date
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id        String    @id @default(cuid())
+  userId    String
+  amount    Int // Total amount of credits
+  used      Int       @default(0) // Amount used
+  remaining Int // Amount remaining
+  type      String // subscription, topup, bonus
+  expiresAt DateTime? // Optional expiration date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([expiresAt])
+}
+
+// Agent Rating model for marketplace reviews
+model AgentRating {
+  id        String  @id @default(cuid())
+  agentId   String
+  userId    String
+  rating    Int // 1-5 star rating
+  review    String? @db.Text
+  isHelpful Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, userId]) // One rating per user per agent
+  @@index([agentId])
+  @@index([userId])
+  @@index([rating])
+}
+
+// Agent Category model for marketplace categorization
+model AgentCategory {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String? @db.Text
+  icon        String? // Icon identifier
+  color       String? // Color hex code
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([sortOrder])
+}
+
+// Agent Usage Analytics model
+model AgentUsage {
+  id             String  @id @default(cuid())
+  agentId        String
+  userId         String
+  usageType      String // imported, started_chat, message_sent
+  conversationId String?
+  metadata       Json? // Additional usage metadata
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  agent        Agent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id])
+
+  @@index([agentId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([usageType])
 }

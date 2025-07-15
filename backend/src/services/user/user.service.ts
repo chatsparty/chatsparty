@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, AuthProviderType } from '@prisma/client';
 import { db } from '../../config/database';
 import { generateToken } from '../../middleware/auth';
 import { hashPassword, verifyPassword } from '../../utils/crypto';
@@ -28,9 +28,10 @@ export class UserService {
   /**
    * Register a new user
    */
-  async register(credentials: RegisterCredentials): Promise<ServiceResponse<AuthResponse>> {
+  async register(
+    credentials: RegisterCredentials
+  ): Promise<ServiceResponse<AuthResponse>> {
     try {
-      // Check if user already exists
       const existingUser = await this.db.user.findUnique({
         where: { email: credentials.email },
       });
@@ -42,31 +43,27 @@ export class UserService {
         };
       }
 
-      // Hash password
       const hashedPassword = await hashPassword(credentials.password);
 
-      // Create user
       const user = await this.db.user.create({
         data: {
           email: credentials.email,
           password: hashedPassword,
           name: credentials.name,
-          provider: 'local',
+          provider: 'LOCAL',
         },
       });
 
-      // Create initial bonus credits
       await this.db.credit.create({
         data: {
           userId: user.id,
           amount: 100,
           remaining: 100,
           type: 'bonus',
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       });
 
-      // Generate token
       const token = generateToken({
         userId: user.id,
         email: user.email,
@@ -93,9 +90,10 @@ export class UserService {
   /**
    * Login user
    */
-  async login(credentials: LoginCredentials): Promise<ServiceResponse<AuthResponse>> {
+  async login(
+    credentials: LoginCredentials
+  ): Promise<ServiceResponse<AuthResponse>> {
     try {
-      // Find user
       const user = await this.db.user.findUnique({
         where: { email: credentials.email },
       });
@@ -107,15 +105,21 @@ export class UserService {
         };
       }
 
-      // Check if user has password (local auth)
-      if (!user.password) {
+      if (user.provider === AuthProviderType.GOOGLE && !user.password) {
         return {
           success: false,
-          error: 'Please login with your OAuth provider',
+          error:
+            'This account is registered with Google. Please use Google to sign in.',
         };
       }
 
-      // Verify password
+      if (!user.password) {
+        return {
+          success: false,
+          error: 'Invalid email or password',
+        };
+      }
+
       const isValid = await verifyPassword(credentials.password, user.password);
 
       if (!isValid) {
@@ -125,7 +129,6 @@ export class UserService {
         };
       }
 
-      // Generate token
       const token = generateToken({
         userId: user.id,
         email: user.email,
@@ -146,6 +149,105 @@ export class UserService {
         success: false,
         error: 'Failed to login',
       };
+    }
+  }
+
+  /**
+   * Login or Register user with Google
+   */
+  async loginWithGoogle(
+    accessToken: string
+  ): Promise<ServiceResponse<AuthResponse>> {
+    try {
+      const userInfoResponse = await fetch(
+        'https://www.googleapis.com/oauth2/v3/userinfo',
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      if (!userInfoResponse.ok) {
+        throw new Error('Failed to get user info from Google.');
+      }
+
+      const payload = (await userInfoResponse.json()) as {
+        sub: string;
+        email: string;
+        name?: string;
+      };
+
+      if (!payload || !payload.email || !payload.sub) {
+        return { success: false, error: 'Invalid Google token' };
+      }
+
+      const { email, name, sub: providerId } = payload;
+
+      let user = await this.db.user.findUnique({
+        where: {
+          provider_providerId: {
+            provider: AuthProviderType.GOOGLE,
+            providerId,
+          },
+        },
+      });
+
+      if (!user) {
+        const existingLocalUser = await this.db.user.findUnique({
+          where: { email },
+        });
+
+        if (
+          existingLocalUser &&
+          existingLocalUser.provider === AuthProviderType.LOCAL
+        ) {
+          user = await this.db.user.update({
+            where: { id: existingLocalUser.id },
+            data: {
+              provider: AuthProviderType.GOOGLE,
+              providerId,
+              isVerified: true,
+            },
+          });
+        } else {
+          user = await this.db.user.create({
+            data: {
+              email,
+              name: name || '',
+              provider: AuthProviderType.GOOGLE,
+              providerId,
+              isVerified: true,
+            },
+          });
+
+          await this.db.credit.create({
+            data: {
+              userId: user.id,
+              amount: 100,
+              remaining: 100,
+              type: 'bonus',
+              expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            },
+          });
+        }
+      }
+
+      const appToken = generateToken({
+        userId: user.id,
+        email: user.email,
+      });
+
+      const publicUser = this.toPublicUser(user);
+
+      return {
+        success: true,
+        data: {
+          user: publicUser,
+          token: appToken,
+        },
+      };
+    } catch (error) {
+      console.error('Error in loginWithGoogle:', error);
+      return { success: false, error: 'Google authentication failed' };
     }
   }
 
@@ -194,7 +296,6 @@ export class UserService {
     data: { name?: string; email?: string }
   ): Promise<ServiceResponse<User>> {
     try {
-      // Check if email is being changed and if it's already taken
       if (data.email) {
         const existingUser = await this.db.user.findFirst({
           where: {
@@ -249,7 +350,6 @@ export class UserService {
         };
       }
 
-      // Verify current password
       const isValid = await verifyPassword(currentPassword, user.password);
 
       if (!isValid) {
@@ -259,10 +359,8 @@ export class UserService {
         };
       }
 
-      // Hash new password
       const hashedPassword = await hashPassword(newPassword);
 
-      // Update password
       await this.db.user.update({
         where: { id: userId },
         data: { password: hashedPassword },
@@ -304,27 +402,26 @@ export class UserService {
   /**
    * Get user credit balance
    */
-  async getCreditBalance(userId: string): Promise<ServiceResponse<CreditBalance>> {
+  async getCreditBalance(
+    userId: string
+  ): Promise<ServiceResponse<CreditBalance>> {
     try {
       const credits = await this.db.credit.findMany({
         where: {
           userId,
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: new Date() } },
-          ],
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
-        orderBy: [
-          { expiresAt: 'asc' },
-          { createdAt: 'asc' },
-        ],
+        orderBy: [{ expiresAt: 'asc' }, { createdAt: 'asc' }],
       });
 
       const total = credits.reduce((sum, credit) => sum + credit.amount, 0);
       const used = credits.reduce((sum, credit) => sum + credit.used, 0);
-      const remaining = credits.reduce((sum, credit) => sum + credit.remaining, 0);
+      const remaining = credits.reduce(
+        (sum, credit) => sum + credit.remaining,
+        0
+      );
 
-      const creditDetails: CreditDetails[] = credits.map((credit) => ({
+      const creditDetails: CreditDetails[] = credits.map(credit => ({
         id: credit.id,
         amount: credit.amount,
         used: credit.used,
@@ -399,23 +496,19 @@ export class UserService {
     request: UseCreditRequest
   ): Promise<ServiceResponse<CreditBalance>> {
     try {
-      // Get available credits ordered by expiration
       const credits = await this.db.credit.findMany({
         where: {
           userId,
           remaining: { gt: 0 },
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: new Date() } },
-          ],
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
-        orderBy: [
-          { expiresAt: 'asc' },
-          { createdAt: 'asc' },
-        ],
+        orderBy: [{ expiresAt: 'asc' }, { createdAt: 'asc' }],
       });
 
-      const totalAvailable = credits.reduce((sum, credit) => sum + credit.remaining, 0);
+      const totalAvailable = credits.reduce(
+        (sum, credit) => sum + credit.remaining,
+        0
+      );
 
       if (totalAvailable < request.amount) {
         return {
@@ -424,7 +517,6 @@ export class UserService {
         };
       }
 
-      // Deduct credits using FIFO
       let remainingToDeduct = request.amount;
 
       for (const credit of credits) {
@@ -443,7 +535,6 @@ export class UserService {
         remainingToDeduct -= deductAmount;
       }
 
-      // Return updated balance
       return this.getCreditBalance(userId);
     } catch (error) {
       console.error('Error using credits:', error);
@@ -457,12 +548,19 @@ export class UserService {
   /**
    * List users (admin function)
    */
-  async listUsers(options: PaginationOptions = {}): Promise<ServiceResponse<{
-    users: PublicUser[];
-    total: number;
-  }>> {
+  async listUsers(options: PaginationOptions = {}): Promise<
+    ServiceResponse<{
+      users: PublicUser[];
+      total: number;
+    }>
+  > {
     try {
-      const { limit = 10, offset = 0, orderBy = 'createdAt', orderDirection = 'desc' } = options;
+      const {
+        limit = 10,
+        offset = 0,
+        orderBy = 'createdAt',
+        orderDirection = 'desc',
+      } = options;
 
       const [users, total] = await Promise.all([
         this.db.user.findMany({

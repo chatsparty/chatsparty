@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io';
 import { websocketService } from './websocket.service';
-import { conversationService } from '../chat/conversation.service';
+import { conversationService } from '../conversation/conversation.service';
 import { agentService } from '../agents/agent.service';
 import { aiService } from '../ai/ai.service';
 import { verifyToken } from '../../utils/auth';

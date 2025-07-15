@@ -54,7 +54,7 @@ const authRoutes: FastifyPluginAsync = async fastify => {
     async (request, reply) => {
       const result = await userService.register(request.body as RegisterInput);
 
-      if (!result.success) {
+      if (!result.success || !result.data) {
         return reply.status(400).send({
           error: 'Bad Request',
           message: result.error,
@@ -117,7 +117,7 @@ const authRoutes: FastifyPluginAsync = async fastify => {
     async (request, reply) => {
       const result = await userService.login(request.body as LoginInput);
 
-      if (!result.success) {
+      if (!result.success || !result.data) {
         return reply.status(401).send({
           error: 'Unauthorized',
           message: result.error,
@@ -135,6 +135,69 @@ const authRoutes: FastifyPluginAsync = async fastify => {
     }
   );
 
+  // Google login
+  fastify.post(
+    '/google',
+    {
+      schema: {
+        description: 'Login or register a user with Google',
+        tags: ['Authentication'],
+        body: {
+          type: 'object',
+          required: ['token'],
+          properties: {
+            token: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              access_token: { type: 'string' },
+              refresh_token: { type: 'string' },
+              token_type: { type: 'string' },
+              user: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  email: { type: 'string' },
+                  createdAt: { type: 'string' },
+                  updatedAt: { type: 'string' },
+                },
+              },
+            },
+          },
+          401: {
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { token } = request.body as { token: string };
+      const result = await userService.loginWithGoogle(token);
+
+      if (!result.success || !result.data) {
+        return reply.status(401).send({
+          error: 'Unauthorized',
+          message: result.error,
+        });
+      }
+
+      return reply.send({
+        access_token: result.data.token,
+        refresh_token: result.data.token,
+        token_type: 'bearer',
+        user: result.data.user,
+      });
+    }
+  );
+
+  // Get current user - maps to user service getUserById
   fastify.get(
     '/me',
     {

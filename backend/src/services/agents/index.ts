@@ -1,3 +1,3 @@
 export * from './agent.service';
 export * from './agent.types';
-export * from './agent.validation';
+export * from './agent.schemas';

@@ -7,14 +7,18 @@ dotenv.config();
 // Define environment schema
 const envSchema = z.object({
   // Server
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
   PORT: z.coerce.number().default(4000),
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.string().default('info'),
   CORS_ORIGIN: z.string().optional(),
 
   // Database
-  DATABASE_URL: z.string().default('postgresql://postgres:postgres@localhost:5432/chatsparty'),
+  DATABASE_URL: z
+    .string()
+    .default('postgresql://postgres:postgres@localhost:5432/chatsparty'),
 
   // AI Models
   OPENAI_API_KEY: z.string().optional(),
@@ -24,14 +28,14 @@ const envSchema = z.object({
   VERTEX_PROJECT_ID: z.string().optional(),
   VERTEX_LOCATION: z.string().optional(),
   OLLAMA_BASE_URL: z.string().optional(),
-  
+
   // Mastra Configuration
   MASTRA_API_KEY: z.string().optional(),
 
   // Storage
   STORAGE_PROVIDER: z.enum(['local', 's3', 'r2']).default('local'),
   STORAGE_PATH: z.string().default('./storage'),
-  
+
   // AWS S3 (optional)
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
@@ -47,6 +51,9 @@ const envSchema = z.object({
   // Auth
   JWT_SECRET: z.string().default('your-secret-key-change-this'),
   JWT_EXPIRES_IN: z.string().default('7d'),
+
+  // OAuth
+  GOOGLE_CLIENT_ID: z.string().optional(),
 });
 
 // Parse and validate environment variables
