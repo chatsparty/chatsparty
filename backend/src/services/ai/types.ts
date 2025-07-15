@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Model configuration schema
 export const ModelConfigurationSchema = z.object({
   provider: z.enum([
     'openai',
@@ -18,7 +17,6 @@ export const ModelConfigurationSchema = z.object({
 
 export type ModelConfiguration = z.infer<typeof ModelConfigurationSchema>;
 
-// Chat style configuration
 export const ChatStyleSchema = z.object({
   friendliness: z.enum(['friendly', 'formal', 'balanced']).default('friendly'),
   responseLength: z.enum(['short', 'medium', 'long']).default('medium'),
@@ -33,7 +31,6 @@ export const ChatStyleSchema = z.object({
 
 export type ChatStyle = z.infer<typeof ChatStyleSchema>;
 
-// Agent schema
 export const AgentSchema = z.object({
   agentId: z.string(),
   name: z.string(),
@@ -42,11 +39,11 @@ export const AgentSchema = z.object({
   aiConfig: ModelConfigurationSchema,
   chatStyle: ChatStyleSchema,
   connectionId: z.string(),
+  maxTokens: z.number().optional(),
 });
 
 export type Agent = z.infer<typeof AgentSchema>;
 
-// Message types
 export const MessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
   content: z.string(),
@@ -57,7 +54,6 @@ export const MessageSchema = z.object({
 
 export type Message = z.infer<typeof MessageSchema>;
 
-// Conversation message (for streaming)
 export const ConversationMessageSchema = z.object({
   speaker: z.string(),
   message: z.string(),
@@ -68,7 +64,6 @@ export const ConversationMessageSchema = z.object({
 
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 
-// Conversation state for multi-agent workflows
 export const ConversationStateSchema = z.object({
   messages: z.array(MessageSchema),
   agents: z.array(
@@ -88,24 +83,27 @@ export const ConversationStateSchema = z.object({
 
 export type ConversationState = z.infer<typeof ConversationStateSchema>;
 
-// Supervisor decision schemas
 export const AgentSelectionSchema = z.object({
   agentId: z.string().describe('The ID of the agent that should respond next'),
   reasoning: z
     .string()
-    .describe('Brief explanation of why this agent was selected'),
+    .describe('Brief explanation of why this agent was selected')
+    .optional(),
+  turns: z
+    .number()
+    .describe('Number of turns the selected agent should take. Default is 1.')
+    .optional(),
 });
 
 export type AgentSelection = z.infer<typeof AgentSelectionSchema>;
 
 export const TerminationDecisionSchema = z.object({
   shouldTerminate: z.boolean().describe('Whether the conversation should end'),
-  reason: z.string().describe('Brief explanation of the decision'),
+  reason: z.string().describe('Brief explanation of the decision').optional(),
 });
 
 export type TerminationDecision = z.infer<typeof TerminationDecisionSchema>;
 
-// Workflow event types
 export type WorkflowEvent =
   | {
       type: 'agent_response';
@@ -118,11 +116,9 @@ export type WorkflowEvent =
   | { type: 'error'; message: string }
   | { type: 'status'; message: string };
 
-// Agent helper methods
 export function getAgentSystemPrompt(agent: Agent): string {
   const styleInstructions: string[] = [];
 
-  // Build style instructions based on chat style
   if (agent.chatStyle.friendliness === 'friendly') {
     styleInstructions.push(
       'Be warm, approachable, and friendly in your responses.'

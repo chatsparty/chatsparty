@@ -214,7 +214,7 @@ const Layout = () => {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-auto">
           <Routes>
             <Route path="/chat/agents" element={<AgentManagerPage />} />
             <Route path="/marketplace" element={<MarketplacePage />} />

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Input } from '../../../components/ui/input';
 import { Textarea } from '../../../components/ui/textarea';
-import { X, User, Star, Settings, Download, Sparkles, Edit3 } from 'lucide-react';
+import { X, User, Star, Settings, Download, Sparkles, Edit3, Clock, TrendingUp } from 'lucide-react';
+import Avatar from 'boring-avatars';
 
 interface MarketplaceAgent {
   id: string;
@@ -47,7 +48,33 @@ export const ImportAgentModal: React.FC<ImportAgentModalProps> = ({
   const [customCharacteristics, setCustomCharacteristics] = useState(agent?.characteristics || '');
   const [useCustomizations, setUseCustomizations] = useState(false);
 
+  // Handle ESC key press
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !agent) return null;
+
+  const getAgentColor = (agentId: string) => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
+    let hash = 0;
+    for (let i = 0; i < agentId.length; i++) {
+      hash = agentId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
 
   const handleImport = () => {
     const customizations = useCustomizations ? {
@@ -59,136 +86,142 @@ export const ImportAgentModal: React.FC<ImportAgentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div 
+        className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-800"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-6 border-b border-gray-50 dark:border-gray-800">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Download className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {t('marketplace.importAgent')}
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Add this agent to your collection
-                </p>
-              </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
+                Import template
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Add this agent to your collection
+              </p>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full">
-              <X className="w-5 h-5" />
-            </Button>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+            </button>
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Agent Preview */}
-          <Card className="border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50 p-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <User className="w-8 h-8 text-white" />
+        <div className="p-6">
+          {/* Agent Preview Card */}
+          <div className="bg-gray-50 dark:bg-gray-800/30 rounded-lg p-5 mb-6 border border-gray-100 dark:border-gray-800">
+            <div className="flex items-start space-x-4 mb-4">
+              <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+                <Avatar
+                  size={56}
+                  name={agent.name}
+                  variant="beam"
+                  colors={[
+                    getAgentColor(agent.id),
+                    "#92A1C6",
+                    "#146A7C",
+                    "#F0AB3D",
+                    "#C271B4"
+                  ]}
+                />
               </div>
-              <div className="flex-1">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-1">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                       {agent.name}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Created by {agent.user.name}
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      by {agent.user.name}
                     </p>
                   </div>
-                  <Badge variant="secondary" className="capitalize bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
-                    {agent.category}
-                  </Badge>
-                </div>
-
-                <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
-                  {agent.description}
-                </p>
-                
-                <div className="flex items-center space-x-6 mb-4">
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-5 h-5 text-yellow-500 fill-current" />
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {agent.rating.toFixed(1)}
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      ({agent.ratingCount} reviews)
-                    </span>
+                  <div className="flex items-center space-x-1 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded-md">
+                    <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{agent.rating.toFixed(1)}</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Download className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">
-                      {agent.usageCount} imports
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {agent.tags.slice(0, 4).map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-xs bg-white dark:bg-gray-800">
-                      {tag}
-                    </Badge>
-                  ))}
-                  {agent.tags.length > 4 && (
-                    <Badge variant="outline" className="text-xs bg-white dark:bg-gray-800">
-                      +{agent.tags.length - 4} more
-                    </Badge>
-                  )}
                 </div>
               </div>
             </div>
-          </Card>
+
+            {/* Description */}
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+              {agent.description}
+            </p>
+            
+            {/* Stats */}
+            <div className="flex items-center space-x-6 mb-4">
+              <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                <TrendingUp className="w-3 h-3" />
+                <span>{agent.usageCount} uses</span>
+              </div>
+              <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                <Clock className="w-3 h-3" />
+                <span>{new Date(agent.publishedAt).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                <User className="w-3 h-3" />
+                <span>{agent.ratingCount} reviews</span>
+              </div>
+            </div>
+
+            {/* Category Badge */}
+            <div className="flex items-center">
+              <Badge variant="outline" className="capitalize bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 text-xs">
+                {agent.category}
+              </Badge>
+            </div>
+          </div>
 
           {/* Customization Toggle */}
-          <Card className="border border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center">
-                <Edit3 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="flex-1">
-                <label htmlFor="useCustomizations" className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="useCustomizations"
-                    checked={useCustomizations}
-                    onChange={(e) => setUseCustomizations(e.target.checked)}
-                    className="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700"
-                  />
-                  <span className="ml-3 font-medium text-gray-900 dark:text-white">
-                    {t('marketplace.customizeAgent')}
+          <div className="bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 rounded-lg p-4 mb-4">
+            <label htmlFor="useCustomizations" className="flex items-start cursor-pointer">
+              <input
+                type="checkbox"
+                id="useCustomizations"
+                checked={useCustomizations}
+                onChange={(e) => setUseCustomizations(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 dark:border-gray-600 dark:bg-gray-700 mt-0.5 flex-shrink-0"
+              />
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    Customize before importing
                   </span>
-                </label>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Personalize the agent before adding to your collection
+                  <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/20 rounded flex items-center justify-center">
+                    <Edit3 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Modify the agent's name and characteristics to match your needs
                 </p>
               </div>
-            </div>
-          </Card>
+            </label>
+          </div>
 
           {/* Customization Options */}
           {useCustomizations && (
-            <Card className="border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 p-6">
+            <div className="border border-blue-100 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10 rounded-lg p-5 mb-4">
               <div className="flex items-center space-x-2 mb-4">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                <h4 className="font-semibold text-gray-900 dark:text-white">
+                <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                   Customization Options
                 </h4>
               </div>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                     {t('marketplace.customName')}
                   </label>
                   <Input
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
                     placeholder={agent.name}
-                    className="bg-white dark:bg-gray-800"
+                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-sm"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Give your agent a unique name that fits your workflow
@@ -196,35 +229,35 @@ export const ImportAgentModal: React.FC<ImportAgentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                     {t('marketplace.customCharacteristics')}
                   </label>
                   <Textarea
                     value={customCharacteristics}
                     onChange={(e) => setCustomCharacteristics(e.target.value)}
                     placeholder={agent.characteristics}
-                    rows={4}
-                    className="bg-white dark:bg-gray-800"
+                    rows={3}
+                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-sm resize-none"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Adjust the agent's personality and behavior traits
                   </p>
                 </div>
               </div>
-            </Card>
+            </div>
           )}
 
           {/* Agent Details */}
-          <Card className="border border-gray-200 dark:border-gray-700 p-6">
+          <div className="border border-gray-100 dark:border-gray-800 rounded-lg p-5">
             <div className="flex items-center space-x-2 mb-4">
-              <Settings className="w-5 h-5 text-gray-600" />
-              <h4 className="font-semibold text-gray-900 dark:text-white">
+              <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                 {t('marketplace.agentDetails')}
               </h4>
             </div>
             <div className="space-y-3">
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                <div className="text-sm">
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3">
+                <div className="text-xs">
                   <span className="font-medium text-gray-700 dark:text-gray-300">
                     {t('marketplace.characteristics')}:
                   </span>
@@ -233,12 +266,12 @@ export const ImportAgentModal: React.FC<ImportAgentModalProps> = ({
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <span className="font-medium text-gray-700 dark:text-gray-300">
                     {t('marketplace.published')}:
                   </span>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-gray-600 dark:text-gray-400 mt-0.5">
                     {new Date(agent.publishedAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -246,42 +279,41 @@ export const ImportAgentModal: React.FC<ImportAgentModalProps> = ({
                   <span className="font-medium text-gray-700 dark:text-gray-300">
                     Category:
                   </span>
-                  <p className="text-gray-600 dark:text-gray-400 capitalize">
+                  <p className="text-gray-600 dark:text-gray-400 capitalize mt-0.5">
                     {agent.category}
                   </p>
                 </div>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 border-t border-gray-200 dark:border-gray-700 rounded-b-2xl">
-          <div className="flex items-center justify-end space-x-3">
-            <Button 
-              variant="outline" 
+        <div className="px-6 py-5 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between">
+            <button 
               onClick={onClose}
-              className="px-6"
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
             >
               {t('common.cancel')}
-            </Button>
-            <Button 
+            </button>
+            <button 
               onClick={handleImport} 
               disabled={isImporting}
-              className="px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {isImporting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white dark:border-gray-900 border-t-transparent dark:border-t-transparent mr-2"></div>
                   {t('marketplace.importing')}
                 </>
               ) : (
                 <>
-                  <Download className="w-4 h-4 mr-2" />
+                  <Download className="w-3.5 h-3.5 mr-2" />
                   {t('marketplace.import')}
                 </>
               )}
-            </Button>
+            </button>
           </div>
         </div>
       </div>

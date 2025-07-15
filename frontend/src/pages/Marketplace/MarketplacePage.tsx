@@ -16,8 +16,6 @@ import {
   Star, 
   Users, 
   Download,
-  Brain,
-  Target,
   User,
   Play,
   CheckCircle,
@@ -25,6 +23,7 @@ import {
   Clock,
   TrendingUp
 } from 'lucide-react';
+import Avatar from 'boring-avatars';
 
 interface MarketplaceAgent {
   id: string;
@@ -55,44 +54,19 @@ interface FilterOptions {
   sortOrder?: 'asc' | 'desc';
 }
 
-interface BrainstormTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  duration: string;
-  agents: {
-    role: string;
-    name: string;
-    description: string;
-    agentId: string;
-  }[];
-  usageCount: number;
-  rating: number;
-}
-
-interface UseCaseTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  agents: string[];
-  scenario: string;
-  expectedOutcome: string;
-  estimatedDuration: string;
-}
 
 export const MarketplacePage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [view, setView] = useState<'browse' | 'brainstorm' | 'usecases'>('browse');
+  // Removed view state - now only showing templates
   const [filters, setFilters] = useState<FilterOptions>({
     sortBy: 'popular',
     sortOrder: 'desc',
   });
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedAgent, setSelectedAgent] = useState<MarketplaceAgent | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -102,18 +76,14 @@ export const MarketplacePage: React.FC = () => {
     loading,
     pagination,
     categories,
-    brainstormTemplates,
-    useCaseTemplates,
     fetchAgents,
     importAgent,
     rateAgent,
   } = useMarketplace();
 
   useEffect(() => {
-    if (view === 'browse') {
-      fetchAgents({ ...filters, search });
-    }
-  }, [view, filters, search, fetchAgents]);
+    fetchAgents({ ...filters, search });
+  }, [filters, search, fetchAgents]);
 
   const handleFilterChange = (newFilters: Partial<FilterOptions>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -121,6 +91,12 @@ export const MarketplacePage: React.FC = () => {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    const categoryFilter = category === 'All' ? undefined : category.toLowerCase();
+    handleFilterChange({ category: categoryFilter });
   };
 
   const handlePageChange = (page: number) => {
@@ -167,119 +143,20 @@ export const MarketplacePage: React.FC = () => {
     }
   };
 
-  const handleStartBrainstormSession = async (templateId: string) => {
-    try {
-      const template = brainstormTemplates.find(t => t.id === templateId);
-      if (!template) {
-        showToast(t('marketplace.templateNotFound'), 'error');
-        return;
-      }
-
-      const importPromises = template.agents.map(async (agent) => {
-        const result = await importAgent(agent.agentId);
-        return result?.agent?.id;
-      });
-
-      const importedAgentIds = await Promise.all(importPromises);
-      const validAgentIds = importedAgentIds.filter(Boolean);
-
-      if (validAgentIds.length < 2) {
-        showToast(t('marketplace.insufficientAgents'), 'error');
-        return;
-      }
-
-      const sessionMessage = `Let's start a ${template.name} session. ${template.description}`;
-      
-      localStorage.setItem('brainstormSession', JSON.stringify({
-        templateId,
-        templateName: template.name,
-        agents: validAgentIds.slice(0, 6),
-        initialMessage: sessionMessage,
-        timestamp: Date.now()
-      }));
-
-      showToast(t('marketplace.brainstormStarted'), 'success');
-      navigate('/chat');
-    } catch (error) {
-      console.error('Failed to start brainstorm session:', error);
-      showToast(t('marketplace.brainstormFailed'), 'error');
-    }
-  };
-
-  const handleStartUseCase = async (templateId: string) => {
-    try {
-      const template = useCaseTemplates.find(t => t.id === templateId);
-      if (!template) {
-        showToast(t('marketplace.templateNotFound'), 'error');
-        return;
-      }
-
-      const importPromises = template.agents.map(async (agentId) => {
-        const result = await importAgent(agentId);
-        return result?.agent?.id;
-      });
-
-      const importedAgentIds = await Promise.all(importPromises);
-      const validAgentIds = importedAgentIds.filter(Boolean);
-
-      if (validAgentIds.length < 2) {
-        showToast(t('marketplace.insufficientAgents'), 'error');
-        return;
-      }
-
-      const useCaseMessage = `Let's work on this use case: ${template.name}. 
-
-Scenario: ${template.scenario}
-
-Expected Outcome: ${template.expectedOutcome}
-
-Estimated Duration: ${template.estimatedDuration}
-
-Let's begin!`;
-      
-      localStorage.setItem('useCaseSession', JSON.stringify({
-        templateId,
-        templateName: template.name,
-        agents: validAgentIds.slice(0, 6),
-        initialMessage: useCaseMessage,
-        scenario: template.scenario,
-        expectedOutcome: template.expectedOutcome,
-        timestamp: Date.now()
-      }));
-
-      showToast(t('marketplace.useCaseStarted'), 'success');
-      navigate('/chat');
-    } catch (error) {
-      console.error('Failed to start use case:', error);
-      showToast(t('marketplace.useCaseFailed'), 'error');
-    }
-  };
 
 
   const renderCategoryBadges = () => (
-    <div className="bg-white dark:bg-[#191919] border-b border-gray-100 dark:border-gray-800">
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        {/* Navigation tabs */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-1">
-            {[
-              { id: 'browse', label: 'Templates', icon: Grid3X3 },
-              { id: 'brainstorm', label: 'Work', icon: Brain },
-              { id: 'usecases', label: 'Personal', icon: Target },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setView(tab.id as any)}
-                className={`flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
-                  view === tab.id
-                    ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-800'
-                }`}
-              >
-                <tab.icon className="w-4 h-4 mr-1.5" />
-                {tab.label}
-              </button>
-            ))}
+    <div className="bg-white dark:bg-gray-900 sticky top-0 z-10 shadow-sm">
+      <div className="max-w-7xl mx-auto">
+        {/* Search bar */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Templates
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Discover and import AI agents for your projects
+            </p>
           </div>
           
           <div className="relative">
@@ -288,192 +165,179 @@ Let's begin!`;
               placeholder="Search templates..."
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-10 pr-4 py-2 w-72 text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg focus:border-blue-500 dark:focus:border-blue-400"
+              className="pl-10 pr-4 py-2 w-80 text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
 
-        {/* Category filters - Notion-style minimal */}
-        <div className="flex items-center space-x-1 overflow-x-auto">
-          {[
-            { name: 'All', active: true },
-            { name: 'Productivity', active: false },
-            { name: 'Planning', active: false },
-            { name: 'Business', active: false },
-            { name: 'Education', active: false },
-            { name: 'Personal', active: false },
-          ].map((category) => (
-            <button
-              key={category.name}
-              className={`px-2 py-1 text-xs font-medium whitespace-nowrap transition-all duration-200 ${
-                category.active
-                  ? 'text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 rounded'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded'
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
+        {/* Category filters */}
+        <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center space-x-6 overflow-x-auto">
+            {[
+              'All',
+              'Productivity', 
+              'Planning',
+              'Business',
+              'Education',
+              'Personal',
+              'Creative'
+            ].map((category) => (
+              <button
+                key={category}
+                onClick={() => handleCategoryChange(category)}
+                className={`text-sm font-medium whitespace-nowrap transition-all duration-200 pb-2 ${
+                  selectedCategory === category
+                    ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 
+  const getAgentColor = (agentId: string) => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
+    let hash = 0;
+    for (let i = 0; i < agentId.length; i++) {
+      hash = agentId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   const renderAgentCard = (agent: MarketplaceAgent) => (
     <div 
       key={agent.id} 
-      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 hover:shadow-sm transition-all duration-200 cursor-pointer group"
+      className="group cursor-pointer bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 rounded-xl transition-all duration-200 overflow-hidden h-full flex flex-col"
       onClick={() => handleImportAgent(agent)}
     >
-      {/* Compact preview area */}
-      <div className="h-20 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-t-lg flex items-center justify-center relative overflow-hidden">
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-          <User className="w-5 h-5 text-white" />
-        </div>
-        {/* Notion-style corner accent */}
-        <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full opacity-60"></div>
-      </div>
-      
-      {/* Compact content */}
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <h3 className="font-medium text-gray-900 dark:text-white text-sm leading-tight group-hover:text-blue-600 transition-colors">
-            {agent.name}
-          </h3>
-          <div className="flex items-center text-xs text-gray-500 ml-2">
-            <Star className="w-3 h-3 text-yellow-500 fill-current mr-0.5" />
-            <span className="text-xs">{agent.rating.toFixed(1)}</span>
+      {/* Card Header */}
+      <div className="p-5 pb-4 flex-1">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+              <Avatar
+                size={48}
+                name={agent.name}
+                variant="beam"
+                colors={[
+                  getAgentColor(agent.id),
+                  "#92A1C6",
+                  "#146A7C",
+                  "#F0AB3D",
+                  "#C271B4"
+                ]}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-gray-900 dark:text-white text-base mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
+                {agent.name}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+                by {agent.user.name}
+              </p>
+            </div>
+          </div>
+          
+          {/* Rating */}
+          <div className="flex items-center space-x-1 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded-md flex-shrink-0">
+            <Star className="w-3 h-3 text-yellow-500 fill-current" />
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{agent.rating.toFixed(1)}</span>
           </div>
         </div>
         
-        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 line-clamp-2 leading-relaxed">
+        {/* Description */}
+        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4 line-clamp-3">
           {agent.description}
         </p>
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center text-xs text-gray-500">
-            <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center mr-1.5">
-              <User className="w-2.5 h-2.5" />
+        {/* Stats */}
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1">
+              <TrendingUp className="w-3 h-3" />
+              <span>{agent.usageCount} uses</span>
             </div>
-            <span className="truncate max-w-20">{agent.user.name}</span>
-          </div>
-          <div className="flex items-center text-xs text-gray-500">
-            <TrendingUp className="w-3 h-3 mr-1" />
-            <span>{agent.usageCount}</span>
+            <div className="flex items-center space-x-1">
+              <Clock className="w-3 h-3" />
+              <span>{new Date(agent.publishedAt).toLocaleDateString()}</span>
+            </div>
           </div>
         </div>
+      </div>
+      
+      {/* Card Footer */}
+      <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 mt-auto">
+        <button 
+          className="w-full flex items-center justify-center space-x-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleImportAgent(agent);
+          }}
+        >
+          <Download className="w-4 h-4" />
+          <span>Import template</span>
+        </button>
       </div>
     </div>
   );
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#1a1a1a]">
+    <div className="min-h-full bg-gray-50 dark:bg-gray-900">
       {renderCategoryBadges()}
       
-      {view === 'browse' && (
-        <>
-          {/* All Templates Grid - Notion-style compact layout */}
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                All templates • {pagination.total} results
-              </h3>
-              <div className="flex items-center gap-3">
-                <select
-                  className="text-xs px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                  value={filters.sortBy || 'popular'}
-                  onChange={(e) => handleFilterChange({ sortBy: e.target.value as any })}
-                >
-                  <option value="popular">Popular</option>
-                  <option value="rating">Top rated</option>
-                  <option value="newest">Recent</option>
-                </select>
-                <button className="flex items-center text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                  <Filter className="w-3 h-3 mr-1" />
-                  Filter
-                </button>
-              </div>
+      {/* Templates Gallery - Notion-inspired card layout */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-2">
+                {selectedCategory === 'All' ? 'All templates' : `${selectedCategory} templates`}
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400">
+                {pagination.total} agents available for import
+              </p>
             </div>
-            
-            {loading ? (
-              <div className="flex justify-center items-center py-20">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              </div>
-            ) : agents.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-6 h-6 text-gray-400" />
-                </div>
-                <h3 className="text-sm font-medium mb-1 text-gray-900 dark:text-white">No templates found</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Try a different search or browse categories</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                {agents.map(renderAgentCard)}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {view === 'brainstorm' && (
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="mb-6">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Work templates</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Templates designed for professional workflows and team collaboration</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {brainstormTemplates.map((template) => (
-              <div key={template.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 p-4 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
-                <div className="flex items-center mb-3">
-                  <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mr-3">
-                    <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <h3 className="font-medium text-gray-900 dark:text-white text-sm">{template.name}</h3>
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">{template.description}</p>
-                <Button 
-                  size="sm"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                  onClick={() => handleStartBrainstormSession(template.id)}
-                >
-                  Start session
-                </Button>
-              </div>
-            ))}
+            <div className="flex items-center gap-3">
+              <select
+                className="text-sm px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={filters.sortBy || 'popular'}
+                onChange={(e) => handleFilterChange({ sortBy: e.target.value as any })}
+              >
+                <option value="popular">Most popular</option>
+                <option value="rating">Highest rated</option>
+                <option value="newest">Recently added</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
           </div>
         </div>
-      )}
-
-      {view === 'usecases' && (
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="mb-6">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Personal templates</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Templates for personal productivity, goal setting, and life management</p>
+        
+        {/* Content */}
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {useCaseTemplates.map((template) => (
-              <div key={template.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 p-4 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
-                <div className="flex items-center mb-3">
-                  <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mr-3">
-                    <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <h3 className="font-medium text-gray-900 dark:text-white text-sm">{template.name}</h3>
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">{template.description}</p>
-                <Button 
-                  size="sm"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                  onClick={() => handleStartUseCase(template.id)}
-                >
-                  Use template
-                </Button>
-              </div>
-            ))}
+        ) : agents.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-medium mb-2 text-gray-900 dark:text-white">No templates found</h3>
+            <p className="text-gray-500 dark:text-gray-400">Try adjusting your search or browse different categories</p>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+            {agents.map(renderAgentCard)}
+          </div>
+        )}
+      </div>
 
       {/* Import Agent Modal */}
       {selectedAgent && (

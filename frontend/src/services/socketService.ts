@@ -33,7 +33,8 @@ class SocketService {
     return new Promise((resolve, reject) => {
       console.log('🔵 SocketService.connect called', {
         alreadyConnected: !!this.socket?.connected,
-        apiBaseUrl: API_BASE_URL
+        apiBaseUrl: API_BASE_URL,
+        socketUrl: API_BASE_URL.replace(/\/api$/, '')
       });
 
       if (this.socket?.connected) {
@@ -44,8 +45,11 @@ class SocketService {
 
       const token = localStorage.getItem('access_token');
       
-      this.socket = io(API_BASE_URL, {
-        path: '/socket.io/',
+      // Extract base URL by removing '/api' from API_BASE_URL
+      const baseUrl = API_BASE_URL.replace(/\/api$/, '');
+      
+      this.socket = io(baseUrl, {
+        path: '/socket.io',
         transports: ['websocket', 'polling'],
         auth: {
           token: token || undefined

@@ -10,14 +10,17 @@ import {
   WorkflowEvent,
 } from './types';
 
-// Create the multi-agent conversation workflow
-export function createMultiAgentWorkflow(conversationId: string, maxTurns: number = 10) {
+export function createMultiAgentWorkflow(
+  conversationId: string,
+  maxTurns: number = 10
+) {
   const workflow = createWorkflow({
     id: `multi-agent-conversation-${conversationId}`,
     inputSchema: z.object({
       initialMessage: z.string(),
       agents: z.array(AgentSchema),
       userId: z.string().optional(),
+      existingMessages: z.array(z.custom<Message>()).optional(),
     }),
     outputSchema: z.object({
       finalState: ConversationStateSchema,
@@ -25,8 +28,6 @@ export function createMultiAgentWorkflow(conversationId: string, maxTurns: numbe
     }),
   });
 
-
-  // Initial setup step
   const initializeStep = createStep({
     id: 'initialize',
     inputSchema: workflow.inputSchema,
@@ -34,21 +35,21 @@ export function createMultiAgentWorkflow(conversationId: string, maxTurns: numbe
       state: ConversationStateSchema,
     }),
     execute: async ({ inputData }) => {
-      const { initialMessage, agents, userId } = inputData;
-      
-      // Register agents
+      const { initialMessage, agents, userId, existingMessages } = inputData;
+
       for (const agent of agents) {
         await agentManager.registerAgent(agent);
       }
-      
-      // Create initial state
+
       const initialState: ConversationState = {
-        messages: [{
-          role: 'user',
-          content: initialMessage,
-          speaker: 'user',
-          timestamp: Date.now(),
-        }],
+        messages: existingMessages || [
+          {
+            role: 'user',
+            content: initialMessage,
+            speaker: 'user',
+            timestamp: Date.now(),
+          },
+        ],
         agents: agents.map(a => ({
           id: a.agentId,
           name: a.name,
@@ -61,12 +62,11 @@ export function createMultiAgentWorkflow(conversationId: string, maxTurns: numbe
         userId: userId || null,
         conversationId,
       };
-      
+
       return { state: initialState };
     },
   });
 
-  // Main conversation loop
   const conversationLoopStep = createStep({
     id: 'conversationLoop',
     inputSchema: z.object({
@@ -79,89 +79,110 @@ export function createMultiAgentWorkflow(conversationId: string, maxTurns: numbe
     execute: async ({ inputData }) => {
       let { state } = inputData;
       const loopEvents: WorkflowEvent[] = [];
-      
+
       while (!state.conversationComplete && state.turnCount < state.maxTurns) {
         try {
-          // Select speaker - using direct agent manager calls instead of step execution
-          console.info(`Speaker selection - Turn ${state.turnCount}/${state.maxTurns}`);
-          
-          // Check if max turns reached
+          console.info(
+            `Speaker selection - Turn ${state.turnCount}/${state.maxTurns}`
+          );
+
           if (state.turnCount >= state.maxTurns) {
             console.info('Max turns reached, ending conversation');
             state = { ...state, conversationComplete: true };
             break;
           }
-          
-          // Select next agent
-          const selection = await agentManager.selectNextAgent(state, state.userId || undefined);
-          
-          if (!selection) {
-            console.info('No agent selected, ending conversation');
-            state = { ...state, conversationComplete: true };
-            break;
-          }
-          
-          console.info(`Selected agent: ${selection.agentId} - ${selection.reasoning}`);
-          
-          const agent = agentManager.getAgent(selection.agentId);
-          if (!agent) {
-            throw new Error(`Agent ${selection.agentId} not found`);
-          }
-          
-          // Add progressive delay to avoid rate limiting (except for first response)
-          if (state.turnCount > 0) {
-            const baseDelay = 1000;
-            const progressiveDelay = Math.min(state.turnCount * 200, 2000);
-            const totalDelay = baseDelay + progressiveDelay;
-            await new Promise(resolve => setTimeout(resolve, totalDelay));
-          }
-          
-          // Generate response
-          console.info(`Generating response from ${agent.name}`);
-          const response = await agentManager.generateAgentResponse(
-            selection.agentId,
-            state.messages,
+
+          const selection = await agentManager.selectNextAgent(
+            state,
             state.userId || undefined
           );
-          
-          // Add response to state
-          const responseMessage: Message = {
-            role: 'assistant',
-            content: response,
-            speaker: agent.name,
-            agentId: agent.agentId,
-            timestamp: Date.now(),
-          };
-          
-          state = {
-            ...state,
-            messages: [...state.messages, responseMessage],
-            turnCount: state.turnCount + 1,
-            currentSpeaker: selection.agentId,
-          };
-          
-          console.info(`Response generated: ${response.length} characters from ${agent.name}`);
-          
-          // Add event
-          loopEvents.push({
-            type: 'agent_response',
-            agentId: selection.agentId,
-            agentName: agent.name,
-            message: response,
-            timestamp: Date.now(),
-          });
-          
-          // Check termination - skip for short conversations
+
+          if (!selection || !selection.agentId) {
+            console.info('No agent selected, pausing conversation');
+            break;
+          }
+
+          const turns = selection.turns ?? 1;
+          if (turns === 0) {
+            console.info(
+              'Supervisor requested a pause, waiting for user input.'
+            );
+            break;
+          }
+
+          console.info(
+            `Selected agent: ${selection.agentId} for ${turns} turn(s) - ${selection.reasoning}`
+          );
+
+          for (let i = 0; i < turns; i++) {
+            if (
+              state.conversationComplete ||
+              state.turnCount >= state.maxTurns
+            ) {
+              break;
+            }
+
+            const agent = agentManager.getAgent(selection.agentId);
+            if (!agent) {
+              throw new Error(`Agent ${selection.agentId} not found`);
+            }
+
+            if (state.turnCount > 0) {
+              const baseDelay = 1000;
+              const progressiveDelay = Math.min(state.turnCount * 200, 2000);
+              const totalDelay = baseDelay + progressiveDelay;
+              await new Promise(resolve => setTimeout(resolve, totalDelay));
+            }
+
+            console.info(
+              `Generating response from ${agent.name} (Turn ${i + 1}/${turns})`
+            );
+            const response = await agentManager.generateAgentResponse(
+              selection.agentId,
+              state.messages,
+              state.userId || undefined
+            );
+
+            const responseMessage: Message = {
+              role: 'assistant',
+              content: response,
+              speaker: agent.name,
+              agentId: agent.agentId,
+              timestamp: Date.now(),
+            };
+
+            state = {
+              ...state,
+              messages: [...state.messages, responseMessage],
+              turnCount: state.turnCount + 1,
+              currentSpeaker: selection.agentId,
+            };
+
+            console.info(
+              `Response generated: ${response.length} characters from ${agent.name}`
+            );
+
+            loopEvents.push({
+              type: 'agent_response',
+              agentId: selection.agentId,
+              agentName: agent.name,
+              message: response,
+              timestamp: Date.now(),
+            });
+          }
+
           if (state.messages.length >= 3) {
-            const termination = await agentManager.checkTermination(state, state.userId || undefined);
-            
+            const termination = await agentManager.checkTermination(
+              state,
+              state.userId || undefined
+            );
+
             if (termination.shouldTerminate) {
               console.info(`Termination decision: ${termination.reason}`);
               state = { ...state, conversationComplete: true };
               break;
             }
           }
-          
         } catch (error) {
           console.error('Error in conversation loop:', error);
           loopEvents.push({
@@ -172,20 +193,18 @@ export function createMultiAgentWorkflow(conversationId: string, maxTurns: numbe
           break;
         }
       }
-      
-      // Add completion event
+
       if (state.conversationComplete) {
         loopEvents.push({
           type: 'conversation_complete',
           message: 'Conversation has reached a natural conclusion',
         });
       }
-      
+
       return { state, events: loopEvents };
     },
   });
 
-  // Cleanup step
   const cleanupStep = createStep({
     id: 'cleanup',
     inputSchema: z.object({
@@ -195,12 +214,11 @@ export function createMultiAgentWorkflow(conversationId: string, maxTurns: numbe
     outputSchema: workflow.outputSchema,
     execute: async ({ inputData }) => {
       const { state, events } = inputData;
-      
-      // Unregister agents
+
       for (const agent of state.agents) {
         await agentManager.unregisterAgent(agent.id);
       }
-      
+
       return {
         finalState: state,
         events,
@@ -208,7 +226,6 @@ export function createMultiAgentWorkflow(conversationId: string, maxTurns: numbe
     },
   });
 
-  // Build the workflow
   workflow
     .then(initializeStep)
     .then(conversationLoopStep)
@@ -218,30 +235,33 @@ export function createMultiAgentWorkflow(conversationId: string, maxTurns: numbe
   return workflow;
 }
 
-// Helper to run a multi-agent conversation with real-time streaming
 export async function runMultiAgentConversation(
   conversationId: string,
   initialMessage: string,
   agents: Agent[],
   userId?: string,
-  maxTurns: number = 10
+  maxTurns: number = 10,
+  existingMessages?: Message[]
 ): Promise<AsyncGenerator<WorkflowEvent, void, unknown>> {
-  // Create async generator for streaming events in real-time
-  async function* eventGenerator(): AsyncGenerator<WorkflowEvent, void, unknown> {
+  async function* eventGenerator(): AsyncGenerator<
+    WorkflowEvent,
+    void,
+    unknown
+  > {
     try {
-      // Register agents first
       for (const agent of agents) {
         await agentManager.registerAgent(agent);
       }
-      
-      // Create initial state
+
       let state: ConversationState = {
-        messages: [{
-          role: 'user',
-          content: initialMessage,
-          speaker: 'user',
-          timestamp: Date.now(),
-        }],
+        messages: existingMessages || [
+          {
+            role: 'user',
+            content: initialMessage,
+            speaker: 'user',
+            timestamp: Date.now(),
+          },
+        ],
         agents: agents.map(a => ({
           id: a.agentId,
           name: a.name,
@@ -254,101 +274,117 @@ export async function runMultiAgentConversation(
         userId: userId || null,
         conversationId,
       };
-      
-      // Stream initialization event
+
       yield {
         type: 'status',
         message: 'Conversation initialized',
       } as WorkflowEvent;
-      
-      // Main conversation loop with real-time streaming
+
       while (!state.conversationComplete && state.turnCount < state.maxTurns) {
         try {
-          console.info(`Speaker selection - Turn ${state.turnCount}/${state.maxTurns}`);
-          
-          // Check if max turns reached
+          console.info(
+            `Speaker selection - Turn ${state.turnCount}/${state.maxTurns}`
+          );
+
           if (state.turnCount >= state.maxTurns) {
             console.info('Max turns reached, ending conversation');
             state = { ...state, conversationComplete: true };
             break;
           }
-          
-          // Select next agent
+
           const selection = await agentManager.selectNextAgent(state, userId);
-          
-          if (!selection) {
-            console.info('No agent selected, ending conversation');
-            state = { ...state, conversationComplete: true };
+
+          if (!selection || !selection.agentId) {
+            console.info('No agent selected, pausing conversation');
             break;
           }
-          
-          console.info(`Selected agent: ${selection.agentId} - ${selection.reasoning}`);
-          
-          const agent = agentManager.getAgent(selection.agentId);
-          if (!agent) {
-            throw new Error(`Agent ${selection.agentId} not found`);
+
+          const turns = selection.turns ?? 1;
+          if (turns === 0) {
+            console.info(
+              'Supervisor requested a pause, waiting for user input.'
+            );
+            break;
           }
-          
-          // Stream speaker selection event
-          yield {
-            type: 'status',
-            message: `${agent.name} is thinking...`,
-          } as WorkflowEvent;
-          
-          // Add progressive delay to avoid rate limiting (except for first response)
-          if (state.turnCount > 0) {
-            const baseDelay = 1000;
-            const progressiveDelay = Math.min(state.turnCount * 200, 2000);
-            const totalDelay = baseDelay + progressiveDelay;
-            await new Promise(resolve => setTimeout(resolve, totalDelay));
-          }
-          
-          // Generate response
-          console.info(`Generating response from ${agent.name}`);
-          const response = await agentManager.generateAgentResponse(
-            selection.agentId,
-            state.messages,
-            userId
+
+          console.info(
+            `Selected agent: ${selection.agentId} for ${turns} turn(s) - ${selection.reasoning}`
           );
-          
-          // Add response to state
-          const responseMessage: Message = {
-            role: 'assistant',
-            content: response,
-            speaker: agent.name,
-            agentId: agent.agentId,
-            timestamp: Date.now(),
-          };
-          
-          state = {
-            ...state,
-            messages: [...state.messages, responseMessage],
-            turnCount: state.turnCount + 1,
-            currentSpeaker: selection.agentId,
-          };
-          
-          console.info(`Response generated: ${response.length} characters from ${agent.name}`);
-          
-          // Stream the agent response immediately
-          yield {
-            type: 'agent_response',
-            agentId: selection.agentId,
-            agentName: agent.name,
-            message: response,
-            timestamp: Date.now(),
-          } as WorkflowEvent;
-          
-          // Check termination - skip for short conversations
+
+          for (let i = 0; i < turns; i++) {
+            if (
+              state.conversationComplete ||
+              state.turnCount >= state.maxTurns
+            ) {
+              break;
+            }
+
+            const agent = agentManager.getAgent(selection.agentId);
+            if (!agent) {
+              throw new Error(`Agent ${selection.agentId} not found`);
+            }
+
+            yield {
+              type: 'status',
+              message: `${agent.name} is thinking...`,
+            } as WorkflowEvent;
+
+            if (state.turnCount > 0) {
+              const baseDelay = 1000;
+              const progressiveDelay = Math.min(state.turnCount * 200, 2000);
+              const totalDelay = baseDelay + progressiveDelay;
+              await new Promise(resolve => setTimeout(resolve, totalDelay));
+            }
+
+            console.info(
+              `Generating response from ${agent.name} (Turn ${i + 1}/${turns})`
+            );
+            const response = await agentManager.generateAgentResponse(
+              selection.agentId,
+              state.messages,
+              userId
+            );
+
+            const responseMessage: Message = {
+              role: 'assistant',
+              content: response,
+              speaker: agent.name,
+              agentId: agent.agentId,
+              timestamp: Date.now(),
+            };
+
+            state = {
+              ...state,
+              messages: [...state.messages, responseMessage],
+              turnCount: state.turnCount + 1,
+              currentSpeaker: selection.agentId,
+            };
+
+            console.info(
+              `Response generated: ${response.length} characters from ${agent.name}`
+            );
+
+            yield {
+              type: 'agent_response',
+              agentId: selection.agentId,
+              agentName: agent.name,
+              message: response,
+              timestamp: Date.now(),
+            } as WorkflowEvent;
+          }
+
           if (state.messages.length >= 3) {
-            const termination = await agentManager.checkTermination(state, userId);
-            
+            const termination = await agentManager.checkTermination(
+              state,
+              userId
+            );
+
             if (termination.shouldTerminate) {
               console.info(`Termination decision: ${termination.reason}`);
               state = { ...state, conversationComplete: true };
               break;
             }
           }
-          
         } catch (error) {
           console.error('Error in conversation loop:', error);
           yield {
@@ -359,18 +395,15 @@ export async function runMultiAgentConversation(
           break;
         }
       }
-      
-      // Stream completion event
+
       yield {
         type: 'conversation_complete',
         message: 'Conversation has reached a natural conclusion',
       } as WorkflowEvent;
-      
-      // Cleanup: unregister agents
+
       for (const agent of state.agents) {
         await agentManager.unregisterAgent(agent.id);
       }
-      
     } catch (error) {
       yield {
         type: 'error',
@@ -378,6 +411,6 @@ export async function runMultiAgentConversation(
       } as WorkflowEvent;
     }
   }
-  
+
   return eventGenerator();
 }
