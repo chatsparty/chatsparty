@@ -150,9 +150,6 @@ const MultiAgentChatPage: React.FC = () => {
             onConversationUpdated={loadConversations}
             onStartNewConversation={handleStartConversation}
             onSendMessage={sendMessage}
-            showCreditsModal={showCreditsModal}
-            setShowCreditsModal={setShowCreditsModal}
-            creditsError={creditsError}
             isMobile={activeView !== "chat"}
           />
         }
