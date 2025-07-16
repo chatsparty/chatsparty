@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist/app.js",
   "scripts": {
-    "dev": "nodemon --exec 'tsx --tsconfig tsconfig.json' src/app.ts",
+    "dev": "npm run db:generate && nodemon --exec 'tsx --tsconfig tsconfig.json' src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
     "db:generate": "prisma generate",
