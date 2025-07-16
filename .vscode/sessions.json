@@ -8,6 +8,15 @@
     "default": [
       [
         {
+          "name": "mobile",
+          "autoExecuteCommands": true,
+          "icon": "person",
+          "color": "terminal.ansiGreen",
+          "commands": [
+            "npm run ios -w mobile"
+          ]
+        },
+        {
           "name": "frontend",
           "autoExecuteCommands": true,
           "icon": "person",
@@ -17,7 +26,7 @@
           ]
         },
         {
-          "name": "frontend",
+          "name": "backend",
           "autoExecuteCommands": true,
           "icon": "person",
           "color": "terminal.ansiGreen",
