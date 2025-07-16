@@ -144,9 +144,9 @@ async function registerRoutes() {
     }
   );
 
-  // Register all routes under the /api prefix
-  await app.register(authRoutes, { prefix: '/api/auth' });
-  await app.register(apiRoutes, { prefix: '/api' });
+  // Register all routes without /api prefix
+  await app.register(authRoutes, { prefix: '/auth' });
+  await app.register(apiRoutes);
 }
 
 async function start() {
