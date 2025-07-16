@@ -47,7 +47,7 @@ const SharedConversationPage: React.FC = () => {
           `${API_BASE_URL}/chat/shared/conversations/${conversationId}`
         );
         const response = await axios.get(
-          `${API_BASE_URL}/api/chat/shared/conversations/${conversationId}`
+          `${API_BASE_URL}/chat/shared/conversations/${conversationId}`
         );
         console.log("Shared conversation response:", response.data);
         setConversation(response.data);

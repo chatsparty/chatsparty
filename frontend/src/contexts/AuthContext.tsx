@@ -71,7 +71,7 @@ axios.interceptors.response.use(
       const refreshToken = localStorage.getItem("refresh_token");
       if (refreshToken) {
         try {
-          const response = await authAxios.post("/api/auth/refresh", {
+          const response = await authAxios.post("/auth/refresh", {
             refresh_token: refreshToken,
           });
 
@@ -117,7 +117,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         if (storedToken) {
           setToken(storedToken);
           try {
-            const response = await axios.get("/api/auth/me");
+            const response = await axios.get("/auth/me");
             setUser(response.data);
           } catch (error) {
             console.error("Failed to fetch user:", error);
@@ -137,7 +137,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post("/api/auth/login", {
+      const response = await axios.post("/auth/login", {
         email,
         password,
       });
@@ -148,7 +148,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.setItem("refresh_token", refresh_token);
       setToken(access_token);
 
-      const userResponse = await axios.get("/api/auth/me");
+      const userResponse = await axios.get("/auth/me");
       setUser(userResponse.data);
     } catch (error) {
       console.error("Login failed:", error);
@@ -163,7 +163,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     lastName?: string
   ) => {
     try {
-      await axios.post("/api/auth/register", {
+      await axios.post("/auth/register", {
         email,
         password,
         first_name: firstName,
@@ -179,7 +179,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const loginWithGoogle = async (googleToken: string) => {
     try {
-      const response = await axios.post("/api/auth/google", { token: googleToken });
+      const response = await axios.post("/auth/google", { token: googleToken });
 
       const { access_token, refresh_token } = response.data;
 
@@ -187,7 +187,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.setItem("refresh_token", refresh_token);
       setToken(access_token);
 
-      const userResponse = await axios.get("/api/auth/me");
+      const userResponse = await axios.get("/auth/me");
       setUser(userResponse.data);
     } catch (error) {
       console.error("Google login failed:", error);
@@ -206,7 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const handleOAuthCallback = async (provider: string, code: string) => {
     try {
-      const response = await axios.post(`/api/auth/${provider}/callback`, { code });
+      const response = await axios.post(`/auth/${provider}/callback`, { code });
 
       const { access_token, refresh_token } = response.data;
 
@@ -214,7 +214,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.setItem("refresh_token", refresh_token);
       setToken(access_token);
 
-      const userResponse = await axios.get("/api/auth/me");
+      const userResponse = await axios.get("/auth/me");
       setUser(userResponse.data);
     } catch (error) {
       console.error(`${provider} OAuth callback failed:`, error);

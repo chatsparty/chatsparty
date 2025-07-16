@@ -31,17 +31,17 @@ export interface CreditCheckResponse {
 
 export const creditApi = {
   async getBalance(): Promise<CreditBalance> {
-    const response = await axios.get(`${API_BASE_URL}/api/credits/balance`);
+    const response = await axios.get(`${API_BASE_URL}/credits/balance`);
     return response.data;
   },
 
   async checkCredits(amount: number): Promise<CreditCheckResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/credits/check/${amount}`);
+    const response = await axios.get(`${API_BASE_URL}/credits/check/${amount}`);
     return response.data;
   },
 
   async getTransactions(limit: number = 50, offset: number = 0): Promise<CreditTransaction[]> {
-    const response = await axios.get(`${API_BASE_URL}/api/credits/transactions`, {
+    const response = await axios.get(`${API_BASE_URL}/credits/transactions`, {
       params: { limit, offset }
     });
     return response.data;

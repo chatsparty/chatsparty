@@ -37,7 +37,7 @@ export const vscodeApi = {
    * Setup VS Code server for a project
    */
   async setupVSCode(projectId: string): Promise<VSCodeSetupResult> {
-    const response = await api.post(`/api/projects/${projectId}/ide/setup`, {
+    const response = await api.post(`/projects/${projectId}/ide/setup`, {
       ide_type: "vscode"
     });
     return response.data;
@@ -48,7 +48,7 @@ export const vscodeApi = {
    */
   async getVSCodeStatus(projectId: string): Promise<VSCodeStatus> {
     try {
-      const response = await api.get(`/api/projects/${projectId}/ide/status`);
+      const response = await api.get(`/projects/${projectId}/ide/status`);
       return response.data;
     } catch (error) {
       return {
@@ -62,7 +62,7 @@ export const vscodeApi = {
    * Stop VS Code server
    */
   async stopVSCode(projectId: string): Promise<{ success: boolean }> {
-    const response = await api.post(`/api/projects/${projectId}/ide/stop`);
+    const response = await api.post(`/projects/${projectId}/ide/stop`);
     return response.data;
   },
 

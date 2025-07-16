@@ -55,7 +55,7 @@ export const useShareConversation = (
     setIsSharing(true);
     try {
       const response = await axios.put(
-        `/api/conversations/${activeConversation.id}/share`,
+        `/conversations/${activeConversation.id}/share`,
         {
           is_shared: targetSharedStatus,
         }
