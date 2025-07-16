@@ -6,7 +6,6 @@ import { createVertex } from '@ai-sdk/google-vertex';
 import { createGroq } from '@ai-sdk/groq';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { config } from '../../config/env';
 import { getDefaultConnectionConfig } from '../../config/default-connection.config';
 
@@ -81,7 +80,6 @@ const mastraInstance = new Mastra({
 export const mastra = mastraInstance as MastraWithAgents;
 
 const loadPrompts = () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const filePath = path.join(__dirname, 'supervisor-prompts.md');
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const prompts = fileContent.split('## ').slice(1);

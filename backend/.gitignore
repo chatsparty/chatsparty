@@ -49,3 +49,4 @@ prisma/migrations/dev/
 *.tmp
 *.temp
 .cache/
+.env.cloud
