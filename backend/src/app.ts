@@ -18,7 +18,6 @@ import creditRoutes from './services/credit/credit.routes';
 import { storageRoutes } from './services/storage/storage.routes';
 import { chatRoutes } from './services/chat/chat.routes';
 import { conversationRoutes } from './services/conversation/conversation.routes';
-import systemDefaultConnectionRoutes from './services/connections/system-default-connection.routes';
 import { marketplaceRoutes } from './services/marketplace/marketplace.routes';
 import { websocketService } from './services/websocket/websocket.service';
 import { setupChatHandlers } from './services/websocket/chat.handlers';
@@ -113,7 +112,6 @@ const apiRoutes = async (fastify: FastifyInstance) => {
   await fastify.register(userRoutes, { prefix: '/users' });
   await fastify.register(agentRoutes);
   await fastify.register(connectionRoutes, { prefix: '/connections' });
-  await fastify.register(systemDefaultConnectionRoutes);
   await fastify.register(creditRoutes, { prefix: '/credits' });
   await fastify.register(storageRoutes);
   await fastify.register(chatRoutes);

@@ -8,12 +8,12 @@
     "default": [
       [
         {
-          "name": "mobile",
+          "name": "backend",
           "autoExecuteCommands": true,
           "icon": "person",
           "color": "terminal.ansiGreen",
           "commands": [
-            "npm run ios -w mobile"
+            "npm run dev -w backend"
           ]
         },
         {
@@ -23,15 +23,6 @@
           "color": "terminal.ansiGreen",
           "commands": [
             "npm run dev -w frontend"
-          ]
-        },
-        {
-          "name": "backend",
-          "autoExecuteCommands": true,
-          "icon": "person",
-          "color": "terminal.ansiGreen",
-          "commands": [
-            "npm run dev -w backend"
           ]
         }
       ]

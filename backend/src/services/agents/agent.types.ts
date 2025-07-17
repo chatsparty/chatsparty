@@ -1,15 +1,19 @@
-import { Agent } from '@prisma/client';
+import { Agent as PrismaAgent } from '@prisma/client';
 import { z } from 'zod';
 import {
   CreateAgentInputSchema,
   UpdateAgentInputSchema,
 } from './agent.schemas';
-import { ModelConfiguration, ChatStyle } from '../ai/types';
+import {
+  ModelConfiguration,
+  ChatStyle,
+  Agent as DomainAgent,
+} from '../../domains/ai/types';
 
 export type CreateAgentInput = z.infer<typeof CreateAgentInputSchema>;
 export type UpdateAgentInput = z.infer<typeof UpdateAgentInputSchema>;
 
-export interface AgentWithRelations extends Agent {}
+export interface AgentWithRelations extends PrismaAgent {}
 
 export interface AgentResponse {
   id: string;
@@ -49,18 +53,13 @@ export const AGENT_LIMITS = {
 } as const;
 
 export function formatAgentResponse(agent: AgentWithRelations): AgentResponse {
-  // Ensure aiConfig has required fields
-  const aiConfig = agent.aiConfig as any;
-  const validAiConfig: ModelConfiguration = {
-    provider: aiConfig?.provider || 'openai',
-    modelName: aiConfig?.modelName || aiConfig?.model || 'gpt-3.5-turbo',
-    connectionId: aiConfig?.connectionId || agent.connectionId,
-    apiKey: aiConfig?.apiKey,
-    baseUrl: aiConfig?.baseUrl,
-  };
+  if (!agent.aiConfig || typeof agent.aiConfig !== 'object') {
+    throw new Error(`Agent ${agent.id} has missing or invalid aiConfig`);
+  }
+  const validAiConfig = agent.aiConfig as ModelConfiguration;
 
   // Ensure chatStyle has default values
-  const chatStyle = agent.chatStyle as any || {};
+  const chatStyle = (agent.chatStyle as any) || {};
   const validChatStyle: ChatStyle = {
     friendliness: chatStyle?.friendliness || 'friendly',
     responseLength: chatStyle?.responseLength || 'medium',
@@ -79,5 +78,16 @@ export function formatAgentResponse(agent: AgentWithRelations): AgentResponse {
     chatStyle: validChatStyle,
     createdAt: agent.createdAt,
     updatedAt: agent.updatedAt,
+  };
+}
+export function toDomainAgent(agentResponse: AgentResponse): DomainAgent {
+  return {
+    agentId: agentResponse.id,
+    name: agentResponse.name,
+    prompt: agentResponse.prompt,
+    characteristics: agentResponse.characteristics,
+    aiConfig: agentResponse.aiConfig,
+    chatStyle: agentResponse.chatStyle,
+    connectionId: agentResponse.connectionId,
   };
 }
