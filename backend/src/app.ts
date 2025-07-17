@@ -14,7 +14,7 @@ import userRoutes from './services/user/user.routes';
 import authRoutes from './services/user/auth.routes';
 import agentRoutes from './routes/agents/agent.routes';
 import connectionRoutes from './routes/connections/connection.routes';
-import creditRoutes from './services/credit/credit.routes';
+import { creditRoutes } from './routes/credit';
 import { storageRoutes } from './services/storage/storage.routes';
 import { chatRoutes } from './services/chat/chat.routes';
 import { conversationRoutes } from './services/conversation/conversation.routes';

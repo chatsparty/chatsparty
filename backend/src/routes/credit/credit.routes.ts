@@ -1,48 +1,25 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { TransactionType, TransactionReason } from '../../domains/credit/types';
+import { CreditManager } from '../../domains/credit/orchestration/credit.manager';
+import { ModelPricingManager } from '../../domains/credit/orchestration/model-pricing.manager';
+import { CreditRepository } from '../../domains/credit/repository';
 import {
-  CreditService,
-  ModelPricingService,
-  TransactionType,
-  TransactionReason,
-} from './index';
-
-interface IQueryOptions {
-  limit?: number;
-  offset?: number;
-  startDate?: string;
-  endDate?: string;
-  transactionType?: string;
-  reason?: string;
-  orderBy?: 'createdAt' | 'amount';
-  orderDirection?: 'asc' | 'desc';
-}
-
-interface IAddCreditsBody {
-  amount: number;
-  transactionType: TransactionType;
-  reason: TransactionReason;
-  description?: string;
-}
-
-interface ICalculateCostBody {
-  provider: string;
-  modelName: string;
-  messageCount?: number;
-  tokenCount?: number;
-}
-
-interface IModelPricingBody {
-  provider: string;
-  modelName: string;
-  costPerMessage: number;
-  costPer1kTokens?: number | null;
-  isDefaultModel?: boolean;
-  isActive?: boolean;
-}
+  QueryOptionsSchema,
+  AddCreditsBodySchema,
+  CalculateCostBodySchema,
+  ModelPricingBodySchema,
+} from './credit.schemas';
+import {
+  IQueryOptions,
+  IAddCreditsBody,
+  ICalculateCostBody,
+  IModelPricingBody,
+} from './credit.types';
 
 export default async function creditRoutes(fastify: FastifyInstance) {
-  const creditService = new CreditService();
-  const modelPricingService = new ModelPricingService();
+  const creditRepository = new CreditRepository();
+  const creditManager = new CreditManager();
+  const modelPricingManager = new ModelPricingManager(creditRepository);
 
   /**
    * Get current user's credit balance
@@ -68,7 +45,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user!.userId;
-      const result = await creditService.getCreditBalance(userId);
+      const result = await creditManager.getCreditBalance(userId);
 
       if (!result.success) {
         return reply.status(400).send({ error: result.error });
@@ -83,6 +60,14 @@ export default async function creditRoutes(fastify: FastifyInstance) {
    */
   fastify.get(
     '/transactions',
+    {
+      schema: {
+        description: 'Get transaction history',
+        tags: ['Credits'],
+        security: [{ bearerAuth: [] }],
+        querystring: QueryOptionsSchema,
+      },
+    },
     async (
       request: FastifyRequest<{ Querystring: IQueryOptions }>,
       reply: FastifyReply
@@ -111,7 +96,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
         orderDirection,
       };
 
-      const result = await creditService.getTransactionHistory(options);
+      const result = await creditManager.getTransactionHistory(options);
 
       if (!result.success) {
         return reply.status(400).send({ error: result.error });
@@ -135,7 +120,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
       const { startDate, endDate } = request.query;
 
-      const result = await creditService.getCreditStatistics(
+      const result = await creditManager.getCreditStatistics(
         userId,
         startDate ? new Date(startDate) : undefined,
         endDate ? new Date(endDate) : undefined
@@ -165,7 +150,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Invalid amount' });
       }
 
-      const result = await creditService.validateCredits(userId, amount);
+      const result = await creditManager.validateCredits(userId, amount);
 
       if (!result.success) {
         return reply.status(400).send({ error: result.error });
@@ -180,6 +165,13 @@ export default async function creditRoutes(fastify: FastifyInstance) {
    */
   fastify.post(
     '/calculate-cost',
+    {
+      schema: {
+        description: 'Calculate cost for model usage',
+        tags: ['Credits'],
+        body: CalculateCostBodySchema,
+      },
+    },
     async (
       request: FastifyRequest<{ Body: ICalculateCostBody }>,
       reply: FastifyReply
@@ -192,7 +184,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
           .send({ error: 'Provider and model name are required' });
       }
 
-      const result = await modelPricingService.calculateCost({
+      const result = await modelPricingManager.calculateCost({
         provider,
         modelName,
         messageCount,
@@ -220,7 +212,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
     ) => {
       const { provider, isActive } = request.query;
 
-      const result = await modelPricingService.listModelPricing({
+      const result = await modelPricingManager.listModelPricing({
         provider,
         isActive,
       });
@@ -246,7 +238,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
     ) => {
       const { provider, modelName } = request.params;
 
-      const result = await modelPricingService.getModelPricing(
+      const result = await modelPricingManager.getModelPricing(
         provider,
         modelName
       );
@@ -264,8 +256,16 @@ export default async function creditRoutes(fastify: FastifyInstance) {
    */
   fastify.post(
     '/add',
+    {
+      schema: {
+        description: 'Add credits to user account (admin only)',
+        tags: ['Credits'],
+        security: [{ bearerAuth: [] }],
+        body: AddCreditsBodySchema,
+      },
+    },
     async (
-      request: FastifyRequest<{ Body: IAddCreditsBody & { userId?: string } }>,
+      request: FastifyRequest<{ Body: IAddCreditsBody }>,
       reply: FastifyReply
     ) => {
       const userId = request.body.userId || request.user!.userId;
@@ -281,7 +281,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
           .send({ error: 'Transaction type and reason are required' });
       }
 
-      const result = await creditService.addCredits({
+      const result = await creditManager.addCredits({
         userId,
         amount,
         transactionType,
@@ -302,6 +302,14 @@ export default async function creditRoutes(fastify: FastifyInstance) {
    */
   fastify.post(
     '/pricing',
+    {
+      schema: {
+        description: 'Create or update model pricing (admin only)',
+        tags: ['Credits'],
+        security: [{ bearerAuth: [] }],
+        body: ModelPricingBodySchema,
+      },
+    },
     async (
       request: FastifyRequest<{ Body: IModelPricingBody }>,
       reply: FastifyReply
@@ -314,7 +322,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
         });
       }
 
-      const result = await modelPricingService.upsertModelPricing({
+      const result = await modelPricingManager.upsertModelPricing({
         ...pricing,
         costPer1kTokens:
           pricing.costPer1kTokens === undefined
@@ -346,7 +354,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
     ) => {
       const { provider, modelName } = request.params;
 
-      const result = await modelPricingService.deleteModelPricing(
+      const result = await modelPricingManager.deleteModelPricing(
         provider,
         modelName
       );
@@ -365,7 +373,7 @@ export default async function creditRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/pricing/initialize',
     async (_request: FastifyRequest, reply: FastifyReply) => {
-      const result = await modelPricingService.initializeDefaultPricing();
+      const result = await modelPricingManager.initializeDefaultPricing();
 
       if (!result.success) {
         return reply.status(400).send({ error: result.error });

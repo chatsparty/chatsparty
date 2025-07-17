@@ -1,6 +1,6 @@
-import { 
+import {
   CreditTransaction as PrismaCreditTransaction,
-  ModelCreditCost as PrismaModelCreditCost 
+  ModelCreditCost as PrismaModelCreditCost,
 } from '@prisma/client';
 
 // Credit transaction types
@@ -25,7 +25,7 @@ export enum TransactionType {
   BONUS = 'bonus',
   SUBSCRIPTION = 'subscription',
   REFILL = 'refill',
-  ADJUSTMENT = 'adjustment'
+  ADJUSTMENT = 'adjustment',
 }
 
 // Transaction reasons
@@ -33,11 +33,11 @@ export enum TransactionReason {
   AI_CHAT = 'ai_chat',
   MODEL_USAGE = 'model_usage',
   VOICE_SYNTHESIS = 'voice_synthesis',
-  
+
   MANUAL_ADJUSTMENT = 'manual_adjustment',
   SUBSCRIPTION_REFILL = 'subscription_refill',
   WELCOME_BONUS = 'welcome_bonus',
-  REFERRAL_BONUS = 'referral_bonus'
+  REFERRAL_BONUS = 'referral_bonus',
 }
 
 // Credit transaction request types

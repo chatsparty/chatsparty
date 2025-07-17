@@ -1,6 +1,4 @@
 import { runMultiAgentConversation } from '../../domains/ai/orchestration/conversation.workflow';
-import { agentService } from '../agents/agent.service';
-import { toDomainAgent } from '../agents/agent.types';
 import { conversationService } from '../conversation/conversation.service';
 import { Message } from '../../domains/ai/types';
 
