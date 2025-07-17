@@ -1,15 +1,15 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import {
-  createConnectionSchema as createConnectionZodSchema,
-  updateConnectionSchema as updateConnectionZodSchema,
-  testConnectionSchema as testConnectionZodSchema,
-  connectionIdSchema,
-  setDefaultSchema,
-  connectionQuerySchema,
-  paginationSchema,
-  listConnectionsResponseSchema,
-  publicConnectionSchema,
-} from './connection.validation';
+  CreateConnectionSchema as createConnectionZodSchema,
+  UpdateConnectionSchema as updateConnectionZodSchema,
+  TestConnectionSchema as testConnectionZodSchema,
+  ConnectionIdSchema,
+  SetDefaultSchema,
+  ConnectionQuerySchema,
+  PaginationSchema,
+  ListConnectionsResponseSchema,
+  PublicConnectionSchema,
+} from '../../domains/connections/types';
 import { z } from 'zod';
 
 const tags = ['Connections'];
@@ -20,26 +20,26 @@ export const createConnectionSchema = {
   security,
   body: zodToJsonSchema(createConnectionZodSchema),
   response: {
-    201: zodToJsonSchema(publicConnectionSchema),
+    201: zodToJsonSchema(PublicConnectionSchema),
   },
 };
 
 export const listConnectionsSchema = {
   tags,
   security,
-  querystring: zodToJsonSchema(connectionQuerySchema.merge(paginationSchema)),
+  querystring: zodToJsonSchema(ConnectionQuerySchema.merge(PaginationSchema)),
   response: {
-    200: zodToJsonSchema(listConnectionsResponseSchema),
+    200: zodToJsonSchema(ListConnectionsResponseSchema),
   },
 };
 
 export const getConnectionSchema = {
   tags,
   security,
-  params: zodToJsonSchema(connectionIdSchema),
+  params: zodToJsonSchema(ConnectionIdSchema),
   response: {
     200: zodToJsonSchema(
-      publicConnectionSchema.extend({
+      PublicConnectionSchema.extend({
         availableModels: z.array(
           z.object({
             id: z.string(),
@@ -54,17 +54,17 @@ export const getConnectionSchema = {
 export const updateConnectionSchema = {
   tags,
   security,
-  params: zodToJsonSchema(connectionIdSchema),
+  params: zodToJsonSchema(ConnectionIdSchema),
   body: zodToJsonSchema(updateConnectionZodSchema),
   response: {
-    200: zodToJsonSchema(publicConnectionSchema),
+    200: zodToJsonSchema(PublicConnectionSchema),
   },
 };
 
 export const deleteConnectionSchema = {
   tags,
   security,
-  params: zodToJsonSchema(connectionIdSchema),
+  params: zodToJsonSchema(ConnectionIdSchema),
   response: {
     204: {
       type: 'null',
@@ -98,9 +98,9 @@ export const testConnectionSchema = {
 export const setDefaultConnectionSchema = {
   tags,
   security,
-  body: zodToJsonSchema(setDefaultSchema),
+  body: zodToJsonSchema(SetDefaultSchema),
   response: {
-    200: zodToJsonSchema(publicConnectionSchema),
+    200: zodToJsonSchema(PublicConnectionSchema),
   },
 };
 
@@ -109,7 +109,7 @@ export const getDefaultConnectionSchema = {
   security,
   params: zodToJsonSchema(z.object({ provider: z.string() })),
   response: {
-    200: zodToJsonSchema(publicConnectionSchema),
+    200: zodToJsonSchema(PublicConnectionSchema),
   },
 };
 

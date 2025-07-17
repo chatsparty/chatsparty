@@ -1,5 +1,4 @@
 import { FastifyPluginAsync, FastifyRequest } from 'fastify';
-import * as connectionService from './connection.service';
 import {
   createConnectionSchema,
   listConnectionsSchema,
@@ -14,13 +13,16 @@ import {
   getProviderModelsSchema,
 } from './connection.schemas';
 import {
-  AIProvider,
   CreateConnectionRequest,
   UpdateConnectionRequest,
   TestConnectionRequest,
   ConnectionQueryOptions,
   PaginationOptions,
-} from './connection.types';
+} from '../../domains/connections/types';
+import * as connectionManager from '../../domains/connections/orchestration/connection.manager';
+import * as fallbackHandler from '../../domains/connections/decision/fallback.handler';
+import * as connectionTester from '../../domains/connections/providers/connection.tester';
+import { PROVIDER_CONFIGS } from '../../domains/connections/providers/provider.info';
 
 const connectionRoutes: FastifyPluginAsync = async fastify => {
   fastify.post(
@@ -32,7 +34,7 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       request: FastifyRequest<{ Body: CreateConnectionRequest }>,
       reply
     ) => {
-      const result = await connectionService.createConnection(
+      const result = await connectionManager.createConnection(
         request.user!.userId,
         request.body
       );
@@ -59,7 +61,7 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       }>,
       reply
     ) => {
-      const result = await connectionService.listConnections(
+      const result = await connectionManager.listConnections(
         request.user!.userId,
         request.query
       );
@@ -86,7 +88,7 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       schema: getConnectionSchema,
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const result = await connectionService.getConnectionById(
+      const result = await connectionManager.getConnectionById(
         request.user!.userId,
         request.params.id
       );
@@ -114,7 +116,7 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       }>,
       reply
     ) => {
-      const result = await connectionService.updateConnection(
+      const result = await connectionManager.updateConnection(
         request.user!.userId,
         request.params.id,
         request.body
@@ -137,7 +139,7 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       schema: deleteConnectionSchema,
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const result = await connectionService.deleteConnection(
+      const result = await connectionManager.deleteConnection(
         request.user!.userId,
         request.params.id
       );
@@ -159,7 +161,7 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       schema: testConnectionSchema,
     },
     async (request: FastifyRequest<{ Body: TestConnectionRequest }>, reply) => {
-      const result = await connectionService.testConnection(request.body);
+      const result = await connectionTester.testConnection(request.body);
 
       if (!result.success) {
         return reply.status(500).send({
@@ -181,7 +183,7 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       request: FastifyRequest<{ Body: { connectionId: string } }>,
       reply
     ) => {
-      const result = await connectionService.setDefaultConnection(
+      const result = await connectionManager.setDefaultConnection(
         request.user!.userId,
         request.body.connectionId
       );
@@ -206,10 +208,9 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       request: FastifyRequest<{ Params: { provider: string } }>,
       reply
     ) => {
-      // This needs to be refactored to use the new fallback logic
-      const result = await connectionService.getConnectionWithFallback(
+      const result = await fallbackHandler.getConnectionWithFallback(
         request.user!.userId,
-        'default'
+        request.params.provider
       );
 
       if (!result.success) {
@@ -232,9 +233,15 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       request: FastifyRequest<{ Params: { provider: string } }>,
       reply
     ) => {
-      // This logic needs to be moved to a domain helper
-      const providerInfo = {};
-
+      const providerInfo =
+        PROVIDER_CONFIGS[
+          request.params.provider as keyof typeof PROVIDER_CONFIGS
+        ];
+      if (!providerInfo) {
+        return reply
+          .status(404)
+          .send({ error: 'Not Found', message: 'Provider not found' });
+      }
       return reply.send(providerInfo);
     }
   );
@@ -245,16 +252,7 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       schema: getProvidersSchema,
     },
     async (_request, reply) => {
-      const providers = [
-        'openai',
-        'anthropic',
-        'google',
-        'groq',
-        'ollama',
-        'vertex_ai',
-      ].map(provider => {});
-
-      return reply.send(providers);
+      return reply.send(Object.values(PROVIDER_CONFIGS));
     }
   );
 
@@ -267,10 +265,16 @@ const connectionRoutes: FastifyPluginAsync = async fastify => {
       request: FastifyRequest<{ Params: { provider: string } }>,
       reply
     ) => {
-      // This logic needs to be moved to a domain helper
-      const models: any[] = [];
-
-      return reply.send(models);
+      const providerInfo =
+        PROVIDER_CONFIGS[
+          request.params.provider as keyof typeof PROVIDER_CONFIGS
+        ];
+      if (!providerInfo) {
+        return reply
+          .status(404)
+          .send({ error: 'Not Found', message: 'Provider not found' });
+      }
+      return reply.send(providerInfo.supportedModels);
     }
   );
 };

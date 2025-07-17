@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient, Connection } from '@prisma/client';
 import { db } from '../../config/database';
-import { ConnectionQueryOptions, PaginationOptions } from './connection.types';
+import { ConnectionQueryOptions, PaginationOptions } from './types';
 
 export class ConnectionRepository {
   private db: PrismaClient;

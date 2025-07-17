@@ -1,32 +1,24 @@
 import { Prisma } from '@prisma/client';
-import { encrypt, decrypt } from '../../utils/crypto';
+import { encrypt, decrypt } from '../../../utils/crypto';
 import {
   Connection,
   ConnectionWithModels,
   PublicConnection,
   CreateConnectionRequest,
   UpdateConnectionRequest,
-  TestConnectionRequest,
-  TestConnectionResponse,
-  ConnectionListResponse,
   ServiceResponse,
   ConnectionQueryOptions,
   PaginationOptions,
   AIProvider,
-  PROVIDER_CONFIGS,
-  ModelInfo,
-} from './connection.types';
-import * as Fallback from '../../domains/connections/fallback';
-import { getModel } from '../../domains/ai/providers/ai.provider.factory';
+  ConnectionListResponse,
+} from '../types';
+import { PROVIDER_CONFIGS } from '../providers/provider.info';
 import {
   ConnectionNotFoundError,
   DuplicateConnectionError,
   ConnectionValidationError,
-} from '../../utils/errors';
-import { ConnectionRepository } from './connection.repository';
-import { generateText } from 'ai';
-
-// This service now acts as a thin layer, orchestrating calls to the domain and repository.
+} from '../../../utils/errors';
+import { ConnectionRepository } from '../repository';
 
 const repository = new ConnectionRepository();
 
@@ -82,7 +74,7 @@ export async function createConnection(
       modelName: request.modelName,
       baseUrl: request.baseUrl,
       isActive: request.isActive ?? true,
-      isDefault: false, // Defaults are now set explicitly
+      isDefault: false,
       ...apiKeyData,
       user: {
         connect: {
@@ -159,7 +151,6 @@ export async function getConnectionById(
 ): Promise<ServiceResponse<ConnectionWithModels>> {
   try {
     const connection = await _findUserConnectionOrThrow(userId, connectionId);
-    // This logic can be simplified or moved to a domain helper
     const providerConfig = PROVIDER_CONFIGS[connection.provider as AIProvider];
     const availableModels = providerConfig.supportedModels;
 
@@ -184,7 +175,7 @@ export async function listConnections(
   try {
     const [connections, total] = await repository.findMany(userId, options);
 
-    const publicConnections = connections.map(c => ({
+    const publicConnections: PublicConnection[] = connections.map(c => ({
       id: c.id,
       name: c.name,
       description: c.description,
@@ -193,8 +184,8 @@ export async function listConnections(
       baseUrl: c.baseUrl,
       isActive: c.isActive,
       isDefault: c.isDefault,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
     }));
 
     const defaultConnection = connections.find(c => c.isDefault);
@@ -212,29 +203,6 @@ export async function listConnections(
     return {
       success: false,
       error: 'Failed to list connections',
-    };
-  }
-}
-
-export async function testConnection(
-  request: TestConnectionRequest
-): Promise<ServiceResponse<TestConnectionResponse>> {
-  try {
-    const model = getModel(request.provider, request.modelName || 'default');
-    await generateText({ model, prompt: 'Hello!' });
-    return {
-      success: true,
-      data: { success: true, message: 'Connection successful' },
-    };
-  } catch (error) {
-    console.error('Error testing connection:', error);
-    return {
-      success: false,
-      data: {
-        success: false,
-        message: 'Connection failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
     };
   }
 }
@@ -264,47 +232,6 @@ export async function getDecryptedApiKey(
   } catch (error) {
     console.error('Error getting decrypted API key:', error);
     return { success: false, error: 'Failed to decrypt API key' };
-  }
-}
-
-export async function getConnectionWithFallback(
-  userId: string,
-  connectionId: string
-): Promise<ServiceResponse<Connection>> {
-  try {
-    const userConnection = await repository.findUserConnection(
-      userId,
-      connectionId
-    );
-    if (userConnection?.isActive) {
-      return { success: true, data: userConnection };
-    }
-
-    // Fallback logic is now only triggered if a specific connection is not found or inactive
-    const fallbackResult = await Fallback.getFallbackConnection();
-
-    if (fallbackResult.success && fallbackResult.data) {
-      const fallbackConn = fallbackResult.data;
-      // Ensure the fallback provider matches the requested connection if possible
-      // This part of the logic may need further refinement based on product requirements
-      if (
-        !userConnection ||
-        userConnection.provider === fallbackConn.provider
-      ) {
-        return {
-          success: true,
-          data: { ...fallbackConn, userId },
-        };
-      }
-    }
-
-    return {
-      success: false,
-      error: `Connection not found or inactive: ${connectionId}`,
-    };
-  } catch (error) {
-    console.error('Error getting connection with fallback:', error);
-    return { success: false, error: 'Failed to get connection' };
   }
 }
 

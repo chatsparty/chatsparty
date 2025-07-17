@@ -1,4 +1,4 @@
-import { AIProvider } from '../services/connections/connection.types';
+import { AIProvider } from '../routes/connections/connection.types';
 
 // Default connection configuration
 export interface DefaultConnectionConfig {

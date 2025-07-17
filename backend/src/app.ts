@@ -13,7 +13,7 @@ import { applyAuthMiddleware } from './middleware/auth-middleware';
 import userRoutes from './services/user/user.routes';
 import authRoutes from './services/user/auth.routes';
 import { agentRoutes } from './services/agents/agent.routes';
-import connectionRoutes from './services/connections/connection.routes';
+import connectionRoutes from './routes/connections/connection.routes';
 import creditRoutes from './services/credit/credit.routes';
 import { storageRoutes } from './services/storage/storage.routes';
 import { chatRoutes } from './services/chat/chat.routes';
