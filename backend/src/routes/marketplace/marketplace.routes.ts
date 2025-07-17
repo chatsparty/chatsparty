@@ -7,62 +7,20 @@ import {
   AgentRatingSchema,
   PublishAgentSchema,
 } from '../../domains/marketplace/schemas';
+import {
+  getMarketplaceAgentsSchema,
+  getMarketplaceAgentByIdSchema,
+  importAgentSchema,
+  rateAgentSchema,
+  publishAgentSchema,
+  getMarketplaceCategoriesSchema,
+} from './marketplace.schemas';
 
 export async function marketplaceRoutes(fastify: FastifyInstance) {
   const marketplaceService = new MarketplaceService();
 
   fastify.get('/marketplace/agents', {
-    schema: {
-      tags: ['Marketplace'],
-      description: 'Get marketplace agents with filters and pagination',
-      querystring: MarketplaceFiltersSchema.extend({
-        page: MarketplacePaginationInputSchema.shape.page,
-        limit: MarketplacePaginationInputSchema.shape.limit,
-      }),
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            agents: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  name: { type: 'string' },
-                  description: { type: 'string' },
-                  characteristics: { type: 'string' },
-                  category: { type: 'string' },
-                  tags: { type: 'array', items: { type: 'string' } },
-                  rating: { type: 'number' },
-                  ratingCount: { type: 'number' },
-                  usageCount: { type: 'number' },
-                  createdAt: { type: 'string', format: 'date-time' },
-                  publishedAt: { type: 'string', format: 'date-time' },
-                  user: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      name: { type: 'string' },
-                    },
-                  },
-                },
-              },
-            },
-            pagination: {
-              type: 'object',
-              properties: {
-                page: { type: 'number' },
-                limit: { type: 'number' },
-                total: { type: 'number' },
-                pages: { type: 'number' },
-              },
-            },
-            filters: { type: 'object' },
-          },
-        },
-      },
-    },
+    schema: getMarketplaceAgentsSchema,
     handler: async (request, reply) => {
       const filters = MarketplaceFiltersSchema.parse(request.query);
       const pagination = MarketplacePaginationInputSchema.parse(request.query);
@@ -77,44 +35,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/marketplace/agents/:agentId', {
-    schema: {
-      tags: ['Marketplace'],
-      description: 'Get single marketplace agent by ID',
-      params: {
-        type: 'object',
-        properties: {
-          agentId: { type: 'string' },
-        },
-        required: ['agentId'],
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            name: { type: 'string' },
-            description: { type: 'string' },
-            characteristics: { type: 'string' },
-            category: { type: 'string' },
-            tags: { type: 'array', items: { type: 'string' } },
-            rating: { type: 'number' },
-            ratingCount: { type: 'number' },
-            usageCount: { type: 'number' },
-            createdAt: { type: 'string', format: 'date-time' },
-            publishedAt: { type: 'string', format: 'date-time' },
-            user: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                name: { type: 'string' },
-              },
-            },
-            aiConfig: { type: 'object' },
-            chatStyle: { type: 'object' },
-          },
-        },
-      },
-    },
+    schema: getMarketplaceAgentByIdSchema,
     handler: async (request, reply) => {
       const { agentId } = request.params as { agentId: string };
 
@@ -125,28 +46,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/marketplace/agents/import', {
-    schema: {
-      tags: ['Marketplace'],
-      description: 'Import agent from marketplace',
-      body: ImportAgentSchema,
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            agent: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                name: { type: 'string' },
-                templateId: { type: 'string' },
-                isOriginal: { type: 'boolean' },
-              },
-            },
-            success: { type: 'boolean' },
-          },
-        },
-      },
-    },
+    schema: importAgentSchema,
     handler: async (request, reply) => {
       const userId = request.user!.userId;
       const importRequest = ImportAgentSchema.parse(request.body);
@@ -161,28 +61,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/marketplace/agents/rate', {
-    schema: {
-      tags: ['Marketplace'],
-      description: 'Rate marketplace agent',
-      body: AgentRatingSchema,
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            rating: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                rating: { type: 'number' },
-                review: { type: 'string' },
-                createdAt: { type: 'string', format: 'date-time' },
-              },
-            },
-            success: { type: 'boolean' },
-          },
-        },
-      },
-    },
+    schema: rateAgentSchema,
     handler: async (request, reply) => {
       const userId = request.user!.userId;
       const ratingRequest = AgentRatingSchema.parse(request.body);
@@ -194,19 +73,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/marketplace/agents/publish', {
-    schema: {
-      tags: ['Marketplace'],
-      description: 'Publish agent to marketplace',
-      body: PublishAgentSchema,
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-          },
-        },
-      },
-    },
+    schema: publishAgentSchema,
     handler: async (request, reply) => {
       const userId = request.user!.userId;
       const publishRequest = PublishAgentSchema.parse(request.body);
@@ -218,16 +85,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/marketplace/categories', {
-    schema: {
-      tags: ['Marketplace'],
-      description: 'Get marketplace categories',
-      response: {
-        200: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    },
+    schema: getMarketplaceCategoriesSchema,
     handler: async (_request, reply) => {
       const categories = await marketplaceService.getCategories();
 

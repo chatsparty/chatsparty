@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io';
 import { websocketService } from './websocket.service';
 import { conversationService } from '../conversation/conversation.service';
-import { agentService } from '../agents/agent.service';
+import * as agentManager from '../../domains/agents/orchestration/agent.manager';
 import { aiService } from '../ai/ai.service';
 import { verifyToken } from '../../utils/auth';
 import type { JwtPayload } from 'jsonwebtoken';
@@ -59,11 +59,12 @@ export function setupChatHandlers(socket: Socket): void {
           return;
         }
 
-        const validAgents = await Promise.all(
-          agent_ids.map(id => agentService.getAgent(userId!, id))
+        const agentPromises = agent_ids.map(id =>
+          agentManager.getAgentById(userId!, id)
         );
+        const agentResults = await Promise.all(agentPromises);
 
-        if (validAgents.some(agent => !agent)) {
+        if (agentResults.some(result => !result.success || !result.data)) {
           socket.emit('conversation_error', {
             conversation_id,
             error: 'One or more agents not found',
