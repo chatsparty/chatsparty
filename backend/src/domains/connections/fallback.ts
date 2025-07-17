@@ -3,7 +3,7 @@ import {
   PublicConnection,
   ServiceResponse,
   AIProvider,
-} from '../../routes/connections/connection.types';
+} from './types';
 import {
   getDefaultConnectionConfig,
   DefaultConnectionConfig,
@@ -76,7 +76,7 @@ export function toPublicFallbackConnection(
     isActive: connection.isActive,
     isDefault: connection.isDefault,
     isSystemDefault: connection.isSystemDefault,
-    createdAt: connection.createdAt,
-    updatedAt: connection.updatedAt,
+    createdAt: connection.createdAt.toISOString(),
+    updatedAt: connection.updatedAt.toISOString(),
   };
 }

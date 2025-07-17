@@ -12,7 +12,7 @@ import { authenticate } from './middleware/auth';
 import { applyAuthMiddleware } from './middleware/auth-middleware';
 import userRoutes from './services/user/user.routes';
 import authRoutes from './services/user/auth.routes';
-import { agentRoutes } from './services/agents/agent.routes';
+import agentRoutes from './routes/agents/agent.routes';
 import connectionRoutes from './routes/connections/connection.routes';
 import creditRoutes from './services/credit/credit.routes';
 import { storageRoutes } from './services/storage/storage.routes';
@@ -62,7 +62,7 @@ async function registerPlugins() {
           },
         },
       },
-      security: [{ bearerAuth: [] }], // Apply security globally
+      security: [{ bearerAuth: [] }],
     },
   });
 
@@ -104,13 +104,10 @@ async function registerPlugins() {
   app.decorate('verifyJWT', authenticate);
 }
 
-// Encapsulate all authenticated routes in a single plugin
 const apiRoutes = async (fastify: FastifyInstance) => {
-  // Apply the authentication middleware to all routes in this plugin
   await applyAuthMiddleware(fastify, { requireAuth: true });
-
   await fastify.register(userRoutes, { prefix: '/users' });
-  await fastify.register(agentRoutes);
+  await fastify.register(agentRoutes, { prefix: '/agents' });
   await fastify.register(connectionRoutes, { prefix: '/connections' });
   await fastify.register(creditRoutes, { prefix: '/credits' });
   await fastify.register(storageRoutes);
@@ -142,7 +139,6 @@ async function registerRoutes() {
     }
   );
 
-  // Register all routes without /api prefix
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(apiRoutes);
 }

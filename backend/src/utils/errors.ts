@@ -23,3 +23,21 @@ export class ConnectionValidationError extends BaseError {
     super(message);
   }
 }
+
+export class AgentNotFoundError extends BaseError {
+  constructor(message = 'Agent not found') {
+    super(message);
+  }
+}
+
+export class DuplicateAgentError extends BaseError {
+  constructor(message = 'An agent with this name already exists') {
+    super(message);
+  }
+}
+
+export class AgentValidationError extends BaseError {
+  constructor(message: string) {
+    super(message);
+  }
+}
