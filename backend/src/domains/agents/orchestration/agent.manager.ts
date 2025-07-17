@@ -9,7 +9,7 @@ import {
   PublicAgent,
 } from '../types';
 import { AgentRepository } from '../repository';
-import { ConnectionRepository } from '../../connections/repository';
+import { findUserConnection } from '../../connections/repository';
 import * as Fallback from '../../connections/decision/fallback';
 import {
   AgentNotFoundError,
@@ -19,17 +19,13 @@ import {
 } from '../../../utils/errors';
 
 const agentRepository = new AgentRepository();
-const connectionRepository = new ConnectionRepository();
 
 const AGENT_LIMITS = {
   MAX_AGENTS_PER_USER: 50,
 };
 
 async function _validateConnection(userId: string, connectionId: string) {
-  const connection = await connectionRepository.findUserConnection(
-    userId,
-    connectionId
-  );
+  const connection = await findUserConnection(userId, connectionId);
 
   if (connection && connection.isActive) {
     return connection;

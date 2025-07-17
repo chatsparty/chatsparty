@@ -44,9 +44,9 @@ export async function getFallbackConnection(): Promise<
       apiKeyEncrypted: false,
       baseUrl: config.baseUrl || null,
       isActive: true,
-      isDefault: true, // A fallback is always the default if no other is set
+      isDefault: true,
       isSystemDefault: true,
-      createdAt: new Date(0), // Static date to indicate it's a config value
+      createdAt: new Date(0),
       updatedAt: new Date(0),
     };
 

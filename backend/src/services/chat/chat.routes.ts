@@ -10,9 +10,6 @@ import { StreamEvent } from './chat.types';
 import { handleStreamingResponse } from '../../utils/sse.handler';
 
 export async function chatRoutes(fastify: FastifyInstance) {
-  // Note: The single-agent chat logic will need to be refactored
-  // to use the new aiService, similar to the multi-agent chat.
-  // This is a placeholder for now.
   fastify.post('/chat', async (request, reply) => {
     return reply.code(501).send({ error: 'Not Implemented' });
   });
@@ -41,7 +38,7 @@ export async function chatRoutes(fastify: FastifyInstance) {
         source: AsyncGenerator<import('../ai/ai.service').StreamEvent>
       ): AsyncGenerator<StreamEvent> {
         for await (const event of source) {
-          if (event.type === 'thinking') continue; // Skip thinking events for now
+          if (event.type === 'thinking') continue;
           yield {
             type: event.type,
             timestamp: event.timestamp || Date.now(),
@@ -64,7 +61,6 @@ export async function chatRoutes(fastify: FastifyInstance) {
     {},
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user!.userId;
-      // This needs to be refactored to not use chatOrchestrationService
       const result = { success: true, data: [] };
 
       if (!result.success) {
@@ -86,7 +82,6 @@ export async function chatRoutes(fastify: FastifyInstance) {
     ) => {
       const userId = request.user!.userId;
       const { conversationId } = request.params;
-      // This needs to be refactored to not use chatOrchestrationService
       const result = { success: true, data: { message: 'Session ended' } };
 
       if (!result.success) {

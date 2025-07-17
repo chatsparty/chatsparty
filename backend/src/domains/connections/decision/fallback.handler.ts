@@ -1,25 +1,20 @@
 import { Connection, ServiceResponse } from '../types';
-import { ConnectionRepository } from '../repository';
+import { findUserDefault, findFirst } from '../repository';
 import { getFallbackConnection } from './fallback';
-
-const repository = new ConnectionRepository();
 
 export async function getConnectionWithFallback(
   userId: string,
   provider: string
 ): Promise<ServiceResponse<Connection>> {
   try {
-    const userDefaultConnection = await repository.findUserDefault(
-      userId,
-      provider
-    );
+    const userDefaultConnection = await findUserDefault(userId, provider);
 
     if (userDefaultConnection?.isActive) {
       return { success: true, data: userDefaultConnection };
     }
 
     if (!userDefaultConnection) {
-      const anyUserConnection = await repository.findFirst(userId, provider);
+      const anyUserConnection = await findFirst(userId, provider);
       if (anyUserConnection?.isActive) {
         return { success: true, data: anyUserConnection };
       }

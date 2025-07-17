@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { Connection as PrismaConnection } from '@prisma/client';
 import { PROVIDER_CONFIGS } from './providers/provider.info';
 
-// AI Provider types
 export const AIProviderSchema = z.enum([
   'openai',
   'anthropic',
@@ -14,7 +13,6 @@ export const AIProviderSchema = z.enum([
 
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
-// Connection types
 export interface Connection extends PrismaConnection {}
 
 export interface ConnectionWithModels extends Connection {
@@ -36,7 +34,6 @@ export const PublicConnectionSchema = z.object({
 
 export type PublicConnection = z.infer<typeof PublicConnectionSchema>;
 
-// Model information
 export interface ModelInfo {
   id: string;
   name: string;
@@ -46,7 +43,6 @@ export interface ModelInfo {
   capabilities?: string[];
 }
 
-// Provider configurations
 export interface ProviderConfig {
   name: string;
   displayName: string;
@@ -57,7 +53,6 @@ export interface ProviderConfig {
   customizable: boolean;
 }
 
-// Validation Schemas
 export const CreateConnectionSchema = z
   .object({
     name: z
@@ -188,7 +183,6 @@ export const ListConnectionsResponseSchema = z.object({
   data: z.array(PublicConnectionSchema),
 });
 
-// Request/Response types from validation schemas
 export type CreateConnectionRequest = z.infer<typeof CreateConnectionSchema>;
 export type UpdateConnectionRequest = z.infer<typeof UpdateConnectionSchema>;
 export type TestConnectionRequest = z.infer<typeof TestConnectionSchema>;
@@ -197,7 +191,6 @@ export type SetDefaultInput = z.infer<typeof SetDefaultSchema>;
 export type ConnectionQueryInput = z.infer<typeof ConnectionQuerySchema>;
 export type PaginationInput = z.infer<typeof PaginationSchema>;
 
-// Explicit Request/Response types that were in the original types file
 export interface TestConnectionResponse {
   success: boolean;
   message: string;
@@ -211,14 +204,12 @@ export interface ConnectionListResponse {
   defaultConnectionId?: string;
 }
 
-// Service response types
 export interface ServiceResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// Query options
 export interface ConnectionQueryOptions {
   includeInactive?: boolean;
   provider?: AIProvider;

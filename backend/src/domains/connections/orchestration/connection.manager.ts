@@ -18,20 +18,22 @@ import {
   DuplicateConnectionError,
   ConnectionValidationError,
 } from '../../../utils/errors';
-import { ConnectionRepository } from '../repository';
-
-const repository = new ConnectionRepository();
+import {
+  findByName,
+  create,
+  update,
+  findUserConnection,
+  deleteConnection as deleteConnectionFromRepo,
+  findMany,
+  setUserDefault,
+} from '../repository';
 
 async function _validateConnectionName(
   userId: string,
   name: string,
   connectionId?: string
 ): Promise<void> {
-  const existingConnection = await repository.findByName(
-    userId,
-    name,
-    connectionId
-  );
+  const existingConnection = await findByName(userId, name, connectionId);
   if (existingConnection) {
     throw new DuplicateConnectionError();
   }
@@ -51,7 +53,7 @@ async function _findUserConnectionOrThrow(
   userId: string,
   connectionId: string
 ): Promise<Connection> {
-  const connection = await repository.findUserConnection(userId, connectionId);
+  const connection = await findUserConnection(userId, connectionId);
   if (!connection) {
     throw new ConnectionNotFoundError();
   }
@@ -67,7 +69,7 @@ export async function createConnection(
 
     const apiKeyData = _prepareApiKeyData(request.apiKey);
 
-    const connection = await repository.create({
+    const connection = await create({
       name: request.name,
       description: request.description,
       provider: request.provider,
@@ -113,7 +115,7 @@ export async function updateConnection(
       Object.assign(updateData, _prepareApiKeyData(request.apiKey));
     }
 
-    const connection = await repository.update(connectionId, updateData);
+    const connection = await update(connectionId, updateData);
 
     return { success: true, data: connection };
   } catch (error: unknown) {
@@ -134,7 +136,7 @@ export async function deleteConnection(
 ): Promise<ServiceResponse<void>> {
   try {
     await _findUserConnectionOrThrow(userId, connectionId);
-    await repository.delete(connectionId);
+    await deleteConnectionFromRepo(connectionId);
     return { success: true };
   } catch (error: unknown) {
     console.error('Error deleting connection:', error);
@@ -173,7 +175,7 @@ export async function listConnections(
   options: ConnectionQueryOptions & PaginationOptions = {}
 ): Promise<ServiceResponse<ConnectionListResponse>> {
   try {
-    const [connections, total] = await repository.findMany(userId, options);
+    const [connections, total] = await findMany(userId, options);
 
     const publicConnections: PublicConnection[] = connections.map(c => ({
       id: c.id,
@@ -212,10 +214,7 @@ export async function getDecryptedApiKey(
   connectionId: string
 ): Promise<ServiceResponse<string>> {
   try {
-    const connection = await repository.findUserConnection(
-      userId,
-      connectionId
-    );
+    const connection = await findUserConnection(userId, connectionId);
 
     if (!connection) {
       return { success: false, error: 'Connection not found' };
@@ -240,10 +239,7 @@ export async function setDefaultConnection(
   connectionId: string
 ): Promise<ServiceResponse<Connection>> {
   try {
-    const connection = await repository.findUserConnection(
-      userId,
-      connectionId
-    );
+    const connection = await findUserConnection(userId, connectionId);
 
     if (!connection) {
       return { success: false, error: 'Connection not found' };
@@ -255,7 +251,7 @@ export async function setDefaultConnection(
       };
     }
 
-    const updatedConnection = await repository.setUserDefault(connectionId);
+    const updatedConnection = await setUserDefault(connectionId);
     return { success: true, data: updatedConnection };
   } catch (error) {
     console.error('Error setting default connection:', error);
