@@ -1,41 +1,32 @@
-// Theme constants for consistent styling across the app
 export const theme = {
   colors: {
-    // Primary dark theme colors
-    background: '#121712',
-    surface: '#1F261C',
-    surfaceSecondary: '#2E3829',
+    background: "#fafafa",
+    surface: "#ffffff",
+    surfaceSecondary: "#f4f4f5",
 
-    // Accent colors
-    primary: '#54D12B',
-    primaryMuted: '#A6B5A1',
+    primary: "#18181b",
+    primaryMuted: "#71717a",
 
-    // Text colors
-    textPrimary: '#ffffff',
-    textSecondary: '#A6B5A1',
-    textMuted: '#9CA3AF',
-    textButtonPrimary: 'black',
+    textPrimary: "#18181b",
+    textSecondary: "#71717a",
+    textMuted: "#a1a1aa",
+    textButtonPrimary: "#fafafa",
 
-    // Status colors
-    success: '#54D12B',
-    error: '#FF6B6B',
-    warning: '#F59E0B',
+    success: "#22c55e",
+    error: "#ef4444",
+    warning: "#f59e0b",
 
-    // Border colors
-    border: '#2E3829',
-    borderLight: '#374151',
+    border: "#e4e4e7",
+    borderLight: "#f4f4f5",
 
-    // Card and component backgrounds
-    card: '#1F261C',
-    cardSecondary: '#2E3829',
+    card: "#ffffff",
+    cardSecondary: "#f4f4f5",
 
-    // Input backgrounds
-    input: '#1F261C',
-    inputBorder: '#2E3829',
+    input: "#ffffff",
+    inputBorder: "#e4e4e7",
 
-    // Placeholder colors
-    placeholder: '#6B7280',
-    placeholderMuted: '#9CA3AF',
+    placeholder: "#a1a1aa",
+    placeholderMuted: "#d4d4d8",
   },
 
   spacing: {
@@ -49,7 +40,7 @@ export const theme = {
 
   borderRadius: {
     sm: 6,
-    md: 8,
+    md: 10,
     lg: 12,
     xl: 16,
     xxl: 24,
@@ -57,7 +48,7 @@ export const theme = {
   },
 
   typography: {
-    fontFamily: 'Manrope',
+    fontFamily: "System",
     sizes: {
       xs: 12,
       sm: 14,
@@ -69,30 +60,30 @@ export const theme = {
       xxxxl: 32,
     },
     weights: {
-      normal: '400' as const,
-      medium: '500' as const,
-      semibold: '600' as const,
-      bold: '700' as const,
+      normal: "400" as const,
+      medium: "500" as const,
+      semibold: "600" as const,
+      bold: "700" as const,
     },
   },
 
   shadows: {
     sm: {
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,
       shadowRadius: 2,
       elevation: 2,
     },
     md: {
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.15,
       shadowRadius: 4,
       elevation: 4,
     },
     lg: {
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -101,18 +92,17 @@ export const theme = {
   },
 } as const;
 
-// Helper function to get status color
 export const getStatusColor = (
-  status: 'active' | 'ended' | 'winning' | 'lost',
+  status: "active" | "ended" | "winning" | "lost"
 ) => {
   switch (status) {
-    case 'active':
+    case "active":
       return theme.colors.success;
-    case 'ended':
+    case "ended":
       return theme.colors.textMuted;
-    case 'winning':
+    case "winning":
       return theme.colors.success;
-    case 'lost':
+    case "lost":
       return theme.colors.error;
     default:
       return theme.colors.textMuted;

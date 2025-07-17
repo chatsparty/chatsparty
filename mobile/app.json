@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "ChatsParty Mobile",
+    "slug": "chatsparty-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "chatsparty",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

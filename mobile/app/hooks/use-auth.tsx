@@ -1,6 +1,2 @@
-export function useAuth() {
-	return {
-		isAuthenticated: false, // Replace with actual authentication logic
-		isLoading: false, // Replace with actual loading state logic
-	}
-}
+// Re-export the useAuth hook from AuthContext for backward compatibility
+export { useAuth } from '../contexts/AuthContext';

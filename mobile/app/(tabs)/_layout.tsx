@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-
+import { theme } from '../constants/theme';
 
 export default function TabLayout() {
   return (
@@ -9,15 +9,15 @@ export default function TabLayout() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: '#121712',
-            borderTopColor: '#2E3829',
+            backgroundColor: theme.colors.surface,
+            borderTopColor: theme.colors.border,
             borderTopWidth: 1,
             paddingBottom: 8,
             paddingTop: 8,
             height: 80,
           },
-          tabBarActiveTintColor: '#54D12B',
-          tabBarInactiveTintColor: '#A6B5A1',
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarLabelStyle: {
             fontSize: 12,
             fontWeight: '500',
@@ -27,9 +27,9 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Auctions',
+            title: 'Home',
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="person-outline" size={size} color={color} />
+              <Ionicons name="home-outline" size={size} color={color} />
             ),
           }}
         />

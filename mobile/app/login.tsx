@@ -1,249 +1,225 @@
-import { ExternalLink } from './components/ExternalLink';
-import { AntDesign } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useEffect } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { theme } from './constants/theme';
-import { useAuth } from './hooks/use-auth';
+import { ExternalLink } from "./components/ExternalLink";
+import { AntDesign } from "@expo/vector-icons";
+import { router, Stack } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from "react-native";
+import { theme } from "./constants/theme";
+import { useAuth } from "./hooks/use-auth";
 
 export default function LoginScreen() {
-	const { isAuthenticated } = useAuth();
+  const authContext = useAuth();
+  const { isAuthenticated, isLoading, loginWithGoogle } = authContext;
+  const [signingIn, setSigningIn] = useState(false);
 
-	// Redirect to main app if already authenticated
-	useEffect(() => {
-		if (isAuthenticated) {
-			router.replace('/(tabs)');
-		}
-	}, [isAuthenticated]);
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated]);
 
-	const handleAppleSignIn = async () => {
-		Alert.alert(
-			'Coming Soon',
-			'Apple Sign In is not ready yet. Please use guest access for now.',
-			[{ text: 'OK' }]
-		);
-	};
+  const handleGoogleSignIn = async () => {
+    try {
+      setSigningIn(true);
 
-	const handleGoogleSignIn = async () => {
-		Alert.alert(
-			'Coming Soon',
-			'Google Sign In is not ready yet. Please use guest access for now.',
-			[{ text: 'OK' }]
-		);
-	};
+      if (!loginWithGoogle) {
+        throw new Error(
+          "Login function not available. Please check the authentication setup."
+        );
+      }
 
-	const handleEmailSignIn = () => {
-		Alert.alert(
-			'Coming Soon',
-			'Email Sign In is not ready yet. Please use guest access for now.',
-			[{ text: 'OK' }]
-		);
-	};
+      await loginWithGoogle();
+    } catch (error) {
+      console.error("Login error:", error);
+      Alert.alert(
+        "Sign In Failed",
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setSigningIn(false);
+    }
+  };
 
-	const handleGuestSignIn = async () => {
-		Alert.alert(
-			'Coming Soon',
-			'Guest Sign In is not ready yet. Please use guest access for now.',
-			[{ text: 'OK' }]
-		);
-	};
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
-	return (
-		<View style={styles.container}>
-			<View style={styles.header}>
-				<Text style={styles.subtitle}>
-					Discover, bid, and win amazing auctions
-				</Text>
-				<Text style={styles.description}>
-					Join thousands of bidders in live auctions and find unique items at
-					great prices
-				</Text>
-			</View>
-			<View style={styles.buttonContainer}>
-				{/* Social Login Row */}
-				<View style={styles.socialButtonRow}>
-					<TouchableOpacity
-						style={[styles.socialButton, styles.appleButton]}
-						onPress={handleAppleSignIn}
-					>
-						<AntDesign
-							name="apple1"
-							size={24}
-							color={theme.colors.background}
-						/>
-					</TouchableOpacity>
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <View style={styles.centerContent}>
+          <View style={styles.brandSection}>
+            <Text style={styles.appTitle}>ChatsParty</Text>
+          </View>
 
-					<TouchableOpacity
-						style={[styles.socialButton, styles.googleButton]}
-						onPress={handleGoogleSignIn}
-					>
-						<AntDesign
-							name="google"
-							size={24}
-							color={theme.colors.background}
-						/>
-					</TouchableOpacity>
-				</View>
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeTitle}>Welcome</Text>
+            <Text style={styles.welcomeSubtitle}>
+              Sign in to start chatting with AI assistants
+            </Text>
+          </View>
 
-				{/* Separator */}
-				<View style={styles.separatorContainer}>
-					<View style={styles.separatorLine} />
-					<Text style={styles.separatorText}>or</Text>
-					<View style={styles.separatorLine} />
-				</View>
+          <View style={styles.actionSection}>
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                signingIn && styles.googleButtonDisabled,
+              ]}
+              onPress={handleGoogleSignIn}
+              disabled={signingIn}
+              activeOpacity={0.7}
+            >
+              {signingIn ? (
+                <>
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.googleButtonText,
+                      styles.googleButtonTextDisabled,
+                    ]}
+                  >
+                    Signing in...
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <AntDesign name="google" size={20} color="#4285F4" />
+                  <Text style={styles.googleButtonText}>
+                    Continue with Google
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
 
-				{/* Email/Password Options */}
-				<TouchableOpacity
-					style={[styles.button, styles.emailButton]}
-					onPress={handleEmailSignIn}
-				>
-					<AntDesign name="mail" size={24} color={theme.colors.textPrimary} />
-					<Text style={[styles.buttonText, styles.emailButtonText]}>
-						Continue with Email
-					</Text>
-				</TouchableOpacity>
-
-				<TouchableOpacity
-					style={[styles.button, styles.guestButton]}
-					onPress={handleGuestSignIn}
-				>
-					<AntDesign name="user" size={24} color={theme.colors.textPrimary} />
-					<Text style={[styles.buttonText, styles.guestButtonText]}>
-						Continue as Guest
-					</Text>
-				</TouchableOpacity>
-			</View>
-
-			<Text style={styles.privacyText}>
-				By signing up, you agree to our{' '}
-				<ExternalLink href="/privacy-policy" style={styles.link}>
-					privacy policy
-				</ExternalLink>
-				.
-			</Text>
-		</View>
-	);
+        <View style={styles.legalSection}>
+          <Text style={styles.legalText}>
+            By continuing, you agree to our{" "}
+            <ExternalLink href="/terms" style={styles.legalLink}>
+              Terms of Service
+            </ExternalLink>
+            {" and "}
+            <ExternalLink href="/privacy" style={styles.legalLink}>
+              Privacy Policy
+            </ExternalLink>
+          </Text>
+        </View>
+      </View>
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		backgroundColor: theme.colors.background,
-		padding: theme.spacing.lg,
-		justifyContent: 'space-between',
-		paddingTop: 100,
-		paddingBottom: 50,
-	},
-	header: {
-		marginBottom: theme.spacing.xl,
-	},
-	title: {
-		fontSize: theme.typography.sizes.xxl,
-		fontWeight: theme.typography.weights.normal,
-		color: theme.colors.textPrimary,
-		lineHeight: 44,
-	},
-	subtitle: {
-		fontSize: theme.typography.sizes.xxxl,
-		fontStyle: 'italic',
-		letterSpacing: -1,
-		fontWeight: theme.typography.weights.bold,
-		color: theme.colors.textPrimary,
-		marginTop: theme.spacing.sm,
-	},
-	description: {
-		fontSize: theme.typography.sizes.md,
-		color: theme.colors.textSecondary,
-		marginTop: theme.spacing.sm,
-		lineHeight: 24,
-	},
-	buttonContainer: {
-		gap: theme.spacing.lg,
-	},
-	socialButtonRow: {
-		flexDirection: 'row',
-		gap: theme.spacing.md,
-		justifyContent: 'center',
-	},
-	socialButton: {
-		width: 60,
-		height: 60,
-		borderRadius: theme.borderRadius.full,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	socialButtonText: {
-		fontSize: 20,
-		fontWeight: theme.typography.weights.bold,
-	},
-	separatorContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		marginVertical: theme.spacing.sm,
-	},
-	separatorLine: {
-		flex: 1,
-		height: 1,
-		backgroundColor: theme.colors.border,
-		opacity: 0.3,
-	},
-	separatorText: {
-		color: theme.colors.textSecondary,
-		fontSize: theme.typography.sizes.sm,
-		marginHorizontal: theme.spacing.md,
-		fontWeight: theme.typography.weights.medium,
-	},
-	button: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		padding: theme.spacing.md,
-		borderRadius: theme.borderRadius.md,
-		gap: theme.spacing.md,
-	},
-	buttonText: {
-		fontSize: theme.typography.sizes.md,
-		fontWeight: theme.typography.weights.semibold,
-	},
-	appleButton: {
-		backgroundColor: theme.colors.textPrimary,
-		...theme.shadows.sm,
-	},
-	appleButtonText: {
-		color: theme.colors.background,
-	},
-	googleButton: {
-		backgroundColor: theme.colors.textPrimary,
-		borderWidth: 1,
-		borderColor: theme.colors.border,
-		...theme.shadows.sm,
-	},
-	emailButton: {
-		backgroundColor: theme.colors.surface,
-		borderWidth: 1,
-		borderColor: theme.colors.border,
-	},
-	googleButtonText: {
-		color: theme.colors.background,
-	},
-	emailButtonText: {
-		color: theme.colors.textPrimary,
-	},
-	guestButton: {
-		backgroundColor: theme.colors.surface,
-		borderWidth: 1,
-		borderColor: theme.colors.border,
-	},
-	guestButtonText: {
-		color: theme.colors.textPrimary,
-	},
-	privacyText: {
-		textAlign: 'center',
-		color: theme.colors.textSecondary,
-		fontSize: theme.typography.sizes.sm,
-	},
-	link: {
-		color: theme.colors.primary,
-		textDecorationLine: 'underline',
-	},
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 24,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 120,
+  },
+  brandSection: {
+    marginBottom: 64,
+  },
+  appTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.3,
+    textAlign: "center",
+  },
+  welcomeSection: {
+    marginBottom: 48,
+    alignItems: "center",
+  },
+  welcomeTitle: {
+    fontSize: 40,
+    fontWeight: "700",
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.8,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  welcomeSubtitle: {
+    fontSize: 17,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 24,
+    fontWeight: "400",
+    paddingHorizontal: 32,
+  },
+  actionSection: {
+    width: "100%",
+    alignItems: "center",
+  },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.surface,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    gap: 12,
+    width: "100%",
+    maxWidth: 320,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: theme.colors.textPrimary,
+  },
+  googleButtonDisabled: {
+    opacity: 0.6,
+    backgroundColor: theme.colors.surfaceSecondary,
+  },
+  googleButtonTextDisabled: {
+    color: theme.colors.textSecondary,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  legalSection: {
+    position: "absolute",
+    bottom: 48,
+    left: 24,
+    right: 24,
+    alignItems: "center",
+  },
+  legalText: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 18,
+    fontWeight: "400",
+  },
+  legalLink: {
+    color: theme.colors.textSecondary,
+    fontWeight: "500",
+    textDecorationLine: "underline",
+  },
 });
