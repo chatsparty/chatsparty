@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
-import axios from 'axios';
-import { API_BASE_URL } from '../../../config/api';
+import { useState, useCallback, useEffect } from "react";
+import axios from "axios";
+import { API_BASE_URL } from "../../../config/api";
 
 // Create axios instance with auth
 const api = axios.create({
@@ -9,7 +9,7 @@ const api = axios.create({
 
 // Add auth interceptor
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem("access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -85,40 +85,13 @@ interface AgentRatingResponse {
   success: boolean;
 }
 
-interface BrainstormTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  duration: string;
-  agents: {
-    role: string;
-    name: string;
-    description: string;
-    agentId: string;
-  }[];
-  usageCount: number;
-  rating: number;
-}
-
-interface UseCaseTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  agents: string[];
-  scenario: string;
-  expectedOutcome: string;
-  estimatedDuration: string;
-}
-
 interface FilterOptions {
   category?: string;
   tags?: string[];
   minRating?: number;
   search?: string;
-  sortBy?: 'popular' | 'rating' | 'newest' | 'name';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "popular" | "rating" | "newest" | "name";
+  sortOrder?: "asc" | "desc";
 }
 
 export const useMarketplace = () => {
@@ -131,137 +104,154 @@ export const useMarketplace = () => {
     pages: 0,
   });
   const [categories, setCategories] = useState<string[]>([]);
-  const [brainstormTemplates, setBrainstormTemplates] = useState<BrainstormTemplate[]>([]);
-  const [useCaseTemplates, setUseCaseTemplates] = useState<UseCaseTemplate[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAgents = useCallback(async (filters: FilterOptions, page = 1) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: pagination.limit.toString(),
-        ...(filters.category && { category: filters.category }),
-        ...(filters.search && { search: filters.search }),
-        ...(filters.minRating && { minRating: filters.minRating.toString() }),
-        ...(filters.sortBy && { sortBy: filters.sortBy }),
-        ...(filters.sortOrder && { sortOrder: filters.sortOrder }),
-      });
+  const fetchAgents = useCallback(
+    async (filters: FilterOptions, page = 1) => {
+      setLoading(true);
+      setError(null);
 
-      if (filters.tags && filters.tags.length > 0) {
-        filters.tags.forEach(tag => queryParams.append('tags', tag));
+      try {
+        const queryParams = new URLSearchParams({
+          page: page.toString(),
+          limit: pagination.limit.toString(),
+          ...(filters.category && { category: filters.category }),
+          ...(filters.search && { search: filters.search }),
+          ...(filters.minRating && { minRating: filters.minRating.toString() }),
+          ...(filters.sortBy && { sortBy: filters.sortBy }),
+          ...(filters.sortOrder && { sortOrder: filters.sortOrder }),
+        });
+
+        if (filters.tags && filters.tags.length > 0) {
+          filters.tags.forEach((tag) => queryParams.append("tags", tag));
+        }
+
+        const response = await api.get<MarketplaceResponse>(
+          `/marketplace/agents?${queryParams.toString()}`
+        );
+
+        setAgents(response.data.agents);
+        setPagination(response.data.pagination);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch agents");
+      } finally {
+        setLoading(false);
       }
+    },
+    [pagination.limit]
+  );
 
-      const response = await api.get<MarketplaceResponse>(`/marketplace/agents?${queryParams.toString()}`);
-      
-      setAgents(response.data.agents);
-      setPagination(response.data.pagination);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch agents');
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.limit]);
+  const fetchAgentById = useCallback(
+    async (agentId: string): Promise<MarketplaceAgent | null> => {
+      try {
+        const response = await api.get<MarketplaceAgent>(
+          `/marketplace/agents/${agentId}`
+        );
+        return response.data;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch agent");
+        return null;
+      }
+    },
+    []
+  );
 
-  const fetchAgentById = useCallback(async (agentId: string): Promise<MarketplaceAgent | null> => {
-    try {
-      const response = await api.get<MarketplaceAgent>(`/marketplace/agents/${agentId}`);
-      return response.data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch agent');
-      return null;
-    }
-  }, []);
+  const importAgent = useCallback(
+    async (
+      agentId: string,
+      customizations?: any
+    ): Promise<ImportAgentResponse | null> => {
+      try {
+        const request: ImportAgentRequest = {
+          agentId,
+          customizations,
+        };
 
-  const importAgent = useCallback(async (agentId: string, customizations?: any): Promise<ImportAgentResponse | null> => {
-    try {
-      const request: ImportAgentRequest = {
-        agentId,
-        customizations,
-      };
+        const response = await api.post<ImportAgentResponse>(
+          "/marketplace/agents/import",
+          request
+        );
+        return response.data;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to import agent");
+        return null;
+      }
+    },
+    []
+  );
 
-      const response = await api.post<ImportAgentResponse>('/marketplace/agents/import', request);
-      return response.data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import agent');
-      return null;
-    }
-  }, []);
+  const rateAgent = useCallback(
+    async (
+      agentId: string,
+      rating: number,
+      review?: string
+    ): Promise<AgentRatingResponse | null> => {
+      try {
+        const request: AgentRatingRequest = {
+          agentId,
+          rating,
+          review,
+        };
 
-  const rateAgent = useCallback(async (agentId: string, rating: number, review?: string): Promise<AgentRatingResponse | null> => {
-    try {
-      const request: AgentRatingRequest = {
-        agentId,
-        rating,
-        review,
-      };
+        const response = await api.post<AgentRatingResponse>(
+          "/marketplace/agents/rate",
+          request
+        );
+        return response.data;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to rate agent");
+        return null;
+      }
+    },
+    []
+  );
 
-      const response = await api.post<AgentRatingResponse>('/marketplace/agents/rate', request);
-      return response.data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rate agent');
-      return null;
-    }
-  }, []);
-
-  const publishAgent = useCallback(async (agentId: string, category: string, tags: string[], description: string): Promise<boolean> => {
-    try {
-      await api.post('/marketplace/agents/publish', {
-        agentId,
-        category,
-        tags,
-        description,
-      });
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to publish agent');
-      return false;
-    }
-  }, []);
+  const publishAgent = useCallback(
+    async (
+      agentId: string,
+      category: string,
+      tags: string[],
+      description: string
+    ): Promise<boolean> => {
+      try {
+        await api.post("/marketplace/agents/publish", {
+          agentId,
+          category,
+          tags,
+          description,
+        });
+        return true;
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to publish agent"
+        );
+        return false;
+      }
+    },
+    []
+  );
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await api.get<string[]>('/marketplace/categories');
+      const response = await api.get<string[]>("/marketplace/categories");
       setCategories(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch categories');
-    }
-  }, []);
-
-  const fetchBrainstormTemplates = useCallback(async () => {
-    try {
-      const response = await api.get<BrainstormTemplate[]>('/marketplace/templates/brainstorm');
-      setBrainstormTemplates(response.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch brainstorm templates');
-    }
-  }, []);
-
-  const fetchUseCaseTemplates = useCallback(async () => {
-    try {
-      const response = await api.get<UseCaseTemplate[]>('/marketplace/templates/usecases');
-      setUseCaseTemplates(response.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch use case templates');
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch categories"
+      );
     }
   }, []);
 
   // Load initial data
   useEffect(() => {
     fetchCategories();
-    fetchBrainstormTemplates();
-    fetchUseCaseTemplates();
-  }, [fetchCategories, fetchBrainstormTemplates, fetchUseCaseTemplates]);
+  }, [fetchCategories]);
 
   return {
     agents,
     loading,
     pagination,
     categories,
-    brainstormTemplates,
-    useCaseTemplates,
     error,
     fetchAgents,
     fetchAgentById,
@@ -269,7 +259,5 @@ export const useMarketplace = () => {
     rateAgent,
     publishAgent,
     fetchCategories,
-    fetchBrainstormTemplates,
-    fetchUseCaseTemplates,
   };
 };

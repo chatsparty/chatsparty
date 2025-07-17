@@ -18,7 +18,7 @@ import { creditRoutes } from './routes/credit';
 import { storageRoutes } from './services/storage/storage.routes';
 import { chatRoutes } from './services/chat/chat.routes';
 import { conversationRoutes } from './services/conversation/conversation.routes';
-import { marketplaceRoutes } from './services/marketplace/marketplace.routes';
+import { marketplaceRoutes } from './routes/marketplace';
 import { websocketService } from './services/websocket/websocket.service';
 import { setupChatHandlers } from './services/websocket/chat.handlers';
 

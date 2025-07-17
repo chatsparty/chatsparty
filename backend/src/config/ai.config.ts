@@ -14,3 +14,8 @@ export const SUPERVISOR_MODEL: {
   temperature: 0.3,
   maxTokens: 4096,
 };
+
+export const DEFAULT_MARKETPLACE_AI_CONFIG = {
+  provider: 'openai',
+  modelName: 'gpt-3.5-turbo',
+};

@@ -1,3 +1,10 @@
+import { Prisma } from '@prisma/client';
+
+const agentWithUser = Prisma.validator<Prisma.AgentDefaultArgs>()({
+  include: { user: { select: { id: true, name: true } } },
+});
+
+export type AgentWithUser = Prisma.AgentGetPayload<typeof agentWithUser>;
 export interface MarketplaceAgent {
   id: string;
   name: string;
@@ -86,31 +93,4 @@ export interface PublishAgentRequest {
   category: string;
   tags: string[];
   description: string;
-}
-
-export interface BrainstormTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  duration: string;
-  agents: {
-    role: string;
-    name: string;
-    description: string;
-    agentId: string;
-  }[];
-  usageCount: number;
-  rating: number;
-}
-
-export interface UseCaseTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  agents: string[];
-  scenario: string;
-  expectedOutcome: string;
-  estimatedDuration: string;
 }

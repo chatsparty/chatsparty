@@ -16,12 +16,14 @@ export const MarketplacePaginationInputSchema = z.object({
 
 export const ImportAgentSchema = z.object({
   agentId: z.string().min(1),
-  customizations: z.object({
-    name: z.string().min(1).max(100).optional(),
-    characteristics: z.string().min(1).max(2000).optional(),
-    aiConfig: z.any().optional(),
-    chatStyle: z.any().optional(),
-  }).optional(),
+  customizations: z
+    .object({
+      name: z.string().min(1).max(100).optional(),
+      characteristics: z.string().min(1).max(2000).optional(),
+      aiConfig: z.any().optional(),
+      chatStyle: z.any().optional(),
+    })
+    .optional(),
 });
 
 export const AgentRatingSchema = z.object({
@@ -42,12 +44,19 @@ export const BrainstormTemplateSchema = z.object({
   description: z.string().min(1).max(500),
   category: z.string().min(1).max(50),
   duration: z.string().min(1).max(50),
-  agents: z.array(z.object({
-    role: z.string().min(1).max(50),
-    name: z.string().min(1).max(100),
-    description: z.string().min(1).max(200),
-    agentId: z.string().min(1),
-  })).min(2).max(10),
+  agents: z
+    .array(
+      z.object({
+        role: z.string().min(1).max(50),
+        name: z.string().min(1).max(100),
+        description: z.string().min(1).max(200),
+        agentId: z.string().min(1),
+      })
+    )
+    .min(2)
+    .max(10),
 });
 
-export type BrainstormTemplateRequest = z.infer<typeof BrainstormTemplateSchema>;
+export type BrainstormTemplateRequest = z.infer<
+  typeof BrainstormTemplateSchema
+>;

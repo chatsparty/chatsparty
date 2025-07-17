@@ -1,37 +1,24 @@
 import { FastifyInstance } from 'fastify';
-import { MarketplaceService } from './marketplace.service';
+import { MarketplaceService } from '../../services/marketplace/marketplace.service';
 import {
   MarketplaceFiltersSchema,
   MarketplacePaginationInputSchema,
   ImportAgentSchema,
   AgentRatingSchema,
   PublishAgentSchema,
-} from './marketplace.schemas';
-import { db } from '../../config/database';
+} from '../../domains/marketplace/schemas';
 
 export async function marketplaceRoutes(fastify: FastifyInstance) {
-  const marketplaceService = new MarketplaceService(db);
+  const marketplaceService = new MarketplaceService();
 
   fastify.get('/marketplace/agents', {
     schema: {
       tags: ['Marketplace'],
       description: 'Get marketplace agents with filters and pagination',
-      querystring: {
-        type: 'object',
-        properties: {
-          category: { type: 'string' },
-          tags: { type: 'array', items: { type: 'string' } },
-          minRating: { type: 'number' },
-          search: { type: 'string' },
-          sortBy: {
-            type: 'string',
-            enum: ['popular', 'rating', 'newest', 'name'],
-          },
-          sortOrder: { type: 'string', enum: ['asc', 'desc'] },
-          page: { type: 'number' },
-          limit: { type: 'number' },
-        },
-      },
+      querystring: MarketplaceFiltersSchema.extend({
+        page: MarketplacePaginationInputSchema.shape.page,
+        limit: MarketplacePaginationInputSchema.shape.limit,
+      }),
       response: {
         200: {
           type: 'object',
@@ -141,22 +128,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
     schema: {
       tags: ['Marketplace'],
       description: 'Import agent from marketplace',
-      body: {
-        type: 'object',
-        properties: {
-          agentId: { type: 'string' },
-          customizations: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              characteristics: { type: 'string' },
-              aiConfig: { type: 'object' },
-              chatStyle: { type: 'object' },
-            },
-          },
-        },
-        required: ['agentId'],
-      },
+      body: ImportAgentSchema,
       response: {
         200: {
           type: 'object',
@@ -192,15 +164,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
     schema: {
       tags: ['Marketplace'],
       description: 'Rate marketplace agent',
-      body: {
-        type: 'object',
-        properties: {
-          agentId: { type: 'string' },
-          rating: { type: 'number', minimum: 1, maximum: 5 },
-          review: { type: 'string' },
-        },
-        required: ['agentId', 'rating'],
-      },
+      body: AgentRatingSchema,
       response: {
         200: {
           type: 'object',
@@ -233,16 +197,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
     schema: {
       tags: ['Marketplace'],
       description: 'Publish agent to marketplace',
-      body: {
-        type: 'object',
-        properties: {
-          agentId: { type: 'string' },
-          category: { type: 'string' },
-          tags: { type: 'array', items: { type: 'string' } },
-          description: { type: 'string' },
-        },
-        required: ['agentId', 'category', 'tags', 'description'],
-      },
+      body: PublishAgentSchema,
       response: {
         200: {
           type: 'object',
@@ -277,77 +232,6 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       const categories = await marketplaceService.getCategories();
 
       return reply.send(categories);
-    },
-  });
-
-  fastify.get('/marketplace/templates/brainstorm', {
-    schema: {
-      tags: ['Marketplace'],
-      description: 'Get brainstorm templates',
-      response: {
-        200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              description: { type: 'string' },
-              category: { type: 'string' },
-              duration: { type: 'string' },
-              agents: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    role: { type: 'string' },
-                    name: { type: 'string' },
-                    description: { type: 'string' },
-                    agentId: { type: 'string' },
-                  },
-                },
-              },
-              usageCount: { type: 'number' },
-              rating: { type: 'number' },
-            },
-          },
-        },
-      },
-    },
-    handler: async (_request, reply) => {
-      const templates = await marketplaceService.getBrainstormTemplates();
-
-      return reply.send(templates);
-    },
-  });
-
-  fastify.get('/marketplace/templates/usecases', {
-    schema: {
-      tags: ['Marketplace'],
-      description: 'Get use case templates',
-      response: {
-        200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              description: { type: 'string' },
-              category: { type: 'string' },
-              agents: { type: 'array', items: { type: 'string' } },
-              scenario: { type: 'string' },
-              expectedOutcome: { type: 'string' },
-              estimatedDuration: { type: 'string' },
-            },
-          },
-        },
-      },
-    },
-    handler: async (_request, reply) => {
-      const templates = await marketplaceService.getUseCaseTemplates();
-
-      return reply.send(templates);
     },
   });
 }

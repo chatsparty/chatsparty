@@ -8,7 +8,7 @@ import {
   AgentListResponse,
   PublicAgent,
 } from '../types';
-import { AgentRepository } from '../repository';
+import * as agentRepository from '../repository';
 import { findUserConnection } from '../../connections/repository';
 import * as Fallback from '../../connections/decision/fallback';
 import {
@@ -17,8 +17,6 @@ import {
   AgentValidationError,
   ConnectionNotFoundError,
 } from '../../../utils/errors';
-
-const agentRepository = new AgentRepository();
 
 const AGENT_LIMITS = {
   MAX_AGENTS_PER_USER: 50,
@@ -205,7 +203,7 @@ export async function deleteAgent(
     if (!existingAgent) {
       throw new AgentNotFoundError();
     }
-    await agentRepository.delete(agentId);
+    await agentRepository.deleteById(agentId);
     return { success: true };
   } catch (error: unknown) {
     console.error('Error deleting agent:', error);
