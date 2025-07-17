@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-// Conversation query schemas
 export const getConversationSchema = z.object({
   params: z.object({
     conversationId: z.string().uuid(),
@@ -25,7 +24,6 @@ export const deleteConversationSchema = z.object({
   }),
 });
 
-// Message schemas
 export const addMessageSchema = z.object({
   params: z.object({
     conversationId: z.string().uuid(),
@@ -49,13 +47,18 @@ export const getMessagesSchema = z.object({
 
 export const createConversationSchema = z.object({
   body: z.object({
-    title: z.string().min(1, 'Title cannot be empty').max(100, 'Title is too long'),
-    agentIds: z.array(z.string().uuid()).min(1, 'At least 1 agent required').max(10, 'Maximum 10 agents allowed'),
+    title: z
+      .string()
+      .min(1, 'Title cannot be empty')
+      .max(100, 'Title is too long'),
+    agentIds: z
+      .array(z.string().uuid())
+      .min(1, 'At least 1 agent required')
+      .max(10, 'Maximum 10 agents allowed'),
     metadata: z.record(z.any()).optional(),
   }),
 });
 
-// JSON Schema exports for Fastify
 export const conversationSchemas = {
   createConversation: {
     body: zodToJsonSchema(createConversationSchema.shape.body),
@@ -79,8 +82,11 @@ export const conversationSchemas = {
   },
 };
 
-// Validation helpers
-export type ConversationListQuery = z.infer<typeof listConversationsSchema.shape.query>;
+export type ConversationListQuery = z.infer<
+  typeof listConversationsSchema.shape.query
+>;
 export type AddMessageInput = z.infer<typeof addMessageSchema.shape.body>;
 export type GetMessagesQuery = z.infer<typeof getMessagesSchema.shape.query>;
-export type CreateConversationInput = z.infer<typeof createConversationSchema.shape.body>;
+export type CreateConversationInput = z.infer<
+  typeof createConversationSchema.shape.body
+>;

@@ -1,19 +1,15 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
-import { ConversationService } from './conversation.service';
+import { conversationManager } from '../../domains/conversations/orchestration/conversation.manager';
 import {
   ConversationListQuery,
   AddMessageInput,
   GetMessagesQuery,
   CreateConversationInput,
   conversationSchemas,
-} from './conversation.validation';
-import { ConversationFilters } from './conversation.types';
+} from './conversation.schemas';
+import { ConversationFilters } from '../../domains/conversations/types';
 
 export async function conversationRoutes(fastify: FastifyInstance) {
-  const prisma = new PrismaClient();
-  const conversationService = new ConversationService(prisma);
-
   fastify.post<{
     Body: CreateConversationInput;
   }>(
@@ -27,13 +23,12 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     ) => {
       const userId = request.user!.userId;
       const { title, agentIds, metadata } = request.body;
-
-      const result = await conversationService.createConversation(
+      const result = await conversationManager.createConversation({
         userId,
         title,
         agentIds,
-        metadata
-      );
+        metadata,
+      });
 
       if (!result.success) {
         return reply.code(400).send(result);
@@ -56,7 +51,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     ) => {
       const userId = request.user!.userId;
       const { conversationId } = request.params;
-      const result = await conversationService.getConversation(
+      const result = await conversationManager.getConversation(
         userId,
         conversationId
       );
@@ -92,7 +87,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
         search,
       };
 
-      const result = await conversationService.listConversations(
+      const result = await conversationManager.listConversations(
         filters,
         page,
         limit
@@ -119,7 +114,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     ) => {
       const userId = request.user!.userId;
       const { conversationId } = request.params;
-      const result = await conversationService.deleteConversation(
+      const result = await conversationManager.deleteConversation(
         userId,
         conversationId
       );
@@ -151,7 +146,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
       const { conversationId } = request.params;
       const { message, role, agentId } = request.body;
 
-      const convResult = await conversationService.getConversation(
+      const convResult = await conversationManager.getConversation(
         userId,
         conversationId
       );
@@ -169,7 +164,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
         timestamp: Date.now(),
       };
 
-      const result = await conversationService.addMessage(
+      const result = await conversationManager.addMessage(
         conversationId,
         messageObj
       );
@@ -201,7 +196,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
       const { conversationId } = request.params;
       const { limit, offset } = request.query;
 
-      const result = await conversationService.getConversation(
+      const result = await conversationManager.getConversation(
         userId,
         conversationId
       );
@@ -227,7 +222,7 @@ export async function conversationRoutes(fastify: FastifyInstance) {
     {},
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user!.userId;
-      const result = await conversationService.getConversationCount(userId);
+      const result = await conversationManager.getConversationCount(userId);
 
       if (!result.success) {
         return reply.code(500).send(result);
