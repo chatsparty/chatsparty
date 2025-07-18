@@ -1,35 +1,20 @@
 import { runMultiAgentConversation } from '../../domains/ai/orchestration/conversation.workflow';
 import { getConversation } from '../../domains/conversations/orchestration';
-import { Message, Agent } from '../../domains/ai/types';
+import {
+  Message,
+  Agent,
+  StreamEvent,
+  MultiAgentConversationOptions,
+  ContinueConversationOptions,
+} from '../../domains/ai/types';
 import { PublicAgent } from '../../domains/agents/types';
 import * as agentService from '../../domains/agents/orchestration/agent.manager';
 
-export interface StreamEvent {
-  type: 'thinking' | 'message' | 'error' | 'complete';
-  agentId: string;
-  agentName: string;
-  content?: string;
-  message?: string;
-  timestamp?: number;
-}
-
-interface MultiAgentConversationOptions {
-  conversationId: string;
-  agentIds: string[];
-  initialMessage: string;
-  maxTurns: number;
-  userId: string;
-  fileAttachments?: any;
-  projectId?: string;
-  existingMessages?: Message[];
-}
-
-interface ContinueConversationOptions {
-  conversationId: string;
-  message: string;
-  agentIds: string[];
-  userId: string;
-}
+const SYSTEM_AGENT_ID = 'system';
+const SYSTEM_AGENT_NAME = 'System';
+const USER_AGENT_ID = 'user';
+const USER_AGENT_NAME = 'User';
+const DEFAULT_MAX_TURNS = 10;
 
 function toDomainAgent(publicAgent: PublicAgent): Agent {
   return {
@@ -41,6 +26,19 @@ function toDomainAgent(publicAgent: PublicAgent): Agent {
     chatStyle: publicAgent.chatStyle,
     connectionId: publicAgent.connectionId,
   };
+}
+
+async function fetchAndValidateAgents(
+  userId: string,
+  agentIds: string[]
+): Promise<Agent[]> {
+  const agentResponses = await Promise.all(
+    agentIds.map(id => agentService.getAgentById(userId, id))
+  );
+
+  return agentResponses
+    .filter(res => res.success && res.data)
+    .map(res => toDomainAgent(res.data!));
 }
 
 async function* streamMultiAgentConversation(
@@ -56,38 +54,22 @@ async function* streamMultiAgentConversation(
   } = options;
 
   try {
-    const agentResponses = await Promise.all(
-      agentIds.map(id => agentService.getAgentById(userId, id))
-    );
-
-    const validAgents = agentResponses
-      .filter(res => res.success && res.data)
-      .map(res => toDomainAgent(res.data!));
+    const validAgents = await fetchAndValidateAgents(userId, agentIds);
 
     if (validAgents.length === 0) {
       yield {
         type: 'error',
-        agentId: 'system',
-        agentName: 'System',
+        agentId: SYSTEM_AGENT_ID,
+        agentName: SYSTEM_AGENT_NAME,
         message: 'No valid agents found',
       };
       return;
     }
 
-    const agentObjects = validAgents.map(agent => ({
-      agentId: agent.agentId,
-      name: agent.name,
-      prompt: agent.prompt,
-      characteristics: agent.characteristics,
-      aiConfig: agent.aiConfig,
-      chatStyle: agent.chatStyle,
-      connectionId: agent.connectionId,
-    }));
-
-    const eventStream = await runMultiAgentConversation(
+    const eventStream = runMultiAgentConversation(
       conversationId,
       initialMessage,
-      agentObjects,
+      validAgents,
       userId,
       maxTurns,
       existingMessages
@@ -117,8 +99,8 @@ async function* streamMultiAgentConversation(
       } else if (event.type === 'error') {
         yield {
           type: 'error',
-          agentId: 'system',
-          agentName: 'System',
+          agentId: SYSTEM_AGENT_ID,
+          agentName: SYSTEM_AGENT_NAME,
           message: event.message,
         };
       }
@@ -126,15 +108,15 @@ async function* streamMultiAgentConversation(
 
     yield {
       type: 'complete',
-      agentId: 'system',
-      agentName: 'System',
+      agentId: SYSTEM_AGENT_ID,
+      agentName: SYSTEM_AGENT_NAME,
     };
   } catch (error) {
     console.error('Error in multi-agent conversation:', error);
     yield {
       type: 'error',
-      agentId: 'system',
-      agentName: 'System',
+      agentId: SYSTEM_AGENT_ID,
+      agentName: SYSTEM_AGENT_NAME,
       message: error instanceof Error ? error.message : 'An error occurred',
     };
   }
@@ -143,38 +125,47 @@ async function* streamMultiAgentConversation(
 async function* continueMultiAgentConversation(
   options: ContinueConversationOptions
 ): AsyncGenerator<StreamEvent> {
-  const { conversationId, message, agentIds, userId } = options;
+  const {
+    conversationId,
+    message,
+    agentIds,
+    userId,
+    maxTurns = DEFAULT_MAX_TURNS,
+  } = options;
 
   try {
-    const conversation = await getConversation(
-      userId,
-      conversationId
-    );
+    const conversation = await getConversation(userId, conversationId);
 
     if (!conversation.success || !conversation.data) {
       yield {
         type: 'error',
-        agentId: 'system',
-        agentName: 'System',
+        agentId: SYSTEM_AGENT_ID,
+        agentName: SYSTEM_AGENT_NAME,
         message: 'Conversation not found',
       };
       return;
     }
 
-    const fullHistory = [
-      ...conversation.data.messages,
+    const fullHistory: Message[] = [
+      ...conversation.data.messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content: msg.content || '',
+        timestamp: msg.createdAt.getTime(),
+        agentId: msg.agentId || undefined,
+        speaker: msg.speaker || undefined,
+      })),
       {
         role: 'user' as const,
-        content: message,
-        speaker: 'User',
+        content: message || '',
+        speaker: USER_AGENT_NAME,
         timestamp: Date.now(),
       },
     ];
 
     yield {
       type: 'message',
-      agentId: 'user',
-      agentName: 'User',
+      agentId: USER_AGENT_ID,
+      agentName: USER_AGENT_NAME,
       content: message,
       timestamp: Date.now(),
     };
@@ -183,7 +174,7 @@ async function* continueMultiAgentConversation(
       conversationId,
       agentIds,
       initialMessage: message,
-      maxTurns: 10,
+      maxTurns,
       userId,
       existingMessages: fullHistory,
     };
@@ -193,8 +184,8 @@ async function* continueMultiAgentConversation(
     console.error('Error continuing conversation:', error);
     yield {
       type: 'error',
-      agentId: 'system',
-      agentName: 'System',
+      agentId: SYSTEM_AGENT_ID,
+      agentName: SYSTEM_AGENT_NAME,
       message: error instanceof Error ? error.message : 'An error occurred',
     };
   }

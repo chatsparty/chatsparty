@@ -115,3 +115,31 @@ export type WorkflowEvent =
   | { type: 'conversation_complete'; message: string }
   | { type: 'error'; message: string }
   | { type: 'status'; message: string; agentId?: string; agentName?: string };
+
+export interface StreamEvent {
+  type: 'thinking' | 'message' | 'error' | 'complete';
+  agentId: string;
+  agentName: string;
+  content?: string;
+  message?: string;
+  timestamp?: number;
+}
+
+export interface MultiAgentConversationOptions {
+  conversationId: string;
+  agentIds: string[];
+  initialMessage: string;
+  maxTurns: number;
+  userId: string;
+  fileAttachments?: any;
+  projectId?: string;
+  existingMessages?: Message[];
+}
+
+export interface ContinueConversationOptions {
+  conversationId: string;
+  message: string;
+  agentIds: string[];
+  userId: string;
+  maxTurns?: number;
+}

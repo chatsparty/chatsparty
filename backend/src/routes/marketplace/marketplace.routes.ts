@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { MarketplaceService } from '../../services/marketplace/marketplace.service';
+import * as marketplaceManager from '../../domains/marketplace/orchestration/manager';
 import {
   MarketplaceFiltersSchema,
   MarketplacePaginationInputSchema,
@@ -17,7 +17,6 @@ import {
 } from './marketplace.schemas';
 
 export async function marketplaceRoutes(fastify: FastifyInstance) {
-  const marketplaceService = new MarketplaceService();
 
   fastify.get('/marketplace/agents', {
     schema: getMarketplaceAgentsSchema,
@@ -25,7 +24,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       const filters = MarketplaceFiltersSchema.parse(request.query);
       const pagination = MarketplacePaginationInputSchema.parse(request.query);
 
-      const result = await marketplaceService.getMarketplaceAgents(
+      const result = await marketplaceManager.getMarketplaceAgents(
         filters,
         pagination
       );
@@ -39,7 +38,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
     handler: async (request, reply) => {
       const { agentId } = request.params as { agentId: string };
 
-      const agent = await marketplaceService.getAgentById(agentId);
+      const agent = await marketplaceManager.getAgentById(agentId);
 
       return reply.send(agent);
     },
@@ -51,7 +50,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
       const importRequest = ImportAgentSchema.parse(request.body);
 
-      const result = await marketplaceService.importAgent(
+      const result = await marketplaceManager.importAgent(
         userId,
         importRequest
       );
@@ -66,7 +65,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
       const ratingRequest = AgentRatingSchema.parse(request.body);
 
-      const result = await marketplaceService.rateAgent(userId, ratingRequest);
+      const result = await marketplaceManager.rateAgent(userId, ratingRequest);
 
       return reply.send(result);
     },
@@ -78,7 +77,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
       const publishRequest = PublishAgentSchema.parse(request.body);
 
-      await marketplaceService.publishAgent(userId, publishRequest);
+      await marketplaceManager.publishAgent(userId, publishRequest);
 
       return reply.send({ success: true });
     },
@@ -87,7 +86,7 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
   fastify.get('/marketplace/categories', {
     schema: getMarketplaceCategoriesSchema,
     handler: async (_request, reply) => {
-      const categories = await marketplaceService.getCategories();
+      const categories = await marketplaceManager.getCategories();
 
       return reply.send(categories);
     },
