@@ -1,6 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
 import { authenticate } from '../../middleware/auth';
-import { UserService } from './user.service';
+import {
+  registerUser,
+  loginUser,
+  getUserById,
+  updateUserService,
+  changePassword,
+  deleteUserService,
+} from '../../domains/user/orchestration';
 import {
   RegisterInput,
   LoginInput,
@@ -8,11 +15,14 @@ import {
   ChangePasswordInput,
   AddCreditInput,
   UseCreditInput,
-} from './user.validation';
+} from '../../domains/user/validation';
+import {
+  getCreditBalance,
+  addCredits,
+  useCredits,
+} from '../../domains/credit/orchestration/credit.orchestration';
 
 const userRoutes: FastifyPluginAsync = async fastify => {
-  const userService = new UserService();
-
   fastify.post<{ Body: RegisterInput }>(
     '/register',
     {
@@ -41,7 +51,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       },
     },
     async (request, reply) => {
-      const result = await userService.register(request.body as RegisterInput);
+      const result = await registerUser(request.body as RegisterInput);
 
       if (!result.success) {
         return reply.status(400).send({
@@ -81,7 +91,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       },
     },
     async (request, reply) => {
-      const result = await userService.login(request.body as LoginInput);
+      const result = await loginUser(request.body as LoginInput);
 
       if (!result.success) {
         return reply.status(401).send({
@@ -100,7 +110,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.getUserById(request.user!.userId, {
+      const result = await getUserById(request.user!.userId, {
         includeCredits: true,
       });
 
@@ -121,7 +131,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.updateUser(
+      const result = await updateUserService(
         request.user!.userId,
         request.body as UpdateUserInput
       );
@@ -145,7 +155,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
     async (request, reply) => {
       const { currentPassword, newPassword } =
         request.body as ChangePasswordInput;
-      const result = await userService.changePassword(
+      const result = await changePassword(
         request.user!.userId,
         currentPassword,
         newPassword
@@ -168,7 +178,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.getCreditBalance(request.user!.userId);
+      const result = await getCreditBalance(request.user!.userId);
 
       if (!result.success) {
         return reply.status(500).send({
@@ -187,7 +197,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.addCredits(
+      const result = await addCredits(
         request.user!.userId,
         request.body as AddCreditInput
       );
@@ -209,7 +219,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.useCredits(
+      const result = await useCredits(
         request.user!.userId,
         request.body as UseCreditInput
       );
@@ -231,7 +241,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.deleteUser(request.user!.userId);
+      const result = await deleteUserService(request.user!.userId);
 
       if (!result.success) {
         return reply.status(500).send({
@@ -259,7 +269,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
         });
       }
 
-      const result = await userService.getUserById(id);
+      const result = await getUserById(id);
 
       if (!result.success) {
         return reply.status(404).send({
@@ -300,7 +310,7 @@ const userRoutes: FastifyPluginAsync = async fastify => {
         });
       }
 
-      const result = await userService.getUserById(id, { includeAgents: true });
+      const result = await getUserById(id, { includeAgents: true });
 
       if (!result.success) {
         return reply.status(404).send({

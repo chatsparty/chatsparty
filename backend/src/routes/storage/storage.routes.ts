@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { authenticate } from '../../middleware/auth';
-import { storageService } from '.';
-import { FILE_SIZE_LIMITS } from './storage.validation';
+import { storageService } from '../../domains/storage';
+import { FILE_SIZE_LIMITS } from '../../domains/storage/validation';
 
 /**
  * Storage routes

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FileValidationOptions } from './storage.types';
+import { FileValidationOptions } from './types';
 
 /**
  * Default file size limits
@@ -15,8 +15,21 @@ export const FILE_SIZE_LIMITS = {
  * Common file types
  */
 export const FILE_TYPES = {
-  IMAGE: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
-  VIDEO: ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'],
+  IMAGE: [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+  ],
+  VIDEO: [
+    'video/mp4',
+    'video/mpeg',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/webm',
+  ],
   AUDIO: ['audio/mpeg', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/x-m4a'],
   DOCUMENT: [
     'application/pdf',
@@ -50,7 +63,20 @@ export const FILE_EXTENSIONS = {
   VIDEO: ['.mp4', '.mpeg', '.mov', '.avi', '.webm'],
   AUDIO: ['.mp3', '.wav', '.webm', '.ogg', '.m4a'],
   DOCUMENT: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'],
-  CODE: ['.js', '.ts', '.jsx', '.tsx', '.html', '.css', '.json', '.md', '.py', '.java', '.c', '.cpp'],
+  CODE: [
+    '.js',
+    '.ts',
+    '.jsx',
+    '.tsx',
+    '.html',
+    '.css',
+    '.json',
+    '.md',
+    '.py',
+    '.java',
+    '.c',
+    '.cpp',
+  ],
 } as const;
 
 /**
@@ -162,7 +188,7 @@ export function formatFileSize(bytes: number): string {
  */
 export function getContentTypeFromExtension(filename: string): string {
   const extension = getFileExtension(filename);
-  
+
   const contentTypeMap: Record<string, string> = {
     // Images
     '.jpg': 'image/jpeg',
@@ -171,29 +197,31 @@ export function getContentTypeFromExtension(filename: string): string {
     '.gif': 'image/gif',
     '.webp': 'image/webp',
     '.svg': 'image/svg+xml',
-    
+
     // Videos
     '.mp4': 'video/mp4',
     '.mpeg': 'video/mpeg',
     '.mov': 'video/quicktime',
     '.avi': 'video/x-msvideo',
     '.webm': 'video/webm',
-    
+
     // Audio
     '.mp3': 'audio/mpeg',
     '.wav': 'audio/wav',
     '.ogg': 'audio/ogg',
     '.m4a': 'audio/x-m4a',
-    
+
     // Documents
     '.pdf': 'application/pdf',
     '.doc': 'application/msword',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.docx':
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     '.xls': 'application/vnd.ms-excel',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.xlsx':
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     '.txt': 'text/plain',
     '.csv': 'text/csv',
-    
+
     // Code
     '.js': 'text/javascript',
     '.ts': 'text/typescript',
@@ -218,18 +246,18 @@ export function getContentTypeFromExtension(filename: string): string {
 export function sanitizeStorageKey(key: string): string {
   // Remove leading/trailing whitespace
   key = key.trim();
-  
+
   // Replace spaces with underscores
   key = key.replace(/\s+/g, '_');
-  
+
   // Remove any characters that aren't alphanumeric, underscore, hyphen, dot, or forward slash
   key = key.replace(/[^a-zA-Z0-9!_\-\.\/]/g, '');
-  
+
   // Remove multiple consecutive slashes
   key = key.replace(/\/+/g, '/');
-  
+
   // Remove leading/trailing slashes
   key = key.replace(/^\/+|\/+$/g, '');
-  
+
   return key;
 }

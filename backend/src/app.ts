@@ -15,8 +15,7 @@ import authRoutes from './services/user/auth.routes';
 import agentRoutes from './routes/agents/agent.routes';
 import connectionRoutes from './routes/connections/connection.routes';
 import { creditRoutes } from './routes/credit';
-import { storageRoutes } from './services/storage/storage.routes';
-import { chatRoutes } from './services/chat/chat.routes';
+import { storageRoutes } from './routes/storage/storage.routes';
 import { conversationRoutes } from './routes/conversations';
 import { marketplaceRoutes } from './routes/marketplace';
 import { websocketService } from './services/websocket/websocket.service';
@@ -111,7 +110,6 @@ const apiRoutes = async (fastify: FastifyInstance) => {
   await fastify.register(connectionRoutes, { prefix: '/connections' });
   await fastify.register(creditRoutes, { prefix: '/credits' });
   await fastify.register(storageRoutes);
-  await fastify.register(chatRoutes);
   await fastify.register(conversationRoutes);
   await fastify.register(marketplaceRoutes);
 };

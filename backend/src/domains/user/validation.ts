@@ -52,7 +52,9 @@ export const useCreditSchema = z.object({
 export const paginationSchema = z.object({
   limit: z.number().int().min(1).max(100).default(10),
   offset: z.number().int().min(0).default(0),
-  orderBy: z.enum(['createdAt', 'updatedAt', 'name', 'email']).default('createdAt'),
+  orderBy: z
+    .enum(['createdAt', 'updatedAt', 'name', 'email'])
+    .default('createdAt'),
   orderDirection: z.enum(['asc', 'desc']).default('desc'),
 });
 

@@ -1,6 +1,10 @@
 import { Socket } from 'socket.io';
 import { websocketService } from './websocket.service';
-import { conversationService } from '../conversation/conversation.service';
+import {
+  createConversationService,
+  addMessage,
+  getConversation,
+} from '../../domains/conversations/orchestration';
 import * as agentManager from '../../domains/agents/orchestration/agent.manager';
 import { aiService } from '../ai/ai.service';
 import { verifyToken } from '../../utils/auth';
@@ -95,13 +99,11 @@ export function setupChatHandlers(socket: Socket): void {
         });
 
         try {
-          const conversationResult =
-            await conversationService.createConversation(
-              userId,
-              initial_message.substring(0, 50) + '...',
-              agent_ids,
-              { projectId: project_id }
-            );
+          const conversationResult = await createConversationService(userId, {
+            title: initial_message.substring(0, 50) + '...',
+            agentIds: agent_ids,
+            projectId: project_id,
+          });
 
           if (!conversationResult.success || !conversationResult.data) {
             throw new Error(
@@ -129,7 +131,7 @@ export function setupChatHandlers(socket: Socket): void {
             title: conversation.title,
           });
 
-          await conversationService.addMessage(conversation.id, {
+          await addMessage(conversation.id, {
             role: 'user',
             content: initial_message,
             speaker: 'User',
@@ -169,7 +171,7 @@ export function setupChatHandlers(socket: Socket): void {
                   event.timestamp || Date.now()
                 );
 
-                await conversationService.addMessage(conversation.id, {
+                await addMessage(conversation.id, {
                   role: 'assistant',
                   content: event.content || '',
                   agentId: event.agentId,
@@ -240,17 +242,12 @@ export function setupChatHandlers(socket: Socket): void {
         return;
       }
 
-      // First check if it's a database conversation ID
-      let dbConversation = await conversationService.getConversation(
-        userId,
-        conversation_id
-      );
+      let dbConversation = await getConversation(userId, conversation_id);
 
       let conversationData: any;
       let databaseConversationId: string = conversation_id;
 
       if (dbConversation.success && dbConversation.data) {
-        // Check if it's in active conversations or resume it
         conversationData = websocketService
           .getActiveConversations()
           .get(conversation_id);
@@ -273,7 +270,6 @@ export function setupChatHandlers(socket: Socket): void {
           });
         }
       } else {
-        // Check if it's a client conversation ID in active conversations
         conversationData = websocketService
           .getActiveConversations()
           .get(conversation_id);
@@ -292,7 +288,7 @@ export function setupChatHandlers(socket: Socket): void {
         if (conversationData.databaseId) {
           databaseConversationId = conversationData.databaseId;
 
-          const dbConv = await conversationService.getConversation(
+          const dbConv = await getConversation(
             userId,
             conversationData.databaseId
           );
@@ -302,10 +298,8 @@ export function setupChatHandlers(socket: Socket): void {
         }
       }
 
-      // Don't emit user message as agent_message to avoid duplication
-
       if (dbConversation.success && dbConversation.data) {
-        await conversationService.addMessage(databaseConversationId, {
+        await addMessage(databaseConversationId, {
           role: 'user',
           content: message,
           speaker: 'User',
@@ -344,7 +338,7 @@ export function setupChatHandlers(socket: Socket): void {
             );
 
             if (dbConversation.success && dbConversation.data) {
-              await conversationService.addMessage(databaseConversationId, {
+              await addMessage(databaseConversationId, {
                 role: 'assistant',
                 content: event.content || '',
                 agentId: event.agentId,

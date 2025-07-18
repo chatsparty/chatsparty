@@ -1,14 +1,17 @@
 import { FastifyPluginAsync } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { authenticate, generateToken, JWTPayload } from '../../middleware/auth';
-import { UserService } from './user.service';
+import {
+  registerUser,
+  loginUser,
+  loginWithGoogle,
+  getUserById,
+} from '../../domains/user/orchestration';
 import { config } from '../../config/env';
 import { db } from '../../config/database';
-import { RegisterInput, LoginInput } from './user.validation';
+import { RegisterInput, LoginInput } from '../../domains/user/validation';
 
 const authRoutes: FastifyPluginAsync = async fastify => {
-  const userService = new UserService();
-
   fastify.post(
     '/register',
     {
@@ -52,7 +55,7 @@ const authRoutes: FastifyPluginAsync = async fastify => {
       },
     },
     async (request, reply) => {
-      const result = await userService.register(request.body as RegisterInput);
+      const result = await registerUser(request.body as RegisterInput);
 
       if (!result.success || !result.data) {
         return reply.status(400).send({
@@ -115,7 +118,7 @@ const authRoutes: FastifyPluginAsync = async fastify => {
       },
     },
     async (request, reply) => {
-      const result = await userService.login(request.body as LoginInput);
+      const result = await loginUser(request.body as LoginInput);
 
       if (!result.success || !result.data) {
         return reply.status(401).send({
@@ -179,7 +182,7 @@ const authRoutes: FastifyPluginAsync = async fastify => {
     },
     async (request, reply) => {
       const { token } = request.body as { token: string };
-      const result = await userService.loginWithGoogle(token);
+      const result = await loginWithGoogle(token);
 
       if (!result.success || !result.data) {
         return reply.status(401).send({
@@ -234,7 +237,7 @@ const authRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await userService.getUserById(request.user!.userId, {
+      const result = await getUserById(request.user!.userId, {
         includeCredits: true,
       });
 

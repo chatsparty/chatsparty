@@ -1,29 +1,39 @@
-import { Conversation as PrismaConversation } from '@prisma/client';
-import { Message } from '../../domains/ai/types';
+import {
+  Conversation as PrismaConversation,
+  Message as PrismaMessage,
+} from '@prisma/client';
 
-export type Conversation = Omit<PrismaConversation, 'messages' | 'metadata'> & {
+export interface Message extends PrismaMessage {}
+
+export interface Conversation extends Omit<PrismaConversation, 'messages'> {
   messages: Message[];
-  metadata?: Record<string, any>;
+}
+
+export interface ConversationWithMessages extends Conversation {}
+
+export type ConversationListQuery = {
+  page?: number;
+  limit?: number;
+  agentId?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
 };
 
-export interface ConversationFilters {
-  userId: string;
+export type AddMessageInput = {
+  content: string;
+  role: 'user' | 'assistant';
   agentId?: string;
-  startDate?: Date;
-  endDate?: Date;
-  search?: string;
-}
+};
 
-export interface ConversationListResponse {
-  conversations: Conversation[];
-  total: number;
-  page: number;
-  limit: number;
-}
+export type GetMessagesQuery = {
+  limit?: number;
+  offset?: number;
+};
 
-export interface CreateConversationData {
-  userId: string;
+export type CreateConversationInput = {
   title: string;
   agentIds: string[];
   metadata?: Record<string, any>;
-}
+  projectId?: string;
+};

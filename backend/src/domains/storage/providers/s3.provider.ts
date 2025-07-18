@@ -19,7 +19,7 @@ import {
   DownloadOptions,
   ListOptions,
   ListResult,
-} from '../storage.types';
+} from '../types';
 
 export class S3StorageProvider implements IStorageProvider {
   private client: S3Client;

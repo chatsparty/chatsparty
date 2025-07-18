@@ -1,47 +1,46 @@
-import {
-  CreditTransaction as PrismaCreditTransaction,
-  ModelCreditCost as PrismaModelCreditCost,
-} from '@prisma/client';
+import { Credit as PrismaCredit } from '@prisma/client';
 
-// Credit transaction types
-export interface CreditTransaction extends PrismaCreditTransaction {}
+export interface Credit extends PrismaCredit {}
 
-export interface ModelCreditCost extends PrismaModelCreditCost {}
-
-// Credit balance types
-export interface CreditBalance {
-  creditsBalance: number;
-  creditsUsed: number;
-  creditsPurchased: number;
-  creditPlan: string | null;
-  lastCreditRefillAt: Date | null;
-}
-
-// Transaction types
 export enum TransactionType {
   PURCHASE = 'purchase',
   USAGE = 'usage',
   REFUND = 'refund',
   BONUS = 'bonus',
   SUBSCRIPTION = 'subscription',
-  REFILL = 'refill',
-  ADJUSTMENT = 'adjustment',
+  TOPUP = 'topup',
+  REFILL = 'refill'
 }
 
-// Transaction reasons
 export enum TransactionReason {
-  AI_CHAT = 'ai_chat',
-  MODEL_USAGE = 'model_usage',
-  VOICE_SYNTHESIS = 'voice_synthesis',
-
-  MANUAL_ADJUSTMENT = 'manual_adjustment',
-  SUBSCRIPTION_REFILL = 'subscription_refill',
-  WELCOME_BONUS = 'welcome_bonus',
-  REFERRAL_BONUS = 'referral_bonus',
+  AI_CHAT = 'AI chat',
+  MODEL_USAGE = 'model usage',
+  PURCHASE = 'purchase',
+  SUBSCRIPTION_RENEWAL = 'subscription renewal',
+  SUBSCRIPTION_REFILL = 'subscription refill',
+  MANUAL_ADJUSTMENT = 'manual adjustment',
+  PROMOTIONAL = 'promotional',
+  WELCOME_BONUS = 'welcome bonus'
 }
 
-// Credit transaction request types
-export interface CreateTransactionRequest {
+export interface CreditBalance {
+  total: number;
+  used: number;
+  remaining: number;
+  credits: CreditDetails[];
+}
+
+export interface CreditDetails {
+  id: string;
+  amount: number;
+  used: number;
+  remaining: number;
+  type: string;
+  expiresAt: Date | null;
+  createdAt: Date;
+}
+
+export interface AddCreditRequest {
   userId: string;
   amount: number;
   transactionType: TransactionType;
@@ -55,32 +54,53 @@ export interface UseCreditRequest {
   amount: number;
   reason: TransactionReason;
   description?: string;
-  metadata?: {
-    modelName?: string;
-    provider?: string;
-    conversationId?: string;
-    agentId?: string;
-    tokensUsed?: number;
-    [key: string]: any;
-  };
+  metadata?: Record<string, any>;
 }
 
-export interface AddCreditRequest {
+export interface CreditTransaction {
+  id: string;
+  userId: string;
+  amount: number;
+  transactionType: string;
+  reason: string;
+  description?: string | null;
+  transactionMetadata?: any;
+  balanceAfter: number;
+  createdAt: Date;
+}
+
+export interface CreateTransactionRequest {
   userId: string;
   amount: number;
   transactionType: TransactionType;
   reason: TransactionReason;
   description?: string;
+  transactionMetadata?: any;
+  balanceAfter: number;
 }
 
-// Model pricing types
+export interface TransactionQueryOptions {
+  userId?: string;
+  limit?: number;
+  offset?: number;
+  startDate?: Date;
+  endDate?: Date;
+  transactionType?: TransactionType;
+  reason?: TransactionReason;
+  orderBy?: 'createdAt' | 'amount';
+  orderDirection?: 'asc' | 'desc';
+}
+
 export interface ModelPricing {
+  id: string;
   provider: string;
   modelName: string;
   costPerMessage: number;
-  costPer1kTokens: number | null;
+  costPer1kTokens?: number | null;
   isDefaultModel: boolean;
   isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CalculateCostRequest {
@@ -96,36 +116,21 @@ export interface CostCalculation {
     messageCost?: number;
     tokenCost?: number;
   };
-  modelPricing: ModelPricing;
 }
 
-// Service response types
 export interface ServiceResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// Query options
-export interface TransactionQueryOptions {
-  userId?: string;
-  transactionType?: TransactionType;
-  reason?: TransactionReason;
-  startDate?: Date;
-  endDate?: Date;
-  limit?: number;
-  offset?: number;
-  orderBy?: 'createdAt' | 'amount';
-  orderDirection?: 'asc' | 'desc';
-}
-
 export interface ModelPricingQueryOptions {
   provider?: string;
   isActive?: boolean;
-  isDefaultModel?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
-// Statistics types
 export interface CreditStatistics {
   totalCreditsUsed: number;
   totalCreditsPurchased: number;
@@ -139,7 +144,6 @@ export interface CreditStatistics {
   };
 }
 
-// Validation types
 export interface CreditValidation {
   hasEnoughCredits: boolean;
   currentBalance: number;

@@ -1,6 +1,8 @@
 import { runMultiAgentConversation } from '../../domains/ai/orchestration/conversation.workflow';
-import { conversationService } from '../conversation/conversation.service';
-import { Message } from '../../domains/ai/types';
+import { getConversation } from '../../domains/conversations/orchestration';
+import { Message, Agent } from '../../domains/ai/types';
+import { PublicAgent } from '../../domains/agents/types';
+import * as agentService from '../../domains/agents/orchestration/agent.manager';
 
 export interface StreamEvent {
   type: 'thinking' | 'message' | 'error' | 'complete';
@@ -29,6 +31,18 @@ interface ContinueConversationOptions {
   userId: string;
 }
 
+function toDomainAgent(publicAgent: PublicAgent): Agent {
+  return {
+    agentId: publicAgent.id,
+    name: publicAgent.name,
+    prompt: publicAgent.prompt,
+    characteristics: publicAgent.characteristics,
+    aiConfig: publicAgent.aiConfig,
+    chatStyle: publicAgent.chatStyle,
+    connectionId: publicAgent.connectionId,
+  };
+}
+
 async function* streamMultiAgentConversation(
   options: MultiAgentConversationOptions
 ): AsyncGenerator<StreamEvent> {
@@ -43,10 +57,12 @@ async function* streamMultiAgentConversation(
 
   try {
     const agentResponses = await Promise.all(
-      agentIds.map(id => agentService.getAgent(userId, id))
+      agentIds.map(id => agentService.getAgentById(userId, id))
     );
 
-    const validAgents = agentResponses.map(res => toDomainAgent(res));
+    const validAgents = agentResponses
+      .filter(res => res.success && res.data)
+      .map(res => toDomainAgent(res.data!));
 
     if (validAgents.length === 0) {
       yield {
@@ -130,7 +146,7 @@ async function* continueMultiAgentConversation(
   const { conversationId, message, agentIds, userId } = options;
 
   try {
-    const conversation = await conversationService.getConversation(
+    const conversation = await getConversation(
       userId,
       conversationId
     );
