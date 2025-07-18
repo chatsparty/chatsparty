@@ -1,6 +1,5 @@
 import { generateObject } from 'ai';
 import {
-  Agent,
   AgentSelection,
   AgentSelectionSchema,
   ConversationState,
@@ -22,7 +21,7 @@ async function generateAgentSelection(
 ): Promise<AgentSelection | null> {
   const conversationContext = await getConversationContext(state.messages);
   const agentsInfo = state.agents.map(a => ({
-    id: a.agentId,
+    id: a.id,
     name: a.name,
     characteristics: a.characteristics,
   }));
@@ -65,16 +64,16 @@ async function generateAgentSelection(
 
 function ensureVariety(
   selectedAgent: AgentSelection,
-  agents: Agent[],
+  agents: Array<{ id: string; name: string; characteristics: string }>,
   lastSpeakers: string[],
 ): AgentSelection {
   if (lastSpeakers.includes(selectedAgent.agentId)) {
     const alternativeAgents = agents.filter(
-      a => !lastSpeakers.includes(a.agentId),
+      a => !lastSpeakers.includes(a.id),
     );
 
     if (alternativeAgents.length > 0) {
-      const newAgentId = alternativeAgents[0].agentId;
+      const newAgentId = alternativeAgents[0].id;
       console.log(
         `Supervisor chose a recent speaker (${selectedAgent.agentId}). Overriding with ${newAgentId} for variety.`,
       );
@@ -98,23 +97,23 @@ function addDefaultReasoning(selectedAgent: AgentSelection): AgentSelection {
 }
 
 function createFallbackSelection(
-  agents: Agent[],
+  agents: Array<{ id: string; name: string; characteristics: string }>,
   lastSpeakers: string[],
 ): AgentSelection | null {
   const availableAgents = agents.filter(
-    a => !lastSpeakers.includes(a.agentId),
+    a => !lastSpeakers.includes(a.id),
   );
 
   if (availableAgents.length > 0) {
     return {
-      agentId: availableAgents[0].agentId,
+      agentId: availableAgents[0].id,
       reasoning: 'Fallback selection due to error (chose non-recent speaker)',
     };
   }
 
   if (agents.length > 0) {
     return {
-      agentId: agents[0].agentId,
+      agentId: agents[0].id,
       reasoning: 'Fallback selection due to error (all agents spoke recently)',
     };
   }
@@ -126,23 +125,26 @@ export async function selectNextAgent(
   state: ConversationState,
 ): Promise<AgentSelection | null> {
   const lastSpeakers = getLastSpeakers(state.messages);
+  
+  // Ensure agents have the correct type
+  const agents = state.agents as Array<{ id: string; name: string; characteristics: string }>;
 
   try {
     const selectedAgent = await generateAgentSelection(state);
 
     if (!selectedAgent) {
       console.log('Agent selection returned no object, using fallback.');
-      return createFallbackSelection(state.agents, lastSpeakers);
+      return createFallbackSelection(agents, lastSpeakers);
     }
 
     const varietyAssuredSelection = ensureVariety(
       selectedAgent,
-      state.agents,
+      agents,
       lastSpeakers,
     );
     return addDefaultReasoning(varietyAssuredSelection);
   } catch (error) {
     console.error('Error selecting next agent:', error);
-    return createFallbackSelection(state.agents, lastSpeakers);
+    return createFallbackSelection(agents, lastSpeakers);
   }
 }

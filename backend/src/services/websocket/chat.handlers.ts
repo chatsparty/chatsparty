@@ -6,7 +6,7 @@ import {
   getConversation,
 } from '../../domains/conversations/orchestration';
 import * as agentManager from '../../domains/agents/orchestration/agent.manager';
-import { aiService } from '../ai/ai.service';
+import { aiService } from '../../domains/ai/ai.service';
 import { verifyToken } from '../../utils/auth';
 import type { JwtPayload } from 'jsonwebtoken';
 
