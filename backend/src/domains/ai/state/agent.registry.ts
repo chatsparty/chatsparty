@@ -1,6 +1,6 @@
 import { Agent as MastraAgent } from '@mastra/core';
 import { Agent } from '../types';
-import { getModel } from '../providers/ai.provider.factory';
+import { getModel } from '../../../config/mastra';
 import { buildAgentSystemPrompt } from '../generation/prompt.builder';
 
 export type AgentRegistry = Map<string, Agent>;
@@ -13,6 +13,10 @@ export function registerAgent(
 ): void {
   agentRegistry.set(agent.agentId, agent);
 
+  // Only OpenAI and Anthropic are currently supported by Mastra
+  if (agent.aiConfig.provider !== 'openai' && agent.aiConfig.provider !== 'anthropic') {
+    throw new Error(`Provider ${agent.aiConfig.provider} is not supported by Mastra`);
+  }
   const model = getModel(agent.aiConfig.provider, agent.aiConfig.modelName);
   const mastraAgent = new MastraAgent({
     name: agent.name,

@@ -1,75 +1,89 @@
-import { generateObject, generateText } from 'ai';
 import {
-  ConversationState,
+  Agent,
   Message,
   TerminationDecision,
   TerminationDecisionSchema,
 } from '../types';
-import { SUPERVISOR_MODEL } from '../../../config/ai.config';
-import { getSupervisorSystemPrompt } from '../generation/prompt.builder';
-import { getModel } from '../providers/ai.provider.factory';
-import { retryWithBackoff } from '../../../utils/retry';
-import { buildTerminationPrompt } from '../generation/prompt.builder';
+import { getAIProvider } from '../providers/ai.provider.factory';
+import { createLogger } from '../../../config/logger';
 
-async function getConversationContext(
-  messages: Message[],
-  maxMessages: number = 5
-): Promise<string> {
-  const relevantMessages = messages.slice(-maxMessages);
-  return relevantMessages
-    .map(msg => `${msg.speaker || 'User'}: ${msg.content}`)
+const logger = createLogger('conversation.terminator');
+
+const TERMINATION_PROMPT_TEMPLATE = `
+You are an expert moderator in a multi-agent conversation.
+Your role is to decide if the conversation should be terminated based on the history and the agents' interactions.
+
+A conversation should be terminated if:
+- The main topic has been resolved.
+- The conversation is going in circles or has become unproductive.
+- A natural conclusion has been reached.
+- A user explicitly asks to end the conversation.
+
+Here are the available agents:
+{agents_summary}
+
+Conversation History (most recent messages first):
+{conversation_history}
+
+Based on the conversation history, should the conversation be terminated?
+Consider the overall goal of the conversation and whether it has been met.
+`;
+
+function formatAgents(agents: Agent[]): string {
+  return agents
+    .map(
+      agent =>
+        `- ${agent.name} (ID: ${agent.agentId}): ${agent.characteristics}`
+    )
     .join('\n');
 }
 
-export async function checkTermination(
-  state: ConversationState
+function formatHistory(messages: Message[]): string {
+  return messages
+    .map(msg => `${msg.speaker || msg.role}: ${msg.content}`)
+    .join('\n');
+}
+
+export async function shouldTerminateConversation(
+  agents: Agent[],
+  conversationHistory: Message[],
+  controllerAgent: Agent,
+  currentTurn: number,
+  maxTurns: number
 ): Promise<TerminationDecision> {
-  try {
-    const conversationContext = await getConversationContext(state.messages);
-    const terminationPrompt = buildTerminationPrompt(conversationContext);
-    const model = getModel(SUPERVISOR_MODEL.provider, SUPERVISOR_MODEL.model);
-
-    const result = await retryWithBackoff(
-      () =>
-        generateObject({
-          model,
-          schema: TerminationDecisionSchema,
-          prompt: terminationPrompt,
-          system: getSupervisorSystemPrompt('termination'),
-          temperature: SUPERVISOR_MODEL.temperature,
-          maxTokens: SUPERVISOR_MODEL.maxTokens,
-        }),
-      {
-        retries: 3,
-        initialDelay: 1000,
-        onRetry: (error, attempt) => {
-          console.error(
-            `Error in termination check (attempt ${attempt}/3):`,
-            error
-          );
-          if (error.name === 'NoObjectGeneratedError') {
-            console.error('Model response:', error.response);
-            console.error('Raw text:', error.text);
-          }
-        },
-      }
-    );
-
-    const decision = result?.object || {
-      shouldTerminate: false,
-      reason: 'Parse error, continuing',
+  if (currentTurn >= maxTurns) {
+    return {
+      shouldTerminate: true,
+      reason: `Maximum number of turns (${maxTurns}) reached.`,
     };
+  }
 
-    if (decision && !decision.reason) {
-      decision.reason = 'Supervisor decision.';
-    }
+  const systemPrompt = TERMINATION_PROMPT_TEMPLATE.replace(
+    '{agents_summary}',
+    formatAgents(agents)
+  ).replace(
+    '{conversation_history}',
+    formatHistory(conversationHistory.slice(-10))
+  );
 
+  const provider = await getAIProvider(
+    controllerAgent.aiConfig,
+    controllerAgent.connectionId
+  );
+
+  try {
+    const decision = await provider.generateStructuredResponse(
+      [{ role: 'user', content: 'Should this conversation terminate?' }],
+      systemPrompt,
+      TerminationDecisionSchema
+    );
     return decision;
   } catch (error) {
-    console.error('Error checking termination:', error);
+    logger.error('Error deciding conversation termination:', error);
+    // Fallback strategy: do not terminate on error
     return {
       shouldTerminate: false,
-      reason: 'Continuing due to parsing error',
+      reason: 'Fell back to not terminating due to an error.',
     };
   }
 }

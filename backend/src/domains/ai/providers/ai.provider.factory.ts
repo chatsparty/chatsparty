@@ -1,65 +1,70 @@
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createVertex } from '@ai-sdk/google-vertex';
-import { createGroq } from '@ai-sdk/groq';
-import { config } from '../../../config/env';
+import { ModelConfiguration, AIProvider } from '../types';
+import { MastraProvider } from './mastra.provider';
+import { createLogger } from '../../../config/logger';
+import { getConnection } from '../../connections/orchestration';
+import { decrypt } from '../../../utils/crypto';
+import { memoize } from 'lodash';
 
-const providers = {
-  openai: config.OPENAI_API_KEY
-    ? createOpenAI({
-        apiKey: config.OPENAI_API_KEY,
-      })
-    : null,
+const logger = createLogger('ai.provider.factory');
 
-  anthropic: config.ANTHROPIC_API_KEY
-    ? createAnthropic({
-        apiKey: config.ANTHROPIC_API_KEY,
-      })
-    : null,
+type ProviderFactory = (modelName: string, apiKey?: string, baseUrl?: string) => AIProvider;
 
-  google: config.GOOGLE_API_KEY
-    ? createGoogleGenerativeAI({
-        apiKey: config.GOOGLE_API_KEY,
-      })
-    : null,
-
-  vertex_ai:
-    (config.VERTEX_PROJECT_ID && config.VERTEX_LOCATION) ||
-    (process.env.DEFAULT_CONNECTION_PROJECT_ID &&
-      process.env.DEFAULT_CONNECTION_LOCATION)
-      ? createVertex({
-          project:
-            config.VERTEX_PROJECT_ID ||
-            process.env.DEFAULT_CONNECTION_PROJECT_ID,
-          location:
-            config.VERTEX_LOCATION || process.env.DEFAULT_CONNECTION_LOCATION,
-        })
-      : null,
-
-  groq: config.GROQ_API_KEY
-    ? createGroq({
-        apiKey: config.GROQ_API_KEY,
-      })
-    : null,
-
-  ollama: config.OLLAMA_BASE_URL
-    ? createOpenAI({
-        apiKey: 'ollama',
-        baseURL: config.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
-      })
-    : null,
+const providerMap: Record<string, ProviderFactory> = {
+  openai: (modelName) => new MastraProvider('openai', modelName),
+  anthropic: (modelName) => new MastraProvider('anthropic', modelName),
+  groq: (modelName) => new MastraProvider('openai', modelName), // Groq uses OpenAI-compatible API
+  google: (modelName) => {
+    throw new Error('Google provider not yet implemented with Mastra');
+  },
+  ollama: (modelName) => {
+    throw new Error('Ollama provider not yet implemented with Mastra');
+  },
+  vertex_ai: (modelName) => {
+    throw new Error('Vertex AI provider not yet implemented with Mastra');
+  },
 };
 
-export type ModelProvider = keyof typeof providers;
+async function getApiKey(
+  config: ModelConfiguration,
+  connectionId?: string
+): Promise<string | undefined> {
+  if (config.apiKey) {
+    return config.apiKey;
+  }
+  if (connectionId) {
+    try {
+      const connection = await getConnection(connectionId);
+      if (connection && connection.success && connection.data) {
+        return decrypt(connection.data.apiKey);
+      }
+    } catch (error: any) {
+      logger.error(`Failed to retrieve API key for connection ${connectionId}: ${error.message}`);
+      return undefined;
+    }
+  }
+  return undefined;
+}
 
-export function getModel(provider: ModelProvider, modelName: string) {
-  const providerInstance = providers[provider];
-  if (!providerInstance) {
+const getAIProviderInternal = async (
+  config: ModelConfiguration,
+  connectionId?: string
+): Promise<AIProvider> => {
+  const factory = providerMap[config.provider];
+  if (!factory) {
+    throw new Error(`Unsupported AI provider: ${config.provider}`);
+  }
+
+  const apiKey = await getApiKey(config, connectionId);
+  if (!apiKey && config.provider !== 'ollama') {
     throw new Error(
-      `Model provider ${provider} is not configured. Please add the required configuration (API key, project ID, etc.).`
+      `API key not found for provider ${config.provider} and connection ${connectionId}`
     );
   }
 
-  return providerInstance(modelName);
-}
+  return factory(config.modelName, apiKey, config.baseUrl);
+};
+
+export const getAIProvider = memoize(
+  getAIProviderInternal,
+  (config, connectionId) => `${config.provider}-${config.modelName}-${connectionId}`
+);

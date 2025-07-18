@@ -65,14 +65,16 @@ export const ConversationMessageSchema = z.object({
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 
 export const ConversationStateSchema = z.object({
-  messages: z.array(MessageSchema),
-  agents: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      characteristics: z.string(),
-    })
-  ),
+  messages: z.array(MessageSchema).readonly(),
+  agents: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        characteristics: z.string(),
+      })
+    )
+    .readonly(),
   currentSpeaker: z.string().optional().nullable(),
   turnCount: z.number().default(0),
   maxTurns: z.number().default(10),
@@ -82,6 +84,15 @@ export const ConversationStateSchema = z.object({
 });
 
 export type ConversationState = z.infer<typeof ConversationStateSchema>;
+
+export interface AIProvider {
+  generateResponse(messages: Message[], maxTokens?: number): Promise<string>;
+  generateStructuredResponse<T>(
+    messages: Message[],
+    schema: z.ZodSchema<T>,
+    maxTokens?: number
+  ): Promise<T>;
+}
 
 export const AgentSelectionSchema = z.object({
   agentId: z.string().describe('The ID of the agent that should respond next'),
@@ -131,7 +142,7 @@ export interface MultiAgentConversationOptions {
   initialMessage: string;
   maxTurns: number;
   userId: string;
-  fileAttachments?: any;
+  fileAttachments?: unknown;
   projectId?: string;
   existingMessages?: Message[];
 }

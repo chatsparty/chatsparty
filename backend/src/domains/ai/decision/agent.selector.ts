@@ -1,150 +1,89 @@
-import { generateObject } from 'ai';
 import {
+  Agent,
+  Message,
   AgentSelection,
   AgentSelectionSchema,
-  ConversationState,
 } from '../types';
-import { SUPERVISOR_MODEL } from '../../../config/ai.config';
-import { getModel } from '../providers/ai.provider.factory';
-import { retryWithBackoff } from '../../../utils/retry';
-import {
-  buildSelectionPrompt,
-  getSupervisorSystemPrompt,
-} from '../generation/prompt.builder';
-import {
-  getConversationContext,
-  getLastSpeakers,
-} from '../state/conversation.helpers';
+import { getAIProvider } from '../providers/ai.provider.factory';
+import { createLogger } from '../../../config/logger';
 
-async function generateAgentSelection(
-  state: ConversationState,
-): Promise<AgentSelection | null> {
-  const conversationContext = await getConversationContext(state.messages);
-  const agentsInfo = state.agents.map(a => ({
-    id: a.id,
-    name: a.name,
-    characteristics: a.characteristics,
-  }));
+const logger = createLogger('agent.selector');
 
-  const selectionPrompt = buildSelectionPrompt(
-    conversationContext,
-    agentsInfo,
-    state.messages,
-  );
+const AGENT_SELECTION_PROMPT_TEMPLATE = `
+You are an expert moderator in a multi-agent conversation.
+Your role is to select the next agent to speak based on the conversation history and the agents' characteristics.
 
-  const model = getModel(SUPERVISOR_MODEL.provider, SUPERVISOR_MODEL.model);
+Here are the available agents:
+{agents_summary}
 
-  const result = await retryWithBackoff(
-    () =>
-      generateObject({
-        model,
-        schema: AgentSelectionSchema,
-        prompt: selectionPrompt,
-        system: getSupervisorSystemPrompt('selection'),
-        temperature: SUPERVISOR_MODEL.temperature,
-        maxTokens: SUPERVISOR_MODEL.maxTokens,
-      }),
-    {
-      retries: 3,
-      initialDelay: 1000,
-      onRetry: (error, attempt) => {
-        console.error(
-          `Error in generateObject (attempt ${attempt}/3):`,
-          error,
-        );
-        if (error.name === 'NoObjectGeneratedError') {
-          console.error('Model response:', error.response);
-          console.error('Raw text:', error.text);
-        }
-      },
-    },
-  );
-  return result?.object || null;
+Conversation History (most recent messages first):
+{conversation_history}
+
+Based on the last message and the overall conversation, which agent should speak next?
+Consider the agents' expertise, the flow of the conversation, and who is best equipped to respond to the last message.
+If the last message was a question, who is it directed to? If it's a general statement, who should logically follow up?
+Do not select an agent that has just spoken unless it's a direct question to them.
+The user is not an agent, do not select them.
+If you are unsure, select the agent that is most likely to move the conversation forward.
+`;
+
+function formatAgents(agents: Agent[]): string {
+  return agents
+    .map(
+      agent =>
+        `- ${agent.name} (ID: ${agent.agentId}): ${agent.characteristics}`
+    )
+    .join('\n');
 }
 
-function ensureVariety(
-  selectedAgent: AgentSelection,
-  agents: Array<{ id: string; name: string; characteristics: string }>,
-  lastSpeakers: string[],
-): AgentSelection {
-  if (lastSpeakers.includes(selectedAgent.agentId)) {
-    const alternativeAgents = agents.filter(
-      a => !lastSpeakers.includes(a.id),
-    );
-
-    if (alternativeAgents.length > 0) {
-      const newAgentId = alternativeAgents[0].id;
-      console.log(
-        `Supervisor chose a recent speaker (${selectedAgent.agentId}). Overriding with ${newAgentId} for variety.`,
-      );
-      return {
-        agentId: newAgentId,
-        reasoning: `Forced variety to avoid repetition. Original choice was ${selectedAgent.agentId}.`,
-      };
-    }
-    console.log(
-      `All agents have spoken recently. Allowing supervisor's choice to repeat: ${selectedAgent.agentId}`,
-    );
-  }
-  return selectedAgent;
-}
-
-function addDefaultReasoning(selectedAgent: AgentSelection): AgentSelection {
-  if (!selectedAgent.reasoning) {
-    return { ...selectedAgent, reasoning: 'Supervisor selection.' };
-  }
-  return selectedAgent;
-}
-
-function createFallbackSelection(
-  agents: Array<{ id: string; name: string; characteristics: string }>,
-  lastSpeakers: string[],
-): AgentSelection | null {
-  const availableAgents = agents.filter(
-    a => !lastSpeakers.includes(a.id),
-  );
-
-  if (availableAgents.length > 0) {
-    return {
-      agentId: availableAgents[0].id,
-      reasoning: 'Fallback selection due to error (chose non-recent speaker)',
-    };
-  }
-
-  if (agents.length > 0) {
-    return {
-      agentId: agents[0].id,
-      reasoning: 'Fallback selection due to error (all agents spoke recently)',
-    };
-  }
-
-  return null;
+function formatHistory(messages: Message[]): string {
+  return messages
+    .map(msg => `${msg.speaker || msg.role}: ${msg.content}`)
+    .join('\n');
 }
 
 export async function selectNextAgent(
-  state: ConversationState,
-): Promise<AgentSelection | null> {
-  const lastSpeakers = getLastSpeakers(state.messages);
-  
-  // Ensure agents have the correct type
-  const agents = state.agents as Array<{ id: string; name: string; characteristics: string }>;
+  agents: Agent[],
+  conversationHistory: Message[],
+  controllerAgent: Agent
+): Promise<AgentSelection> {
+  if (agents.length === 1) {
+    return { agentId: agents[0].agentId, reasoning: 'Only one agent available' };
+  }
+
+  const systemPrompt = AGENT_SELECTION_PROMPT_TEMPLATE.replace(
+    '{agents_summary}',
+    formatAgents(agents)
+  ).replace(
+    '{conversation_history}',
+    formatHistory(conversationHistory.slice(-10))
+  );
+
+  const provider = await getAIProvider(
+    controllerAgent.aiConfig,
+    controllerAgent.connectionId
+  );
 
   try {
-    const selectedAgent = await generateAgentSelection(state);
-
-    if (!selectedAgent) {
-      console.log('Agent selection returned no object, using fallback.');
-      return createFallbackSelection(agents, lastSpeakers);
-    }
-
-    const varietyAssuredSelection = ensureVariety(
-      selectedAgent,
-      agents,
-      lastSpeakers,
+    const selection = await provider.generateStructuredResponse(
+      [{ role: 'user', content: 'Please select the next speaker.' }],
+      systemPrompt,
+      AgentSelectionSchema
     );
-    return addDefaultReasoning(varietyAssuredSelection);
+    return selection;
   } catch (error) {
-    console.error('Error selecting next agent:', error);
-    return createFallbackSelection(agents, lastSpeakers);
+    logger.error('Error selecting next agent:', error);
+    // Fallback strategy: select a random agent that wasn't the last speaker
+    const lastSpeakerId =
+      conversationHistory[conversationHistory.length - 1]?.agentId;
+    const availableAgents = agents.filter(
+      agent => agent.agentId !== lastSpeakerId
+    );
+    const fallbackAgent =
+      availableAgents[Math.floor(Math.random() * availableAgents.length)];
+    return {
+      agentId: fallbackAgent.agentId,
+      reasoning: 'Fell back to random selection due to an error.',
+    };
   }
 }
