@@ -1,9 +1,12 @@
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
+// ID validation - accepts CUID, UUID, or any string with reasonable length
+const idSchema = z.string().min(1).max(50);
+
 export const getConversationSchema = z.object({
   params: z.object({
-    conversationId: z.string().uuid(),
+    conversationId: idSchema,
   }),
 });
 
@@ -11,7 +14,7 @@ export const listConversationsSchema = z.object({
   query: z.object({
     page: z.number().int().positive().default(1),
     limit: z.number().int().positive().max(100).default(20),
-    agentId: z.string().uuid().optional(),
+    agentId: idSchema.optional(),
     startDate: z.string().datetime().optional(),
     endDate: z.string().datetime().optional(),
     search: z.string().optional(),
@@ -20,24 +23,24 @@ export const listConversationsSchema = z.object({
 
 export const deleteConversationSchema = z.object({
   params: z.object({
-    conversationId: z.string().uuid(),
+    conversationId: idSchema,
   }),
 });
 
 export const addMessageSchema = z.object({
   params: z.object({
-    conversationId: z.string().uuid(),
+    conversationId: idSchema,
   }),
   body: z.object({
     message: z.string().min(1).max(10000),
     role: z.enum(['user', 'assistant']),
-    agentId: z.string().uuid().optional(),
+    agentId: idSchema.optional(),
   }),
 });
 
 export const getMessagesSchema = z.object({
   params: z.object({
-    conversationId: z.string().uuid(),
+    conversationId: idSchema,
   }),
   query: z.object({
     limit: z.number().int().positive().max(1000).default(100),
@@ -52,7 +55,7 @@ export const createConversationSchema = z.object({
       .min(1, 'Title cannot be empty')
       .max(100, 'Title is too long'),
     agentIds: z
-      .array(z.string().uuid())
+      .array(idSchema)
       .min(1, 'At least 1 agent required')
       .max(10, 'Maximum 10 agents allowed'),
     metadata: z.record(z.any()).optional(),

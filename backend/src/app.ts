@@ -13,7 +13,7 @@ import { applyAuthMiddleware } from './middleware/auth-middleware';
 import userRoutes from './services/user/user.routes';
 import authRoutes from './services/user/auth.routes';
 import agentRoutes from './routes/agents/agent.routes';
-import connectionRoutes from './routes/connections/connection.routes';
+import connectionRoutes, { systemDefaultRoutes } from './routes/connections/connection.routes';
 import { creditRoutes } from './routes/credit';
 import { storageRoutes } from './routes/storage/storage.routes';
 import { conversationRoutes } from './routes/conversations';
@@ -138,6 +138,7 @@ async function registerRoutes() {
   );
 
   await app.register(authRoutes, { prefix: '/auth' });
+  await app.register(systemDefaultRoutes);
   await app.register(apiRoutes);
 }
 

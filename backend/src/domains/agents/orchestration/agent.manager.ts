@@ -17,6 +17,7 @@ import {
   AgentValidationError,
   ConnectionNotFoundError,
 } from '../../../utils/errors';
+import { Agent as AIAgent } from '../../ai/core/types';
 
 const AGENT_LIMITS = {
   MAX_AGENTS_PER_USER: 50,
@@ -211,5 +212,69 @@ export async function deleteAgent(
       return { success: false, error: error.message };
     }
     return { success: false, error: 'Failed to delete agent' };
+  }
+}
+
+export async function getAgentWithFullConfig(
+  userId: string,
+  agentId: string
+): Promise<ServiceResponse<AIAgent>> {
+  try {
+    const agent = await agentRepository.findUserAgent(userId, agentId);
+    if (!agent) {
+      throw new AgentNotFoundError();
+    }
+
+    // Get the connection to retrieve API key
+    const connection = await findUserConnection(userId, agent.connectionId);
+    
+    let apiKey: string | undefined;
+    let baseUrl: string | undefined;
+    
+    if (connection) {
+      apiKey = connection.apiKey || undefined;
+      baseUrl = connection.baseUrl || undefined;
+    } else if (
+      agent.connectionId === 'default' ||
+      agent.connectionId.startsWith('system-fallback-')
+    ) {
+      // Handle fallback connections
+      const fallbackResponse = await Fallback.getFallbackConnection();
+      if (fallbackResponse.success && fallbackResponse.data) {
+        apiKey = fallbackResponse.data.apiKey || undefined;
+        baseUrl = fallbackResponse.data.baseUrl || undefined;
+      } else if (agent.connectionId.startsWith('system-fallback-')) {
+        // If no fallback config but using system-fallback, check if it's Vertex AI
+        const provider = Fallback.getProviderFromConnectionId(agent.connectionId);
+        if (provider === 'vertex_ai') {
+          // For Vertex AI without config, we'll rely on default Google Cloud credentials
+          console.log('[Agent Manager] Using default Google Cloud credentials for Vertex AI');
+          // Leave apiKey and baseUrl undefined - Vertex AI SDK will use default credentials
+        }
+      }
+    }
+
+    // Return agent in AI Agent format with complete config
+    const aiAgent: AIAgent = {
+      agentId: agent.id as any,
+      name: agent.name,
+      prompt: agent.prompt,
+      characteristics: agent.characteristics,
+      aiConfig: {
+        ...(agent.aiConfig as any),
+        apiKey,
+        baseUrl,
+      },
+      chatStyle: agent.chatStyle as any,
+      connectionId: agent.connectionId,
+    };
+
+    return { success: true, data: aiAgent };
+  } catch (error: unknown) {
+    console.error('Error getting agent with full config:', error);
+    if (error instanceof AgentNotFoundError) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: 'Failed to get agent configuration' };
   }
 }

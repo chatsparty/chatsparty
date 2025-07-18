@@ -5,6 +5,8 @@ import {
   ConversationListQuery,
   CreateConversationInput,
   Message,
+  ConversationFilters,
+  ConversationListResponse,
 } from './types';
 
 export const findConversationById = async (
@@ -100,10 +102,12 @@ export const addMessageToConversation = async (
   },
   database: PrismaClient = db
 ): Promise<Message> => {
+  const { timestamp, ...messageData } = message;
   return database.message.create({
     data: {
       conversationId,
-      ...message,
+      ...messageData,
+      createdAt: new Date(timestamp),
     },
   });
 };
@@ -120,3 +124,70 @@ export const getMessagesFromConversation = async (
     orderBy: { createdAt: 'asc' },
   });
 };
+
+export class ConversationRepository {
+  constructor(private database: PrismaClient = db) {}
+
+  async findById(conversationId: string): Promise<Conversation | null> {
+    return findConversationById(conversationId, this.database);
+  }
+
+  async list(
+    filters: ConversationFilters,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<ConversationListResponse> {
+    const query: ConversationListQuery = {
+      page,
+      limit,
+      agentId: filters.agentId,
+      startDate: filters.startDate?.toISOString(),
+      endDate: filters.endDate?.toISOString(),
+      search: filters.search,
+    };
+
+    const [conversations, total] = await findConversationsByUserId(
+      filters.userId,
+      query,
+      this.database
+    );
+
+    return {
+      conversations,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async create(input: CreateConversationInput): Promise<Conversation> {
+    return createConversation(input.userId, input, this.database);
+  }
+
+  async delete(userId: string, conversationId: string): Promise<void> {
+    const conversation = await this.database.conversation.findFirst({
+      where: {
+        id: conversationId,
+        userId: userId,
+      },
+    });
+
+    if (!conversation) {
+      throw new Error('Conversation not found or access denied');
+    }
+
+    return deleteConversation(conversationId, this.database);
+  }
+
+  async addMessage(conversationId: string, message: any): Promise<Message> {
+    return addMessageToConversation(conversationId, message, this.database);
+  }
+
+  async count(userId: string): Promise<number> {
+    return this.database.conversation.count({
+      where: { userId },
+    });
+  }
+}
+
+export const conversationRepository = new ConversationRepository();

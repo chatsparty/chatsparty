@@ -1,17 +1,15 @@
-import { AIProvider } from '../routes/connections/connection.types';
+import { AIProvider } from '../domains/connections/types';
 
-// Default connection configuration
 export interface DefaultConnectionConfig {
   provider: AIProvider;
   modelName: string;
   apiKey?: string;
-  projectId?: string; // For Vertex AI
-  location?: string; // For Vertex AI
+  projectId?: string;
+  location?: string;
   baseUrl?: string;
   enabled: boolean;
 }
 
-// Environment variable names for default connection
 export const DEFAULT_CONNECTION_ENV_VARS = {
   PROVIDER: 'DEFAULT_CONNECTION_PROVIDER',
   MODEL: 'DEFAULT_CONNECTION_MODEL',
@@ -22,7 +20,6 @@ export const DEFAULT_CONNECTION_ENV_VARS = {
   ENABLED: 'DEFAULT_CONNECTION_ENABLED',
 } as const;
 
-// Get default connection configuration from environment
 export function getDefaultConnectionConfig(): DefaultConnectionConfig | null {
   const enabled = process.env[DEFAULT_CONNECTION_ENV_VARS.ENABLED] === 'true';
 
@@ -53,7 +50,6 @@ export function getDefaultConnectionConfig(): DefaultConnectionConfig | null {
   };
 }
 
-// Validate default connection configuration
 export function validateDefaultConnectionConfig(
   config: DefaultConnectionConfig
 ): { valid: boolean; error?: string } {
@@ -65,7 +61,6 @@ export function validateDefaultConnectionConfig(
     return { valid: false, error: 'Provider and model name are required' };
   }
 
-  // Provider-specific validation
   switch (config.provider) {
     case 'vertex_ai':
       if (!config.projectId || !config.location) {
@@ -87,7 +82,6 @@ export function validateDefaultConnectionConfig(
       }
       break;
     case 'ollama':
-      // Ollama doesn't require API key but may need base URL
       break;
     default:
       return { valid: false, error: `Unknown provider: ${config.provider}` };

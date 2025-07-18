@@ -23,6 +23,16 @@ export function getFallbackProvider(): AIProvider | null {
   return config?.provider || null;
 }
 
+export function getProviderFromConnectionId(
+  connectionId: string
+): AIProvider | null {
+  if (connectionId.startsWith('system-fallback-')) {
+    const provider = connectionId.replace('system-fallback-', '') as AIProvider;
+    return provider;
+  }
+  return null;
+}
+
 export async function getFallbackConnection(): Promise<
   ServiceResponse<FallbackConnection | null>
 > {
@@ -42,7 +52,10 @@ export async function getFallbackConnection(): Promise<
       modelName: config.modelName,
       apiKey: config.apiKey || null,
       apiKeyEncrypted: false,
-      baseUrl: config.baseUrl || null,
+      baseUrl:
+        config.provider === 'vertex_ai'
+          ? config.projectId || config.baseUrl || null
+          : config.baseUrl || null,
       isActive: true,
       isDefault: true,
       isSystemDefault: true,

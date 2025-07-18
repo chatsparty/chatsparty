@@ -3,15 +3,34 @@ import {
   TestConnectionResponse,
   ServiceResponse,
 } from '../types';
-import { getModel } from '../../ai/providers/ai.provider.factory';
-import { generateText } from 'ai';
+import { createMastraProvider } from '../../ai/infrastructure/providers/mastra.provider';
+import { runEffect } from '../../ai/core/effects';
 
 export async function testConnection(
   request: TestConnectionRequest
 ): Promise<ServiceResponse<TestConnectionResponse>> {
   try {
-    const model = getModel(request.provider, request.modelName || 'default');
-    await generateText({ model, prompt: 'Hello!' });
+    const provider = createMastraProvider(
+      request.provider,
+      request.modelName || 'default',
+      {
+        apiKey: request.apiKey,
+        baseUrl: request.baseUrl,
+      }
+    );
+
+    const effect = provider.generateResponse(
+      [{ role: 'user', content: 'Hello!', timestamp: Date.now() }],
+      'You are a helpful assistant.',
+      { maxTokens: 10 }
+    );
+
+    const result = await runEffect(effect);
+
+    if (result.kind === 'error') {
+      throw result.error;
+    }
+
     return {
       success: true,
       data: { success: true, message: 'Connection successful' },

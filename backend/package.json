@@ -50,6 +50,7 @@
     "nanoid": "^5.0.6",
     "ollama-ai-provider": "^1.2.0",
     "prisma": "^6.11.1",
+    "rxjs": "^7.8.2",
     "socket.io": "^4.7.5",
     "zod": "^3.25.74",
     "zod-to-json-schema": "^3.24.6"

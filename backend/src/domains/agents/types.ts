@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Agent as PrismaAgent } from '@prisma/client';
-import { ModelConfigurationSchema, ChatStyleSchema } from '../ai/types';
+import { ModelConfigurationSchema, ChatStyleSchema } from '../ai/core/types';
 
 export interface Agent extends PrismaAgent {}
 

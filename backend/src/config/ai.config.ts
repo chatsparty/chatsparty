@@ -1,7 +1,10 @@
 import { getDefaultConnectionConfig } from './fallback.config';
-import { ModelProvider } from '../domains/ai/providers/ai.provider.factory';
+import { ModelConfigurationSchema } from '../domains/ai/core/types';
+import { z } from 'zod';
 
 const fallbackConfig = getDefaultConnectionConfig();
+
+type ModelProvider = z.infer<typeof ModelConfigurationSchema>['provider'];
 
 export const SUPERVISOR_MODEL: {
   provider: ModelProvider;

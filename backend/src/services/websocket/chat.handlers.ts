@@ -6,9 +6,11 @@ import {
   getConversation,
 } from '../../domains/conversations/orchestration';
 import * as agentManager from '../../domains/agents/orchestration/agent.manager';
-import { aiService } from '../../domains/ai/ai.service';
+import { aiService } from '../../domains/ai/application/services/ai.service';
 import { verifyToken } from '../../utils/auth';
 import type { JwtPayload } from 'jsonwebtoken';
+import type { StreamEvent } from '../../domains/ai/infrastructure/streaming/conversation.stream';
+import type { Agent } from '../../domains/ai/core/types';
 
 interface MultiAgentConversationData {
   conversation_id: string;
@@ -26,6 +28,48 @@ interface SendMessageData {
   token?: string;
 }
 
+async function* observableToAsyncIterable<T>(
+  observable: any
+): AsyncIterable<T> {
+  const state = {
+    values: [] as T[],
+    error: null as any,
+    done: false,
+    resolve: null as (() => void) | null,
+  };
+
+  const subscription = observable.subscribe({
+    next: (value: T) => {
+      state.values.push(value);
+      state.resolve?.();
+    },
+    error: (err: any) => {
+      state.error = err;
+      state.resolve?.();
+    },
+    complete: () => {
+      state.done = true;
+      state.resolve?.();
+    },
+  });
+
+  try {
+    while (!state.done) {
+      if (state.values.length > 0) {
+        yield state.values.shift()!;
+      } else if (state.error) {
+        throw state.error;
+      } else {
+        await new Promise<void>(resolve => {
+          state.resolve = resolve;
+        });
+      }
+    }
+  } finally {
+    subscription.unsubscribe();
+  }
+}
+
 export function setupChatHandlers(socket: Socket): void {
   socket.on(
     'start_multi_agent_conversation',
@@ -37,7 +81,6 @@ export function setupChatHandlers(socket: Socket): void {
           initial_message,
           max_turns = 20,
           token,
-          file_attachments,
           project_id,
         } = data;
 
@@ -64,7 +107,7 @@ export function setupChatHandlers(socket: Socket): void {
         }
 
         const agentPromises = agent_ids.map(id =>
-          agentManager.getAgentById(userId!, id)
+          agentManager.getAgentWithFullConfig(userId!, id)
         );
         const agentResults = await Promise.all(agentPromises);
 
@@ -103,6 +146,7 @@ export function setupChatHandlers(socket: Socket): void {
             title: initial_message.substring(0, 50) + '...',
             agentIds: agent_ids,
             projectId: project_id,
+            userId: userId,
           });
 
           if (!conversationResult.success || !conversationResult.data) {
@@ -138,23 +182,35 @@ export function setupChatHandlers(socket: Socket): void {
             timestamp: Date.now(),
           });
 
-          const stream = aiService.streamMultiAgentConversation({
+          const agents: Agent[] = agentResults
+            .filter(r => r.success && r.data)
+            .map(r => r.data!);
+          const observable = aiService.startConversation({
             conversationId: conversation.id,
-            agentIds: agent_ids,
+            userId,
+            agents,
             initialMessage: initial_message,
             maxTurns: max_turns,
-            userId,
-            fileAttachments: file_attachments,
-            projectId: project_id,
           });
 
-          for await (const event of stream) {
+          for await (const event of observableToAsyncIterable<StreamEvent>(
+            observable
+          )) {
             if (!websocketService.isConversationActive(conversation_id)) {
               break;
             }
 
+            // Only log errors and important events
+            if (event.type === 'error' || process.env.DEBUG_SOCKET) {
+              console.log(`[Socket Handler] Event received: ${event.type}`, {
+                conversationId: conversation_id,
+                event
+              });
+            }
+
             switch (event.type) {
               case 'thinking':
+                console.log(`[Socket Handler] Emitting typing indicator for agent: ${event.agentName}`);
                 await websocketService.emitTypingIndicator(
                   conversation_id,
                   event.agentId,
@@ -163,6 +219,10 @@ export function setupChatHandlers(socket: Socket): void {
                 break;
 
               case 'message':
+                console.log(`[Socket Handler] Emitting agent message from: ${event.agentName}`, {
+                  content: event.content?.substring(0, 100),
+                  contentLength: event.content?.length
+                });
                 await websocketService.emitAgentMessage(
                   conversation_id,
                   event.agentId,
@@ -181,13 +241,15 @@ export function setupChatHandlers(socket: Socket): void {
                 break;
 
               case 'error':
+                console.error(`Conversation error [${conversation_id}]:`, event.error);
                 await websocketService.emitError(
                   conversation_id,
-                  event.message || 'An unknown error occurred'
+                  event.error?.message || 'An unknown error occurred'
                 );
                 break;
 
               case 'complete':
+                console.log(`[Socket Handler] Conversation complete: ${conversation_id}`);
                 await websocketService.emitConversationComplete(
                   conversation_id
                 );
@@ -307,20 +369,36 @@ export function setupChatHandlers(socket: Socket): void {
         });
       }
 
-      const stream = aiService.continueMultiAgentConversation({
+      const agentPromises = conversationData.agentIds.map((id: string) =>
+        agentManager.getAgentWithFullConfig(userId!, id)
+      );
+      const agentResults = await Promise.all(agentPromises);
+      const agents: Agent[] = agentResults
+        .filter(r => r.success && r.data)
+        .map(r => r.data!);
+
+      const observable = aiService.continueConversation({
         conversationId: databaseConversationId,
-        message,
-        agentIds: conversationData.agentIds,
         userId,
+        message,
+        agents,
       });
 
-      for await (const event of stream) {
+      for await (const event of observableToAsyncIterable<StreamEvent>(
+        observable
+      )) {
         if (!websocketService.isConversationActive(conversation_id)) {
           break;
         }
 
+        console.log(`[Socket Handler - Send Message] Event received: ${event.type}`, {
+          conversationId: conversation_id,
+          event
+        });
+
         switch (event.type) {
           case 'thinking':
+            console.log(`[Socket Handler - Send Message] Emitting typing indicator for agent: ${event.agentName}`);
             await websocketService.emitTypingIndicator(
               conversation_id,
               event.agentId,
@@ -329,6 +407,10 @@ export function setupChatHandlers(socket: Socket): void {
             break;
 
           case 'message':
+            console.log(`[Socket Handler - Send Message] Emitting agent message from: ${event.agentName}`, {
+              content: event.content?.substring(0, 100),
+              contentLength: event.content?.length
+            });
             await websocketService.emitAgentMessage(
               conversation_id,
               event.agentId,
@@ -349,13 +431,15 @@ export function setupChatHandlers(socket: Socket): void {
             break;
 
           case 'error':
+            console.error(`Conversation error [${conversation_id}]:`, event.error);
             await websocketService.emitError(
               conversation_id,
-              event.message || 'An unknown error occurred'
+              event.error?.message || 'An unknown error occurred'
             );
             break;
 
           case 'complete':
+            console.log(`[Socket Handler - Send Message] Conversation complete: ${conversation_id}`);
             await websocketService.emitConversationComplete(conversation_id);
             break;
         }

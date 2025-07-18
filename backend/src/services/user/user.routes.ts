@@ -21,6 +21,7 @@ import {
   addCredits,
   useCredits,
 } from '../../domains/credit/orchestration/credit.orchestration';
+import { TransactionReason, TransactionType } from '../../domains/credit/types';
 
 const userRoutes: FastifyPluginAsync = async fastify => {
   fastify.post<{ Body: RegisterInput }>(
@@ -197,10 +198,23 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await addCredits(
-        request.user!.userId,
-        request.body as AddCreditInput
-      );
+      const { amount, type, expiresAt } = request.body as AddCreditInput;
+      
+      // Map input type to TransactionType enum
+      const transactionTypeMap: Record<string, TransactionType> = {
+        'subscription': TransactionType.SUBSCRIPTION,
+        'topup': TransactionType.TOPUP,
+        'bonus': TransactionType.BONUS
+      };
+      
+      const result = await addCredits(request.user!.userId, {
+        userId: request.user!.userId,
+        amount,
+        transactionType: transactionTypeMap[type] || TransactionType.TOPUP,
+        reason: TransactionReason.MANUAL_ADJUSTMENT,
+        description: `Manual credit addition: ${type}`,
+        ...(expiresAt && { expiresAt }),
+      });
 
       if (!result.success) {
         return reply.status(400).send({
@@ -219,10 +233,13 @@ const userRoutes: FastifyPluginAsync = async fastify => {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-      const result = await useCredits(
-        request.user!.userId,
-        request.body as UseCreditInput
-      );
+      const { amount, description } = request.body as UseCreditInput;
+      const result = await useCredits(request.user!.userId, {
+        userId: request.user!.userId,
+        amount,
+        reason: TransactionReason.AI_CHAT,
+        description: description || 'Credit usage',
+      });
 
       if (!result.success) {
         return reply.status(400).send({

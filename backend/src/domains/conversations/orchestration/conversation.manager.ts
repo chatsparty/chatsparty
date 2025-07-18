@@ -6,7 +6,7 @@ import {
   CreateConversationData,
 } from '../types';
 import { ServiceResponse } from '../../../types/service.types';
-import { Message } from '../../ai/types';
+import { Message } from '../../ai/core/types';
 
 export class ConversationManager {
   private repository: ConversationRepository;
@@ -95,8 +95,14 @@ export class ConversationManager {
     try {
       await this.repository.delete(userId, conversationId);
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting conversation:', error);
+      if (error.message === 'Conversation not found or access denied') {
+        return {
+          success: false,
+          error: 'Conversation not found',
+        };
+      }
       return {
         success: false,
         error: 'Failed to delete conversation',

@@ -180,8 +180,6 @@ export class WebSocketService {
       status: 'completed',
     });
 
-    // Don't delete the conversation - keep it available for future messages
-
     const conversation = this.activeConversations.get(conversationId);
     if (conversation) {
       conversation.isActive = false;

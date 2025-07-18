@@ -169,7 +169,7 @@ export const useAgentApi = () => {
           },
         };
 
-        await axios.put(`/agents/${agentId}`, payload);
+        await axios.patch(`/agents/${agentId}`, payload);
         trackAgentUpdated(agentId, formData.name);
         showToast(t("agents.agentUpdated"), "success");
         await fetchAgents();
