@@ -273,6 +273,7 @@ export const createConversationWorkflow = (deps: WorkflowDependencies) => {
       conversationId,
       userId,
       agentIds: agents.map(a => a.agentId),
+      agents: agents as Agent[],
       maxTurns,
       initialMessage,
     });
@@ -298,7 +299,98 @@ export const createConversationWorkflow = (deps: WorkflowDependencies) => {
     });
   };
 
+  const loadAndContinueConversation = (
+    conversationId: ConversationId,
+    userId: UserId,
+    newMessage: string
+  ): Effect<Observable<StreamEvent>> => {
+    return flatMap(deps.eventStore.getEvents(conversationId), events => {
+      if (events.length === 0) {
+        return pure(
+          new Observable(subscriber => {
+            subscriber.error(
+              new Error(`Conversation ${conversationId} not found`)
+            );
+          })
+        );
+      }
+
+      const startEvent = events.find(
+        e => e.type === 'ConversationStarted'
+      ) as any;
+
+      if (!startEvent) {
+        return pure(
+          new Observable(subscriber => {
+            subscriber.error(
+              new Error(`Invalid conversation state: no start event found`)
+            );
+          })
+        );
+      }
+
+      let state = createInitialConversationState(
+        conversationId,
+        startEvent.userId,
+        startEvent.agents || [],
+        startEvent.maxTurns,
+        startEvent.initialMessage
+      );
+
+      for (const event of events) {
+        state = applyEventToDomain(state, event);
+      }
+
+      if (isTerminated(state)) {
+        return pure(
+          new Observable(subscriber => {
+            subscriber.error(
+              new Error(`Conversation ${conversationId} is already terminated`)
+            );
+          })
+        );
+      }
+
+      const userMessage: Message = {
+        role: 'user',
+        content: newMessage,
+        timestamp: Date.now(),
+        speaker: 'User',
+      };
+
+      const messageEvent = createMessageGeneratedEvent(
+        conversationId,
+        userMessage
+      );
+
+      return flatMap(deps.eventStore.append(messageEvent), () => {
+        const newState = applyEventToDomain(state, messageEvent);
+
+        const stream = createConversationStream({
+          initialState: newState,
+          applyEvent: applyEventToDomain,
+        });
+
+        const context: ConversationContext = {
+          conversationId,
+          userId,
+          agents: startEvent.agents || [],
+          controller: selectControllerAgent(startEvent.agents || []),
+          stream,
+          deps,
+        };
+
+        stream.pushEvent(messageEvent);
+
+        runConversationLoop(newState, context);
+
+        return pure(stream.transformToStreamEvents());
+      });
+    });
+  };
+
   return {
     startConversation,
+    loadAndContinueConversation,
   };
 };

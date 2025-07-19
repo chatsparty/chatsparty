@@ -13,7 +13,7 @@ export const SUPERVISOR_MODEL: {
   maxTokens: number;
 } = {
   provider: (fallbackConfig?.provider || 'vertex_ai') as ModelProvider,
-  model: fallbackConfig?.modelName || 'gemini-1.5-flash',
+  model: fallbackConfig?.modelName || 'gemini-2.5-flash',
   temperature: 0.3,
   maxTokens: 4096,
 };

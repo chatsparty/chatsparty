@@ -12,8 +12,6 @@ import {
 } from '../types';
 import * as repository from '../repository';
 import { HttpError } from '../../../utils/http-error';
-import { findFirst as findFirstConnection } from '../../connections/repository';
-import { DEFAULT_MARKETPLACE_AI_CONFIG } from '../../../config/ai.config';
 import { db } from '../../../config/database';
 
 const toMarketplaceAgent = (agent: AgentWithUser): MarketplaceAgent => {
@@ -36,8 +34,7 @@ const toMarketplaceAgent = (agent: AgentWithUser): MarketplaceAgent => {
       id: agent.user.id,
       name: agent.user.name || '',
     },
-    aiConfig: agent.aiConfig,
-    chatStyle: agent.chatStyle,
+    chatStyle: agent.chatStyle || {},
   };
 };
 
@@ -94,16 +91,19 @@ export const importAgent = async (
     throw new HttpError('Agent already imported', 409);
   }
 
-  const userConnection = await findFirstConnection(
-    userId,
-    DEFAULT_MARKETPLACE_AI_CONFIG.provider
-  );
-  const connectionId = userConnection?.id || 'default';
-
-  const defaultAiConfig = {
-    ...DEFAULT_MARKETPLACE_AI_CONFIG,
-    connectionId,
-  };
+  // For marketplace imports, use a platform default connection
+  const platformDefaultConnection = await db.connection.findFirst({
+    where: { 
+      isDefault: true, 
+      isActive: true,
+      provider: 'vertex_ai'
+    }
+  });
+  
+  if (!platformDefaultConnection) {
+    throw new HttpError('No platform default AI connection configured', 500);
+  }
+  const connectionId = platformDefaultConnection.id;
 
   const importedAgent = await db.$transaction(async tx => {
     const agent = await tx.agent.create({
@@ -114,21 +114,16 @@ export const importAgent = async (
           request.customizations?.characteristics ||
           templateAgent.characteristics,
         connectionId: connectionId,
-        aiConfig: (request.customizations?.aiConfig as any) || defaultAiConfig,
         chatStyle:
           (request.customizations?.chatStyle as any) || templateAgent.chatStyle,
-        voiceConnection: templateAgent.voiceConnectionId
-          ? { connect: { id: templateAgent.voiceConnectionId } }
-          : undefined,
-        voiceEnabled: templateAgent.voiceEnabled,
         isPublic: false,
         isTemplate: false,
         category: templateAgent.category,
         tags: templateAgent.tags,
         description: templateAgent.description,
-        template: { connect: { id: templateAgent.id } },
+        templateId: templateAgent.id,
         isOriginal: false,
-        user: { connect: { id: userId } },
+        userId: userId,
       },
     });
 

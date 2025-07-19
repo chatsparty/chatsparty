@@ -21,7 +21,6 @@ export interface MarketplaceAgent {
     id: string;
     name: string;
   };
-  aiConfig: any;
   chatStyle: any;
 }
 
@@ -57,7 +56,6 @@ export interface ImportAgentRequest {
   customizations?: {
     name?: string;
     characteristics?: string;
-    aiConfig?: any;
     chatStyle?: any;
   };
 }

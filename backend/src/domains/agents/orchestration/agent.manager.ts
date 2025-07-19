@@ -18,6 +18,7 @@ import {
   ConnectionNotFoundError,
 } from '../../../utils/errors';
 import { Agent as AIAgent } from '../../multiagent/core/types';
+import { db } from '../../../config/database';
 
 const AGENT_LIMITS = {
   MAX_AGENTS_PER_USER: 50,
@@ -55,7 +56,6 @@ function _toPublicAgent(agent: Agent): PublicAgent {
     prompt: agent.prompt,
     characteristics: agent.characteristics,
     connectionId: agent.connectionId,
-    aiConfig: agent.aiConfig as any,
     chatStyle: agent.chatStyle as any,
     createdAt: agent.createdAt.toISOString(),
     updatedAt: agent.updatedAt.toISOString(),
@@ -86,7 +86,11 @@ export async function createAgent(
 
     const agent = await agentRepository.create({
       ...request,
-      connectionId: connection.id,
+      connection: {
+        connect: {
+          id: connection.id,
+        },
+      },
       user: {
         connect: {
           id: userId,
@@ -225,8 +229,7 @@ export async function getAgentWithFullConfig(
       throw new AgentNotFoundError();
     }
 
-    // Get the connection to retrieve API key
-    const connection = await findUserConnection(userId, agent.connectionId);
+    let connection = await findUserConnection(userId, agent.connectionId);
 
     let apiKey: string | undefined;
     let baseUrl: string | undefined;
@@ -238,37 +241,59 @@ export async function getAgentWithFullConfig(
       agent.connectionId === 'default' ||
       agent.connectionId.startsWith('system-fallback-')
     ) {
-      // Handle fallback connections
       const fallbackResponse = await Fallback.getFallbackConnection();
       if (fallbackResponse.success && fallbackResponse.data) {
         apiKey = fallbackResponse.data.apiKey || undefined;
         baseUrl = fallbackResponse.data.baseUrl || undefined;
       } else if (agent.connectionId.startsWith('system-fallback-')) {
-        // If no fallback config but using system-fallback, check if it's Vertex AI
         const provider = Fallback.getProviderFromConnectionId(
           agent.connectionId
         );
         if (provider === 'vertex_ai') {
-          // For Vertex AI without config, we'll rely on default Google Cloud credentials
           console.log(
             '[Agent Manager] Using default Google Cloud credentials for Vertex AI'
           );
-          // Leave apiKey and baseUrl undefined - Vertex AI SDK will use default credentials
         }
       }
     }
 
-    // Return agent in AI Agent format with complete config
+    if (!connection && !apiKey) {
+      const platformDefault = await db.connection.findFirst({
+        where: {
+          isDefault: true,
+          isActive: true,
+        },
+      });
+      if (platformDefault) {
+        connection = platformDefault;
+        apiKey = platformDefault.apiKey || undefined;
+        baseUrl = platformDefault.baseUrl || undefined;
+      }
+    }
+
+    const connectionConfig = connection?.config as {
+      modelName?: string;
+    } | null;
+    const aiConfig = {
+      provider: (connection?.provider || 'vertex_ai') as
+        | 'openai'
+        | 'anthropic'
+        | 'google'
+        | 'vertex_ai'
+        | 'groq'
+        | 'ollama',
+      modelName: connectionConfig?.modelName || 'gemini-2.5-flash',
+      apiKey,
+      baseUrl,
+      connectionId: agent.connectionId,
+    };
+
     const aiAgent: AIAgent = {
       agentId: agent.id as any,
       name: agent.name,
       prompt: agent.prompt,
       characteristics: agent.characteristics,
-      aiConfig: {
-        ...(agent.aiConfig as any),
-        apiKey,
-        baseUrl,
-      },
+      aiConfig,
       chatStyle: agent.chatStyle as any,
       connectionId: agent.connectionId,
     };

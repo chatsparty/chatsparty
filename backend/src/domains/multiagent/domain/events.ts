@@ -22,10 +22,32 @@ const BaseEventSchema = z.object({
   version: z.number().default(1),
 });
 
+const AgentSchema = z.object({
+  agentId: AgentIdSchema,
+  name: z.string(),
+  prompt: z.string(),
+  characteristics: z.string(),
+  connectionId: z.string(),
+  maxTokens: z.number().optional(),
+  temperature: z.number().optional(),
+  chatStyle: z.object({
+    friendliness: z.enum(['friendly', 'balanced', 'formal']),
+    responseLength: z.enum(['short', 'medium', 'long']),
+    humor: z.enum(['witty', 'light', 'none']),
+  }),
+  aiConfig: z.object({
+    provider: z.string(),
+    modelName: z.string(),
+    apiKey: z.string().optional(),
+    baseUrl: z.string().optional(),
+  }),
+});
+
 export const ConversationStartedEventSchema = BaseEventSchema.extend({
   type: z.literal(ConversationEventType.ConversationStarted),
   userId: UserIdSchema,
   agentIds: z.array(AgentIdSchema),
+  agents: z.array(AgentSchema), // Store full agent data
   maxTurns: z.number(),
   initialMessage: z.string(),
 });

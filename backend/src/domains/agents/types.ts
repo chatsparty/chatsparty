@@ -13,7 +13,6 @@ export const PublicAgentSchema = z.object({
   prompt: z.string(),
   characteristics: z.string(),
   connectionId: z.string().cuid(),
-  aiConfig: ModelConfigurationSchema,
   chatStyle: ChatStyleSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -34,7 +33,6 @@ export const CreateAgentSchema = z.object({
         /^c[^\s-]{8,}$/i.test(id),
       'Connection ID must be "default", "system-default-{provider}", or a valid CUID'
     ),
-  aiConfig: ModelConfigurationSchema,
   chatStyle: ChatStyleSchema,
 });
 
@@ -52,7 +50,6 @@ export const UpdateAgentSchema = z.object({
       'Connection ID must be "default", "system-default-{provider}", or a valid CUID'
     )
     .optional(),
-  aiConfig: ModelConfigurationSchema.optional(),
   chatStyle: ChatStyleSchema.optional(),
 });
 

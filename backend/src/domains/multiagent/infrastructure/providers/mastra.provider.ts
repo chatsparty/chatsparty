@@ -21,46 +21,7 @@ import {
 } from './base.provider';
 import { LanguageModel } from 'ai';
 import { DEFAULT_VERTEX_AI_SAFETY_SETTINGS } from '../../domain/constants';
-
-const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
-  openai: {
-    functionCalling: true,
-    structuredOutput: true,
-    maxTokens: 4096,
-    contextWindow: 128000,
-  },
-  anthropic: {
-    functionCalling: true,
-    structuredOutput: true,
-    maxTokens: 4096,
-    contextWindow: 200000,
-  },
-  groq: {
-    functionCalling: false,
-    structuredOutput: true,
-    maxTokens: 4096,
-    contextWindow: 32000,
-  },
-  google: {
-    functionCalling: true,
-    structuredOutput: true,
-    maxTokens: 8192,
-    contextWindow: 1048576,
-  },
-  vertex_ai: {
-    functionCalling: true,
-    structuredOutput: true,
-    maxTokens: 8192,
-    contextWindow: 1048576,
-  },
-};
-
-const DEFAULT_CAPABILITIES: ProviderCapabilities = {
-  functionCalling: false,
-  structuredOutput: false,
-  maxTokens: 2048,
-  contextWindow: 8192,
-};
+import { PROVIDER_CAPABILITIES, DEFAULT_CAPABILITIES } from './capabilities';
 
 const createProviderInstance = (name: string, config: ProviderConfig) => {
   switch (name) {
@@ -147,6 +108,20 @@ const createResponseGenerator =
       fromPromise(async () => {
         const formattedMessages = formatMessages(messages, systemPrompt);
         const timeout = options?.timeout ?? 30000;
+
+        // Validate that we have at least one message with content
+        if (!formattedMessages || formattedMessages.length === 0) {
+          throw new Error('No messages provided for generation. At least one message is required.');
+        }
+
+        // Ensure all messages have content
+        const hasValidContent = formattedMessages.every(msg => 
+          msg.content && typeof msg.content === 'string' && msg.content.trim().length > 0
+        );
+        
+        if (!hasValidContent) {
+          throw new Error('All messages must have non-empty content.');
+        }
 
         console.log(
           `[MastraProvider] Generating response with ${providerName}`,

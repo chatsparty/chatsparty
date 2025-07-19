@@ -7,7 +7,12 @@ import {
   createConversationWorkflow,
   WorkflowDependencies,
 } from '../workflows/conversation.workflow';
-import { InMemoryEventStore } from '../../infrastructure/persistence/event.store';
+import {
+  EventStore,
+  CachedEventStore,
+} from '../../infrastructure/persistence/event.store';
+import { createPrismaEventStore } from '../../infrastructure/persistence/prisma-event.store';
+import { getPrismaClient } from '../../../../config/database';
 import {
   createProviderForAgent,
   createAgentSelector,
@@ -16,11 +21,26 @@ import {
 } from '../factories/workflow.factories';
 import { getAIConfig } from '../../config/ai.config';
 
+let eventStore: EventStore | null = null;
+
+const getEventStore = (): EventStore => {
+  if (!eventStore) {
+    const prisma = getPrismaClient();
+    const baseStore = createPrismaEventStore(prisma);
+
+    eventStore = new CachedEventStore(baseStore);
+  }
+  return eventStore;
+};
+
 const createWorkflowDependencies = (): WorkflowDependencies => {
   const config = getAIConfig();
   return {
-    eventStore: new InMemoryEventStore(),
-    agentSelector: createAgentSelector({ defaultTimeout: config.agentSelection.timeout }),
+    eventStore: getEventStore(),
+    agentSelector: createAgentSelector({
+      defaultTimeout: config.agentSelection.timeout,
+      maxTokens: config.agentSelection.maxTokens,
+    }),
     responseGenerator: createResponseGenerator({
       defaultTimeout: config.conversation.defaultTimeout,
     }),
@@ -29,15 +49,13 @@ const createWorkflowDependencies = (): WorkflowDependencies => {
   };
 };
 
-export const startConversation = (
-  params: {
-    conversationId: string;
-    userId: string;
-    agents: Agent[];
-    initialMessage: string;
-    maxTurns?: number;
-  }
-): Observable<StreamEvent> => {
+export const startConversation = (params: {
+  conversationId: string;
+  userId: string;
+  agents: Agent[];
+  initialMessage: string;
+  maxTurns?: number;
+}): Observable<StreamEvent> => {
   const config = getAIConfig();
   const deps = createWorkflowDependencies();
   const workflow = createConversationWorkflow(deps);
@@ -61,18 +79,29 @@ export const startConversation = (
   );
 };
 
-export const continueConversation = (
-  params: {
-    conversationId: string;
-    userId: string;
-    message: string;
-    agents: Agent[];
-  }
-): Observable<StreamEvent> => {
-  return startConversation({
-    ...params,
-    initialMessage: params.message,
-  });
+export const continueConversation = (params: {
+  conversationId: string;
+  userId: string;
+  message: string;
+}): Observable<StreamEvent> => {
+  const deps = createWorkflowDependencies();
+  const workflow = createConversationWorkflow(deps);
+
+  const effect = workflow.loadAndContinueConversation(
+    params.conversationId as ConversationId,
+    params.userId as UserId,
+    params.message
+  );
+
+  return from(runEffect(effect)).pipe(
+    switchMap(result => {
+      if (result.kind === 'ok') {
+        return result.value;
+      } else {
+        throw result.error;
+      }
+    })
+  );
 };
 
 export interface AIService {

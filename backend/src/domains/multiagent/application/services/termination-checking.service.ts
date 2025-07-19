@@ -1,8 +1,18 @@
 import { Agent, Message } from '../../core/types';
-import { Effect, fromPromise, recover, pure, runEffect } from '../../core/effects';
+import {
+  Effect,
+  fromPromise,
+  recover,
+  pure,
+  runEffect,
+} from '../../core/effects';
 import { selectControllerAgent } from '../../domain/agent';
 import { createProviderForAgent } from './agent-selection.service';
-import { TERMINATION_KEYWORD, CONTINUATION_KEYWORD, FAREWELL_KEYWORDS } from '../../domain/constants';
+import {
+  TERMINATION_KEYWORD,
+  CONTINUATION_KEYWORD,
+  FAREWELL_KEYWORDS,
+} from '../../domain/constants';
 
 export const createTerminationChecker =
   () =>
@@ -42,10 +52,16 @@ Consider:
 Respond with only "${TERMINATION_KEYWORD}" if the conversation should end, or "${CONTINUATION_KEYWORD}" if it should continue.`;
 
           const responseEffect = provider.value.generateResponse(
-            [],
+            [
+              {
+                role: 'user',
+                content: 'Analyze the conversation.',
+                timestamp: Date.now(),
+              },
+            ],
             systemPrompt,
             {
-              maxTokens: 10,
+              maxTokens: 1000,
               timeout: 5000,
             }
           );
@@ -55,7 +71,10 @@ Respond with only "${TERMINATION_KEYWORD}" if the conversation should end, or "$
             throw result.error;
           }
 
-          return (result.value as string).trim().toUpperCase() === TERMINATION_KEYWORD;
+          return (
+            (result.value as string).trim().toUpperCase() ===
+            TERMINATION_KEYWORD
+          );
         });
 
         const terminationResult = await runEffect(
@@ -74,6 +93,8 @@ Respond with only "${TERMINATION_KEYWORD}" if the conversation should end, or "$
       const lastMessages = messages.slice(-3);
 
       return lastMessages.some(msg =>
-        FAREWELL_KEYWORDS.some(farewell => msg.content.toLowerCase().includes(farewell))
+        FAREWELL_KEYWORDS.some(farewell =>
+          msg.content.toLowerCase().includes(farewell)
+        )
       );
     });

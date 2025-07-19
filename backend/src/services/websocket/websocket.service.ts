@@ -206,6 +206,21 @@ export class WebSocketService {
     const conversation = this.activeConversations.get(conversationId);
     return conversation?.isActive || false;
   }
+
+  async close(): Promise<void> {
+    if (this.io) {
+      const sockets = await this.io.fetchSockets();
+      for (const socket of sockets) {
+        socket.disconnect(true);
+      }
+
+      this.io.close();
+      this.io = null;
+
+      this.activeConversations.clear();
+      this.userSessions.clear();
+    }
+  }
 }
 
 export const websocketService = new WebSocketService();

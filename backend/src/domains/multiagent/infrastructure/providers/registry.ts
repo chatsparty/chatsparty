@@ -34,15 +34,3 @@ export const getProvider = (name: string): ProviderFactory | undefined => {
 export const listProviders = (): string[] => {
   return Array.from(providerRegistry.keys());
 };
-
-export const createProvider = (
-  name: string,
-  modelName: string,
-  config: any
-) => {
-  const factory = providerRegistry.get(name);
-  if (!factory) {
-    throw new Error(`Provider ${name} not found in registry`);
-  }
-  return factory(modelName, config);
-};

@@ -30,12 +30,12 @@ export const defaultAIConfig: AIConfig = {
     maxRetryDelay: 5000,
   },
   agentSelection: {
-    timeout: 5000,
-    maxTokens: 50,
+    timeout: 30000,
+    maxTokens: 3000,
   },
   termination: {
-    timeout: 5000,
-    maxTokens: 10,
+    timeout: 30000,
+    maxTokens: 3000,
   },
   providers: {
     enableCaching: true,

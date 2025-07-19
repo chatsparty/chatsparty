@@ -13,7 +13,9 @@ import { applyAuthMiddleware } from './middleware/auth-middleware';
 import userRoutes from './services/user/user.routes';
 import authRoutes from './services/user/auth.routes';
 import agentRoutes from './routes/agents/agent.routes';
-import connectionRoutes, { systemDefaultRoutes } from './routes/connections/connection.routes';
+import connectionRoutes, {
+  systemDefaultRoutes,
+} from './routes/connections/connection.routes';
 import { creditRoutes } from './routes/credit';
 import { storageRoutes } from './routes/storage/storage.routes';
 import { conversationRoutes } from './routes/conversations';
@@ -195,16 +197,52 @@ async function start() {
 
 process.on('SIGINT', async () => {
   app.log.info('SIGINT signal received: closing HTTP server');
-  await app.close();
-  await disconnectDatabase();
-  process.exit(0);
+
+  try {
+    await websocketService.close();
+    app.log.info('WebSocket server closed');
+
+    await app.close();
+    app.log.info('HTTP server closed');
+
+    await disconnectDatabase();
+    app.log.info('Database disconnected');
+
+    process.exit(0);
+  } catch (err) {
+    app.log.error('Error during shutdown:', err);
+    process.exit(1);
+  }
 });
 
 process.on('SIGTERM', async () => {
   app.log.info('SIGTERM signal received: closing HTTP server');
-  await app.close();
-  await disconnectDatabase();
-  process.exit(0);
+
+  try {
+    await websocketService.close();
+    app.log.info('WebSocket server closed');
+
+    await app.close();
+    app.log.info('HTTP server closed');
+
+    await disconnectDatabase();
+    app.log.info('Database disconnected');
+
+    process.exit(0);
+  } catch (err) {
+    app.log.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+});
+
+process.on('uncaughtException', err => {
+  app.log.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  app.log.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
 
 start();

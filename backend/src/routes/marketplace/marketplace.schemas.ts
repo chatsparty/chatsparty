@@ -39,7 +39,6 @@ export const getMarketplaceAgentsSchema = {
                 },
                 required: ['id', 'name'],
               },
-              aiConfig: { type: 'object', additionalProperties: true },
               chatStyle: { type: 'object', additionalProperties: true },
             },
             required: [
@@ -55,7 +54,6 @@ export const getMarketplaceAgentsSchema = {
               'createdAt',
               'publishedAt',
               'user',
-              'aiConfig',
               'chatStyle',
             ],
           },
@@ -110,7 +108,6 @@ export const getMarketplaceAgentByIdSchema = {
           },
           required: ['id', 'name'],
         },
-        aiConfig: { type: 'object' },
         chatStyle: { type: 'object' },
       },
     },

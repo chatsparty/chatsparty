@@ -14,7 +14,7 @@ const marketplaceAgents = [
     description:
       'A productivity specialist who helps organize tasks and create efficient workflows',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.3, maxTokens: 800 },
+    maxTokens: 800,
     chatStyle: {
       friendliness: 'Friendly',
       responseLength: 'Medium',
@@ -37,7 +37,7 @@ const marketplaceAgents = [
     description:
       'A focus coach who helps eliminate distractions and build concentration skills',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.4, maxTokens: 700 },
+    maxTokens: 700,
     chatStyle: {
       friendliness: 'Supportive',
       responseLength: 'Medium',
@@ -62,7 +62,7 @@ const marketplaceAgents = [
     description:
       'A strategic planner who creates comprehensive, achievable plans for any project',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.5, maxTokens: 1000 },
+    maxTokens: 1000,
     chatStyle: {
       friendliness: 'Professional',
       responseLength: 'Long',
@@ -86,7 +86,7 @@ const marketplaceAgents = [
     description:
       'An event coordination expert who manages all aspects of event planning',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.6, maxTokens: 900 },
+    maxTokens: 900,
     chatStyle: {
       friendliness: 'Enthusiastic',
       responseLength: 'Medium',
@@ -111,7 +111,7 @@ const marketplaceAgents = [
     description:
       'A business analyst who provides data-driven insights and strategic recommendations',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.3, maxTokens: 1200 },
+    maxTokens: 1200,
     chatStyle: {
       friendliness: 'Professional',
       responseLength: 'Long',
@@ -135,7 +135,7 @@ const marketplaceAgents = [
     description:
       'A marketing strategist who develops effective campaigns and growth strategies',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 1000 },
+    maxTokens: 1000,
     chatStyle: {
       friendliness: 'Enthusiastic',
       responseLength: 'Medium',
@@ -160,7 +160,7 @@ const marketplaceAgents = [
     description:
       'A learning coach who creates personalized educational experiences and study plans',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.5, maxTokens: 900 },
+    maxTokens: 900,
     chatStyle: {
       friendliness: 'Supportive',
       responseLength: 'Medium',
@@ -184,7 +184,7 @@ const marketplaceAgents = [
     description:
       'A research assistant who conducts thorough investigations and synthesizes information',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.3, maxTokens: 1100 },
+    maxTokens: 1100,
     chatStyle: {
       friendliness: 'Professional',
       responseLength: 'Long',
@@ -209,7 +209,7 @@ const marketplaceAgents = [
     description:
       'A life coach who helps with personal growth, goal setting, and positive life changes',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.6, maxTokens: 800 },
+    maxTokens: 800,
     chatStyle: {
       friendliness: 'Warm',
       responseLength: 'Medium',
@@ -233,7 +233,7 @@ const marketplaceAgents = [
     description:
       'A meal planning expert who creates healthy, personalized nutrition plans',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.4, maxTokens: 800 },
+    maxTokens: 800,
     chatStyle: {
       friendliness: 'Friendly',
       responseLength: 'Medium',
@@ -258,7 +258,7 @@ const marketplaceAgents = [
     description:
       'A creative writing mentor who helps craft compelling stories and overcome blocks',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.8, maxTokens: 1000 },
+    maxTokens: 1000,
     chatStyle: {
       friendliness: 'Inspiring',
       responseLength: 'Medium',
@@ -281,7 +281,7 @@ const marketplaceAgents = [
     description:
       'A design consultant who creates beautiful, functional visual solutions',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 900 },
+    maxTokens: 900,
     chatStyle: {
       friendliness: 'Professional',
       responseLength: 'Medium',
@@ -306,7 +306,7 @@ const marketplaceAgents = [
     description:
       'An imaginative generator who creates wild, innovative ideas and pushes creative boundaries',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 1.0, maxTokens: 800 },
+    maxTokens: 800,
     chatStyle: {
       friendliness: 'Enthusiastic',
       responseLength: 'Medium',
@@ -330,7 +330,7 @@ const marketplaceAgents = [
     description:
       'A systematic problem solver who breaks down challenges and finds practical solutions',
     connectionId: 'default-connection',
-    aiConfig: { model: 'gpt-4o-mini', temperature: 0.4, maxTokens: 900 },
+    maxTokens: 900,
     chatStyle: {
       friendliness: 'Professional',
       responseLength: 'Medium',
@@ -420,7 +420,7 @@ async function seedMarketplace() {
         data: {
           email: 'system@marketplace.com',
           name: 'Marketplace System',
-          provider: 'system',
+          provider: 'LOCAL',
           isActive: true,
           isVerified: true,
         },
@@ -438,7 +438,10 @@ async function seedMarketplace() {
           name: 'Default Vertex AI',
           description: 'Default Vertex AI connection for marketplace agents',
           provider: 'vertex_ai',
-          modelName: 'gemini-2.5-flash',
+          config: {
+            model: 'gemini-2.5-pro',
+            projectId: process.env.GOOGLE_CLOUD_PROJECT || null,
+          },
           isDefault: true,
           isActive: true,
           userId: systemUser.id,

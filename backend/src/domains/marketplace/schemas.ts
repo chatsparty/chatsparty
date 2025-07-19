@@ -20,7 +20,6 @@ export const ImportAgentSchema = z.object({
     .object({
       name: z.string().min(1).max(100).optional(),
       characteristics: z.string().min(1).max(2000).optional(),
-      aiConfig: z.any().optional(),
       chatStyle: z.any().optional(),
     })
     .optional(),

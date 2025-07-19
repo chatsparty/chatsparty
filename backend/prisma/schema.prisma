@@ -61,7 +61,6 @@ model Agent {
   connectionId    String
 
   // JSON fields for configuration
-  aiConfig  Json // Model configuration (renamed from model_config)
   chatStyle Json // Chat style configuration
   maxTokens Int? // Max tokens for agent response
 
@@ -90,6 +89,7 @@ model Agent {
   // Relations
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection      Connection       @relation(fields: [connectionId], references: [id])
   voiceConnection VoiceConnection? @relation(fields: [voiceConnectionId], references: [id])
   conversations   Conversation[]
   messages        Message[]
@@ -99,6 +99,7 @@ model Agent {
   imports         Agent[]          @relation("AgentTemplate")
 
   @@index([userId])
+  @@index([connectionId])
   @@index([voiceConnectionId])
   @@index([isPublic])
   @@index([category])
@@ -113,10 +114,10 @@ model Connection {
   name            String
   description     String? @db.Text
   provider        String // openai, anthropic, google, etc.
-  modelName       String
   apiKey          String?
   apiKeyEncrypted Boolean @default(false)
   baseUrl         String?
+  config          Json?
   isActive        Boolean @default(true)
   isDefault       Boolean @default(false) // Platform default connection
 
@@ -126,6 +127,7 @@ model Connection {
   // Relations
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agents Agent[]
 
   @@index([userId])
   @@index([provider])
@@ -155,6 +157,7 @@ model Conversation {
   project        Project?     @relation(fields: [projectId], references: [id])
   messageRecords Message[]    @relation("ConversationMessages")
   agentUsage     AgentUsage[]
+  events         ConversationEvent[]
 
   @@index([userId])
   @@index([agentId])
@@ -431,4 +434,24 @@ model AgentUsage {
   @@index([userId])
   @@index([createdAt])
   @@index([usageType])
+}
+
+// Conversation Event model for event sourcing
+model ConversationEvent {
+  id             String   @id @default(cuid())
+  eventId        String   @unique // UUID from the event
+  conversationId String
+  eventType      String   // ConversationStarted, MessageGenerated, etc.
+  eventData      Json     // Full event data serialized as JSON
+  timestamp      BigInt   // Unix timestamp in milliseconds
+  version        Int      @default(1)
+  
+  createdAt      DateTime @default(now())
+  
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId])
+  @@index([timestamp])
+  @@index([eventType])
 }

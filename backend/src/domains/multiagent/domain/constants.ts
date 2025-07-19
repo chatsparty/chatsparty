@@ -61,18 +61,18 @@ export const VertexAISafetyThreshold = {
 export const DEFAULT_VERTEX_AI_SAFETY_SETTINGS = [
   {
     category: VertexAISafetyCategory.HATE_SPEECH,
-    threshold: VertexAISafetyThreshold.BLOCK_ONLY_HIGH,
+    threshold: VertexAISafetyThreshold.BLOCK_NONE,
   },
   {
     category: VertexAISafetyCategory.DANGEROUS_CONTENT,
-    threshold: VertexAISafetyThreshold.BLOCK_ONLY_HIGH,
+    threshold: VertexAISafetyThreshold.BLOCK_NONE,
   },
   {
     category: VertexAISafetyCategory.SEXUALLY_EXPLICIT,
-    threshold: VertexAISafetyThreshold.BLOCK_ONLY_HIGH,
+    threshold: VertexAISafetyThreshold.BLOCK_NONE,
   },
   {
     category: VertexAISafetyCategory.HARASSMENT,
-    threshold: VertexAISafetyThreshold.BLOCK_ONLY_HIGH,
+    threshold: VertexAISafetyThreshold.BLOCK_NONE,
   },
 ] as const;
