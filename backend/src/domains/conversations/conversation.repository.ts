@@ -7,6 +7,7 @@ import {
   Message,
   ConversationFilters,
   ConversationListResponse,
+  GetMessagesQuery,
 } from './types';
 
 export const findConversationById = async (
@@ -125,18 +126,34 @@ export const getMessagesFromConversation = async (
   });
 };
 
-export class ConversationRepository {
-  constructor(private database: PrismaClient = db) {}
+export interface ConversationRepository {
+  findById: (conversationId: string) => Promise<Conversation | null>;
+  list: (
+    filters: ConversationFilters,
+    page: number,
+    limit: number
+  ) => Promise<ConversationListResponse>;
+  create: (input: CreateConversationInput) => Promise<Conversation>;
+  delete: (userId: string, conversationId: string) => Promise<void>;
+  addMessage: (conversationId: string, message: any) => Promise<Message>;
+  count: (userId: string) => Promise<number>;
+  getMessages: (
+    conversationId: string,
+    query: GetMessagesQuery
+  ) => Promise<Message[]>;
+}
 
-  async findById(conversationId: string): Promise<Conversation | null> {
-    return findConversationById(conversationId, this.database);
-  }
+const createRepository = (
+  database: PrismaClient = db
+): ConversationRepository => ({
+  findById: (conversationId: string) =>
+    findConversationById(conversationId, database),
 
-  async list(
+  list: async (
     filters: ConversationFilters,
     page: number = 1,
     limit: number = 20
-  ): Promise<ConversationListResponse> {
+  ) => {
     const query: ConversationListQuery = {
       page,
       limit,
@@ -149,7 +166,7 @@ export class ConversationRepository {
     const [conversations, total] = await findConversationsByUserId(
       filters.userId,
       query,
-      this.database
+      database
     );
 
     return {
@@ -158,14 +175,13 @@ export class ConversationRepository {
       page,
       limit,
     };
-  }
+  },
 
-  async create(input: CreateConversationInput): Promise<Conversation> {
-    return createConversation(input.userId, input, this.database);
-  }
+  create: (input: CreateConversationInput) =>
+    createConversation(input.userId, input, database),
 
-  async delete(userId: string, conversationId: string): Promise<void> {
-    const conversation = await this.database.conversation.findFirst({
+  delete: async (userId: string, conversationId: string) => {
+    const conversation = await database.conversation.findFirst({
       where: {
         id: conversationId,
         userId: userId,
@@ -176,18 +192,16 @@ export class ConversationRepository {
       throw new Error('Conversation not found or access denied');
     }
 
-    return deleteConversation(conversationId, this.database);
-  }
+    return deleteConversation(conversationId, database);
+  },
 
-  async addMessage(conversationId: string, message: any): Promise<Message> {
-    return addMessageToConversation(conversationId, message, this.database);
-  }
+  addMessage: (conversationId: string, message: any) =>
+    addMessageToConversation(conversationId, message, database),
 
-  async count(userId: string): Promise<number> {
-    return this.database.conversation.count({
-      where: { userId },
-    });
-  }
-}
+  count: (userId: string) => database.conversation.count({ where: { userId } }),
 
-export const conversationRepository = new ConversationRepository();
+  getMessages: (conversationId: string, query: GetMessagesQuery) =>
+    getMessagesFromConversation(conversationId, query, database),
+});
+
+export const conversationRepository = createRepository();

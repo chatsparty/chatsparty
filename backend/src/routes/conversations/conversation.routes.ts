@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { conversationManager } from '../../domains/conversations/orchestration/conversation.manager';
+import { conversationManager } from '../../domains/conversations/conversation.manager';
 import {
   ConversationListQuery,
   AddMessageInput,

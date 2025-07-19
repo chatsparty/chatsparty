@@ -1,10 +1,6 @@
 import { Socket } from 'socket.io';
 import { websocketService } from './websocket.service';
-import {
-  createConversationService,
-  addMessage,
-  getConversation,
-} from '../../domains/conversations/orchestration';
+import { conversationManager } from '../../domains/conversations';
 import * as agentManager from '../../domains/agents/orchestration/agent.manager';
 import { aiService } from '../../domains/ai/application/services/ai.service';
 import { verifyToken } from '../../utils/auth';
@@ -79,7 +75,7 @@ export function setupChatHandlers(socket: Socket): void {
           conversation_id,
           agent_ids,
           initial_message,
-          max_turns = 20,
+          max_turns = 50, // Safety limit - intelligent termination will typically end conversations before this
           token,
           project_id,
         } = data;
@@ -142,7 +138,7 @@ export function setupChatHandlers(socket: Socket): void {
         });
 
         try {
-          const conversationResult = await createConversationService(userId, {
+          const conversationResult = await createConversation({
             title: initial_message.substring(0, 50) + '...',
             agentIds: agent_ids,
             projectId: project_id,
@@ -204,13 +200,15 @@ export function setupChatHandlers(socket: Socket): void {
             if (event.type === 'error' || process.env.DEBUG_SOCKET) {
               console.log(`[Socket Handler] Event received: ${event.type}`, {
                 conversationId: conversation_id,
-                event
+                event,
               });
             }
 
             switch (event.type) {
               case 'thinking':
-                console.log(`[Socket Handler] Emitting typing indicator for agent: ${event.agentName}`);
+                console.log(
+                  `[Socket Handler] Emitting typing indicator for agent: ${event.agentName}`
+                );
                 await websocketService.emitTypingIndicator(
                   conversation_id,
                   event.agentId,
@@ -219,10 +217,13 @@ export function setupChatHandlers(socket: Socket): void {
                 break;
 
               case 'message':
-                console.log(`[Socket Handler] Emitting agent message from: ${event.agentName}`, {
-                  content: event.content?.substring(0, 100),
-                  contentLength: event.content?.length
-                });
+                console.log(
+                  `[Socket Handler] Emitting agent message from: ${event.agentName}`,
+                  {
+                    content: event.content?.substring(0, 100),
+                    contentLength: event.content?.length,
+                  }
+                );
                 await websocketService.emitAgentMessage(
                   conversation_id,
                   event.agentId,
@@ -241,7 +242,10 @@ export function setupChatHandlers(socket: Socket): void {
                 break;
 
               case 'error':
-                console.error(`Conversation error [${conversation_id}]:`, event.error);
+                console.error(
+                  `Conversation error [${conversation_id}]:`,
+                  event.error
+                );
                 await websocketService.emitError(
                   conversation_id,
                   event.error?.message || 'An unknown error occurred'
@@ -249,7 +253,9 @@ export function setupChatHandlers(socket: Socket): void {
                 break;
 
               case 'complete':
-                console.log(`[Socket Handler] Conversation complete: ${conversation_id}`);
+                console.log(
+                  `[Socket Handler] Conversation complete: ${conversation_id}`
+                );
                 await websocketService.emitConversationComplete(
                   conversation_id
                 );
@@ -391,14 +397,19 @@ export function setupChatHandlers(socket: Socket): void {
           break;
         }
 
-        console.log(`[Socket Handler - Send Message] Event received: ${event.type}`, {
-          conversationId: conversation_id,
-          event
-        });
+        console.log(
+          `[Socket Handler - Send Message] Event received: ${event.type}`,
+          {
+            conversationId: conversation_id,
+            event,
+          }
+        );
 
         switch (event.type) {
           case 'thinking':
-            console.log(`[Socket Handler - Send Message] Emitting typing indicator for agent: ${event.agentName}`);
+            console.log(
+              `[Socket Handler - Send Message] Emitting typing indicator for agent: ${event.agentName}`
+            );
             await websocketService.emitTypingIndicator(
               conversation_id,
               event.agentId,
@@ -407,10 +418,13 @@ export function setupChatHandlers(socket: Socket): void {
             break;
 
           case 'message':
-            console.log(`[Socket Handler - Send Message] Emitting agent message from: ${event.agentName}`, {
-              content: event.content?.substring(0, 100),
-              contentLength: event.content?.length
-            });
+            console.log(
+              `[Socket Handler - Send Message] Emitting agent message from: ${event.agentName}`,
+              {
+                content: event.content?.substring(0, 100),
+                contentLength: event.content?.length,
+              }
+            );
             await websocketService.emitAgentMessage(
               conversation_id,
               event.agentId,
@@ -431,7 +445,10 @@ export function setupChatHandlers(socket: Socket): void {
             break;
 
           case 'error':
-            console.error(`Conversation error [${conversation_id}]:`, event.error);
+            console.error(
+              `Conversation error [${conversation_id}]:`,
+              event.error
+            );
             await websocketService.emitError(
               conversation_id,
               event.error?.message || 'An unknown error occurred'
@@ -439,7 +456,9 @@ export function setupChatHandlers(socket: Socket): void {
             break;
 
           case 'complete':
-            console.log(`[Socket Handler - Send Message] Conversation complete: ${conversation_id}`);
+            console.log(
+              `[Socket Handler - Send Message] Conversation complete: ${conversation_id}`
+            );
             await websocketService.emitConversationComplete(conversation_id);
             break;
         }

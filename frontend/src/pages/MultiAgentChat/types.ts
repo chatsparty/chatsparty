@@ -33,6 +33,7 @@ export interface ActiveConversation {
   messages: ConversationMessage[];
   isActive: boolean;
   is_shared?: boolean;
+  createdAt?: string;
 }
 
 export interface AttachedFile {

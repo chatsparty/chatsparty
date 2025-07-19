@@ -9,7 +9,7 @@ function createPrismaClient() {
   return new PrismaClient({
     log:
       config.NODE_ENV === 'development'
-        ? ['query', 'info', 'warn', 'error']
+        ? ['info', 'warn', 'error']
         : ['error'],
     errorFormat: config.NODE_ENV === 'development' ? 'pretty' : 'minimal',
   });

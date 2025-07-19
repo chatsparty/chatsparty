@@ -52,26 +52,7 @@ export const randomStrategy: SelectionStrategy = criteria => {
   return filtered[randomIndex].agentId;
 };
 
-export const contextBasedStrategy: SelectionStrategy = criteria => {
-  const { conversationHistory, availableAgents } = criteria;
 
-  if (conversationHistory.length === 0) {
-    return availableAgents[0].agentId;
-  }
-
-  const lastMessage = conversationHistory[conversationHistory.length - 1];
-
-  if (lastMessage.content.includes('?')) {
-    const analyticalAgent = availableAgents.find(a =>
-      (a as AgentWithCapabilities).capabilities?.includes('analytical')
-    );
-    if (analyticalAgent) {
-      return analyticalAgent.agentId;
-    }
-  }
-
-  return roundRobinStrategy(criteria);
-};
 
 export type PromptTemplate = {
   base: string;

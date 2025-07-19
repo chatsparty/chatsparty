@@ -178,8 +178,27 @@ const createResponseGenerator =
 
           for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-              const response = await withTimeout(
-                generateText({
+              console.log(`[MastraProvider] Before API call - attempt ${attempt}:`, {
+                provider: providerName,
+                model: model.modelId,
+                messageCount: formattedMessages.length,
+                messages: formattedMessages.map(m => ({
+                  role: m.role,
+                  contentLength: m.content.length,
+                  contentPreview: m.content.substring(0, 100) + (m.content.length > 100 ? '...' : '')
+                })),
+                options: {
+                  maxTokens: options?.maxTokens ?? capabilities.maxTokens,
+                  temperature: options?.temperature ?? 0.7,
+                  topP: options?.topP,
+                  stopSequences: options?.stopSequences,
+                  seed: options?.seed,
+                }
+              });
+
+              let response;
+              try {
+                const generateOptions: any = {
                   model,
                   messages: formattedMessages,
                   maxTokens: options?.maxTokens ?? capabilities.maxTokens,
@@ -187,10 +206,45 @@ const createResponseGenerator =
                   topP: options?.topP,
                   stopSequences: options?.stopSequences,
                   seed: options?.seed,
-                }),
-                timeout,
-                `Response generation timeout: No response received within ${timeout}ms`
-              );
+                };
+
+                // Add safety settings for Vertex AI to be less restrictive
+                if (providerName === 'vertex_ai') {
+                  generateOptions.safetySettings = [
+                    {
+                      category: 'HARM_CATEGORY_HATE_SPEECH',
+                      threshold: 'BLOCK_ONLY_HIGH'
+                    },
+                    {
+                      category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                      threshold: 'BLOCK_ONLY_HIGH'
+                    },
+                    {
+                      category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                      threshold: 'BLOCK_ONLY_HIGH'
+                    },
+                    {
+                      category: 'HARM_CATEGORY_HARASSMENT',
+                      threshold: 'BLOCK_ONLY_HIGH'
+                    }
+                  ];
+                }
+
+                response = await withTimeout(
+                  generateText(generateOptions),
+                  timeout,
+                  `Response generation timeout: No response received within ${timeout}ms`
+                );
+              } catch (apiError) {
+                console.error(`[MastraProvider] Direct API error on attempt ${attempt}:`, {
+                  error: apiError,
+                  errorMessage: apiError instanceof Error ? apiError.message : 'Unknown error',
+                  errorStack: apiError instanceof Error ? apiError.stack : undefined,
+                  errorName: apiError instanceof Error ? apiError.name : undefined,
+                  errorDetails: JSON.stringify(apiError, null, 2)
+                });
+                throw apiError;
+              }
 
               console.log(
                 `[MastraProvider] Response received from ${providerName} (attempt ${attempt})`,
@@ -199,6 +253,8 @@ const createResponseGenerator =
                   textLength: response.text?.length,
                   finishReason: response.finishReason,
                   usage: response.usage,
+                  warnings: response.warnings,
+                  fullResponse: JSON.stringify(response, null, 2)
                 }
               );
 

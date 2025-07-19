@@ -48,7 +48,8 @@ export interface WorkflowDependencies {
   terminationChecker: (
     messages: Message[],
     turnCount: number,
-    maxTurns: number
+    maxTurns: number,
+    agents?: Agent[]
   ) => Effect<boolean>;
   providerFactory: (agent: Agent) => Effect<AIProvider>;
 }
@@ -143,7 +144,8 @@ const checkTermination = async (
   const effect = context.deps.terminationChecker(
     state.context.messages,
     state.context.turnCount,
-    state.context.maxTurns
+    state.context.maxTurns,
+    context.agents
   );
   const result = await runEffect(effect);
   const shouldTerminate = result.kind === 'ok' ? result.value : false;
@@ -288,27 +290,3 @@ export const createConversationWorkflow = (deps: WorkflowDependencies) => {
     startConversation,
   };
 };
-
-export class ConversationWorkflow {
-  private workflow: ReturnType<typeof createConversationWorkflow>;
-
-  constructor(deps: WorkflowDependencies) {
-    this.workflow = createConversationWorkflow(deps);
-  }
-
-  startConversation(
-    conversationId: ConversationId,
-    userId: UserId,
-    agents: Agent[],
-    initialMessage: string,
-    maxTurns: number = 10
-  ): Effect<Observable<StreamEvent>> {
-    return this.workflow.startConversation(
-      conversationId,
-      userId,
-      agents,
-      initialMessage,
-      maxTurns
-    );
-  }
-}

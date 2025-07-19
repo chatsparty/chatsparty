@@ -88,7 +88,7 @@ export const fetchConversations = async (
       return [];
     }
 
-    return dbConversations.map(
+    const processedConversations = dbConversations.map(
       (conv: {
         id: string;
         title: string;
@@ -101,6 +101,7 @@ export const fetchConversations = async (
         }>;
         isActive?: boolean;
         is_shared?: boolean;
+        createdAt?: string;
       }) => {
         const agentNames =
           conv.agentIds?.map((agentId: string) => {
@@ -128,9 +129,24 @@ export const fetchConversations = async (
           messages: frontendMessages,
           isActive: conv.isActive || false,
           is_shared: conv.is_shared || false,
+          createdAt: conv.createdAt,
         };
       }
     );
+
+    return processedConversations.sort((a, b) => {
+      const aTime = a.createdAt
+        ? new Date(a.createdAt).getTime()
+        : a.messages.length > 0
+          ? a.messages[a.messages.length - 1].timestamp
+          : 0;
+      const bTime = b.createdAt
+        ? new Date(b.createdAt).getTime()
+        : b.messages.length > 0
+          ? b.messages[b.messages.length - 1].timestamp
+          : 0;
+      return bTime - aTime;
+    });
   } catch (error) {
     console.error(
       "Failed to fetch conversations:",
