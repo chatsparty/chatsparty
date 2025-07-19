@@ -110,32 +110,3 @@ export const withTimeout = <T>(
   return Promise.race([promise, timeoutPromise]);
 };
 
-export const createStreamTimeoutHandler = (timeoutMs: number) => {
-  let lastChunkTime = Date.now();
-  let timeoutCheck: NodeJS.Timeout;
-
-  const start = () => {
-    lastChunkTime = Date.now();
-    timeoutCheck = setInterval(() => {
-      const timeSinceLastChunk = Date.now() - lastChunkTime;
-      if (timeSinceLastChunk > timeoutMs) {
-        clearInterval(timeoutCheck);
-        throw new Error(
-          `Stream timeout: No response received for ${timeoutMs}ms`
-        );
-      }
-    }, 1000);
-  };
-
-  const update = () => {
-    lastChunkTime = Date.now();
-  };
-
-  const stop = () => {
-    if (timeoutCheck) {
-      clearInterval(timeoutCheck);
-    }
-  };
-
-  return { start, update, stop };
-};

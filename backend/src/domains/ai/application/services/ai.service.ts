@@ -14,31 +14,20 @@ import {
   createResponseGenerator,
   createTerminationChecker,
 } from '../factories/workflow.factories';
-import '../../infrastructure/providers/provider.config';
+import { getAIConfig } from '../../config/ai.config';
 
-export interface AIServiceConfig {
-  defaultMaxTurns: number;
-  defaultTimeout: number;
-  enableCaching: boolean;
-}
-
-const defaultConfig: AIServiceConfig = {
-  defaultMaxTurns: 50,
-  defaultTimeout: 30000,
-  enableCaching: true,
+const createWorkflowDependencies = (): WorkflowDependencies => {
+  const config = getAIConfig();
+  return {
+    eventStore: new InMemoryEventStore(),
+    agentSelector: createAgentSelector({ defaultTimeout: config.agentSelection.timeout }),
+    responseGenerator: createResponseGenerator({
+      defaultTimeout: config.conversation.defaultTimeout,
+    }),
+    terminationChecker: createTerminationChecker(),
+    providerFactory: createProviderForAgent,
+  };
 };
-
-const createWorkflowDependencies = (
-  config: AIServiceConfig
-): WorkflowDependencies => ({
-  eventStore: new InMemoryEventStore(),
-  agentSelector: createAgentSelector({ defaultTimeout: config.defaultTimeout }),
-  responseGenerator: createResponseGenerator({
-    defaultTimeout: config.defaultTimeout,
-  }),
-  terminationChecker: createTerminationChecker(),
-  providerFactory: createProviderForAgent,
-});
 
 export const startConversation = (
   params: {
@@ -47,10 +36,10 @@ export const startConversation = (
     agents: Agent[];
     initialMessage: string;
     maxTurns?: number;
-  },
-  config: AIServiceConfig = defaultConfig
+  }
 ): Observable<StreamEvent> => {
-  const deps = createWorkflowDependencies(config);
+  const config = getAIConfig();
+  const deps = createWorkflowDependencies();
   const workflow = createConversationWorkflow(deps);
 
   const effect = workflow.startConversation(
@@ -58,7 +47,7 @@ export const startConversation = (
     params.userId as UserId,
     params.agents,
     params.initialMessage,
-    params.maxTurns ?? config.defaultMaxTurns
+    params.maxTurns ?? config.conversation.defaultMaxTurns
   );
 
   return from(runEffect(effect)).pipe(
@@ -78,16 +67,12 @@ export const continueConversation = (
     userId: string;
     message: string;
     agents: Agent[];
-  },
-  config?: AIServiceConfig
+  }
 ): Observable<StreamEvent> => {
-  return startConversation(
-    {
-      ...params,
-      initialMessage: params.message,
-    },
-    config
-  );
+  return startConversation({
+    ...params,
+    initialMessage: params.message,
+  });
 };
 
 export interface AIService {
@@ -96,6 +81,6 @@ export interface AIService {
 }
 
 export const aiService: AIService = {
-  startConversation: params => startConversation(params, defaultConfig),
-  continueConversation: params => continueConversation(params, defaultConfig),
+  startConversation,
+  continueConversation,
 };

@@ -8,17 +8,18 @@ import {
   NonEmptyArray,
 } from '../core/types';
 import { ConversationEvent } from './events';
+import { ConversationStateKind } from './constants';
 
 export type ConversationState =
-  | { kind: 'Idle' }
-  | { kind: 'SelectingAgent'; context: ConversationContext }
+  | { kind: typeof ConversationStateKind.Idle }
+  | { kind: typeof ConversationStateKind.SelectingAgent; context: ConversationContext }
   | {
-      kind: 'GeneratingResponse';
+      kind: typeof ConversationStateKind.GeneratingResponse;
       context: ConversationContext;
       selectedAgent: AgentId;
     }
-  | { kind: 'WaitingForTurn'; context: ConversationContext }
-  | { kind: 'Terminated'; context: ConversationContext; reason: string };
+  | { kind: typeof ConversationStateKind.WaitingForTurn; context: ConversationContext }
+  | { kind: typeof ConversationStateKind.Terminated; context: ConversationContext; reason: string };
 
 export const ConversationContextSchema = z.object({
   conversationId: z.string().refine((_val): _val is ConversationId => true),
@@ -45,7 +46,7 @@ export const startConversation = (
   maxTurns: number,
   initialMessage: string
 ): ConversationState => ({
-  kind: 'SelectingAgent',
+  kind: ConversationStateKind.SelectingAgent,
   context: {
     conversationId,
     userId,
@@ -72,12 +73,12 @@ export const selectAgent = (
   state: ConversationState,
   agentId: AgentId
 ): ConversationState => {
-  if (state.kind !== 'SelectingAgent') {
+  if (state.kind !== ConversationStateKind.SelectingAgent) {
     return state;
   }
 
   return {
-    kind: 'GeneratingResponse',
+    kind: ConversationStateKind.GeneratingResponse,
     context: state.context,
     selectedAgent: agentId,
   };
@@ -87,7 +88,7 @@ export const addMessage = (
   state: ConversationState,
   message: Message
 ): ConversationState => {
-  if (state.kind !== 'GeneratingResponse') {
+  if (state.kind !== ConversationStateKind.GeneratingResponse) {
     return state;
   }
 
@@ -99,25 +100,25 @@ export const addMessage = (
 
   if (newContext.turnCount >= newContext.maxTurns) {
     return {
-      kind: 'Terminated',
+      kind: ConversationStateKind.Terminated,
       context: newContext,
       reason: 'Maximum turns reached',
     };
   }
 
   return {
-    kind: 'WaitingForTurn',
+    kind: ConversationStateKind.WaitingForTurn,
     context: newContext,
   };
 };
 
 export const continueTurn = (state: ConversationState): ConversationState => {
-  if (state.kind !== 'WaitingForTurn') {
+  if (state.kind !== ConversationStateKind.WaitingForTurn) {
     return state;
   }
 
   return {
-    kind: 'SelectingAgent',
+    kind: ConversationStateKind.SelectingAgent,
     context: state.context,
   };
 };
@@ -126,16 +127,16 @@ export const terminateConversation = (
   state: ConversationState,
   reason: string
 ): ConversationState => {
-  if (state.kind === 'Terminated' || state.kind === 'Idle') {
+  if (state.kind === ConversationStateKind.Terminated || state.kind === ConversationStateKind.Idle) {
     return state;
   }
 
   return {
-    kind: 'Terminated',
+    kind: ConversationStateKind.Terminated,
     context:
-      state.kind === 'SelectingAgent' ||
-      state.kind === 'GeneratingResponse' ||
-      state.kind === 'WaitingForTurn'
+      state.kind === ConversationStateKind.SelectingAgent ||
+      state.kind === ConversationStateKind.GeneratingResponse ||
+      state.kind === ConversationStateKind.WaitingForTurn
         ? state.context
         : {
             conversationId: '' as ConversationId,
@@ -182,12 +183,12 @@ export const applyEvent = (
 };
 
 export const isIdle = (state: ConversationState): state is { kind: 'Idle' } =>
-  state.kind === 'Idle';
+  state.kind === ConversationStateKind.Idle;
 
 export const isSelectingAgent = (
   state: ConversationState
 ): state is { kind: 'SelectingAgent'; context: ConversationContext } =>
-  state.kind === 'SelectingAgent';
+  state.kind === ConversationStateKind.SelectingAgent;
 
 export const isGeneratingResponse = (
   state: ConversationState
@@ -195,12 +196,12 @@ export const isGeneratingResponse = (
   kind: 'GeneratingResponse';
   context: ConversationContext;
   selectedAgent: AgentId;
-} => state.kind === 'GeneratingResponse';
+} => state.kind === ConversationStateKind.GeneratingResponse;
 
 export const isWaitingForTurn = (
   state: ConversationState
 ): state is { kind: 'WaitingForTurn'; context: ConversationContext } =>
-  state.kind === 'WaitingForTurn';
+  state.kind === ConversationStateKind.WaitingForTurn;
 
 export const isTerminated = (
   state: ConversationState
@@ -208,11 +209,11 @@ export const isTerminated = (
   kind: 'Terminated';
   context: ConversationContext;
   reason: string;
-} => state.kind === 'Terminated';
+} => state.kind === ConversationStateKind.Terminated;
 
 export const getProgress = (state: ConversationState): number => {
-  if (state.kind === 'Idle') return 0;
-  if (state.kind === 'Terminated') return 100;
+  if (state.kind === ConversationStateKind.Idle) return 0;
+  if (state.kind === ConversationStateKind.Terminated) return 100;
 
   const context = 'context' in state ? state.context : null;
   if (!context) return 0;

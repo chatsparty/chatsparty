@@ -3,8 +3,8 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGroq } from '@ai-sdk/groq';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createVertex } from '@ai-sdk/google-vertex';
-import { generateText, streamText } from 'ai';
-import { Message, Result } from '../../core/types';
+import { generateText } from 'ai';
+import { Message } from '../../core/types';
 import { Effect, fromPromise, mapError } from '../../core/effects';
 import { ProviderError } from '../../core/errors';
 import {
@@ -18,41 +18,36 @@ import {
   handleProviderError,
   createStructuredResponseGenerator,
   withTimeout,
-  createStreamTimeoutHandler,
 } from './base.provider';
 import { LanguageModel } from 'ai';
+import { DEFAULT_VERTEX_AI_SAFETY_SETTINGS } from '../../domain/constants';
 
 const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
   openai: {
-    streaming: true,
     functionCalling: true,
     structuredOutput: true,
     maxTokens: 4096,
     contextWindow: 128000,
   },
   anthropic: {
-    streaming: true,
     functionCalling: true,
     structuredOutput: true,
     maxTokens: 4096,
     contextWindow: 200000,
   },
   groq: {
-    streaming: true,
     functionCalling: false,
     structuredOutput: true,
     maxTokens: 4096,
     contextWindow: 32000,
   },
   google: {
-    streaming: true,
     functionCalling: true,
     structuredOutput: true,
     maxTokens: 8192,
     contextWindow: 1048576,
   },
   vertex_ai: {
-    streaming: true,
     functionCalling: true,
     structuredOutput: true,
     maxTokens: 8192,
@@ -61,7 +56,6 @@ const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 };
 
 const DEFAULT_CAPABILITIES: ProviderCapabilities = {
-  streaming: false,
   functionCalling: false,
   structuredOutput: false,
   maxTokens: 2048,
@@ -210,24 +204,7 @@ const createResponseGenerator =
 
                 // Add safety settings for Vertex AI to be less restrictive
                 if (providerName === 'vertex_ai') {
-                  generateOptions.safetySettings = [
-                    {
-                      category: 'HARM_CATEGORY_HATE_SPEECH',
-                      threshold: 'BLOCK_ONLY_HIGH'
-                    },
-                    {
-                      category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                      threshold: 'BLOCK_ONLY_HIGH'
-                    },
-                    {
-                      category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                      threshold: 'BLOCK_ONLY_HIGH'
-                    },
-                    {
-                      category: 'HARM_CATEGORY_HARASSMENT',
-                      threshold: 'BLOCK_ONLY_HIGH'
-                    }
-                  ];
+                  generateOptions.safetySettings = DEFAULT_VERTEX_AI_SAFETY_SETTINGS;
                 }
 
                 response = await withTimeout(
@@ -336,58 +313,6 @@ const createResponseGenerator =
     );
   };
 
-const createStreamResponseGenerator = (
-  providerName: string,
-  model: LanguageModel,
-  capabilities: ProviderCapabilities
-) =>
-  async function* (
-    messages: Message[],
-    systemPrompt: string,
-    options?: GenerationOptions
-  ): AsyncIterable<Result<string>> {
-    const formattedMessages = formatMessages(messages, systemPrompt);
-    const timeout = options?.timeout ?? 30000;
-    const errorHandler = handleProviderError(providerName);
-    const timeoutHandler = createStreamTimeoutHandler(timeout);
-
-    try {
-      const result = streamText({
-        model,
-        messages: formattedMessages,
-        maxTokens: options?.maxTokens ?? capabilities.maxTokens,
-        temperature: options?.temperature,
-        topP: options?.topP,
-        stopSequences: options?.stopSequences,
-        seed: options?.seed,
-      });
-
-      let hasReceivedChunks = false;
-      timeoutHandler.start();
-
-      try {
-        for await (const chunk of result.textStream) {
-          timeoutHandler.update();
-          hasReceivedChunks = true;
-
-          if (chunk) {
-            yield { kind: 'ok', value: chunk };
-          }
-        }
-
-        timeoutHandler.stop();
-
-        if (!hasReceivedChunks) {
-          throw new Error('Stream ended without generating any content');
-        }
-      } catch (streamError) {
-        timeoutHandler.stop();
-        throw streamError;
-      }
-    } catch (error) {
-      yield { kind: 'error', error: errorHandler(error) };
-    }
-  };
 
 export const createMastraProvider = (
   name: string,
@@ -407,11 +332,6 @@ export const createMastraProvider = (
   const model = provider(adjustedModelName);
 
   const generateResponse = createResponseGenerator(name, model, capabilities);
-  const streamResponse = createStreamResponseGenerator(
-    name,
-    model,
-    capabilities
-  );
   const generateStructuredResponse = createStructuredResponseGenerator(
     name,
     config,
@@ -423,29 +343,6 @@ export const createMastraProvider = (
     capabilities,
     generateResponse,
     generateStructuredResponse,
-    streamResponse,
   };
 };
 
-export const registerMastraProviders = (
-  registry: Map<
-    string,
-    (modelName: string, config: ProviderConfig) => AIProvider
-  >
-) => {
-  registry.set('openai', (modelName, config) =>
-    createMastraProvider('openai', modelName, config)
-  );
-  registry.set('anthropic', (modelName, config) =>
-    createMastraProvider('anthropic', modelName, config)
-  );
-  registry.set('groq', (modelName, config) =>
-    createMastraProvider('groq', modelName, config)
-  );
-  registry.set('google', (modelName, config) =>
-    createMastraProvider('google', modelName, config)
-  );
-  registry.set('vertex_ai', (modelName, config) =>
-    createMastraProvider('vertex_ai', modelName, config)
-  );
-};

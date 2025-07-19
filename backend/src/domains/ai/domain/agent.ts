@@ -1,4 +1,5 @@
 import { Agent, AgentId, Message, ChatStyle } from '../core/types';
+import { CONTROLLER_AGENT_ID, CONTROLLER_AGENT_NAME } from './constants';
 
 export type SelectionCriteria = {
   conversationHistory: Message[];
@@ -123,9 +124,7 @@ export const getAgentFromRegistry = (
 };
 
 export const selectControllerAgent = (agents: Agent[]): Agent => {
-  const CONTROLLER_ID = 'controller' as AgentId;
-
-  const existingController = agents.find(a => a.agentId === CONTROLLER_ID);
+  const existingController = agents.find(a => a.agentId === CONTROLLER_AGENT_ID);
   if (existingController) {
     return existingController;
   }
@@ -149,8 +148,8 @@ export const selectControllerAgent = (agents: Agent[]): Agent => {
 
   return {
     ...baseAgent,
-    agentId: CONTROLLER_ID,
-    name: 'Controller',
+    agentId: CONTROLLER_AGENT_ID,
+    name: CONTROLLER_AGENT_NAME,
     prompt:
       'You are a conversation controller responsible for managing the flow of conversation.',
     characteristics: 'Analytical, impartial, and focused on conversation flow.',

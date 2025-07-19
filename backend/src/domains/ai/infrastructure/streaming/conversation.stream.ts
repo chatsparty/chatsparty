@@ -136,42 +136,6 @@ export const createConversationStream = ({
   };
 };
 
-export const eventToStreamEvent = (
-  event: ConversationEvent
-): StreamEvent | null => {
-  switch (event.type) {
-    case 'AgentSelected':
-      return {
-        type: 'thinking',
-        agentId: event.agentId,
-        agentName: event.agentId,
-      };
-
-    case 'MessageGenerated':
-      return {
-        type: 'message',
-        agentId: event.message.agentId || '',
-        agentName: event.message.speaker || '',
-        content: event.message.content,
-        timestamp: event.message.timestamp,
-      };
-
-    case 'ConversationTerminated':
-      return {
-        type: 'complete',
-        reason: event.reason,
-      };
-
-    case 'ErrorOccurred':
-      return {
-        type: 'error',
-        error: new Error(event.error),
-      };
-
-    default:
-      return null;
-  }
-};
 
 export const effectToObservable = <T>(effect: Effect<T>): Observable<T> => {
   return from(runEffect(effect)).pipe(

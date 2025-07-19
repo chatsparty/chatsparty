@@ -1,6 +1,10 @@
 import { Socket } from 'socket.io';
 import { websocketService } from './websocket.service';
-import { conversationManager } from '../../domains/conversations';
+import {
+  createConversation,
+  getConversation,
+  addMessage,
+} from '../../domains/conversations';
 import * as agentManager from '../../domains/agents/orchestration/agent.manager';
 import { aiService } from '../../domains/ai/application/services/ai.service';
 import { verifyToken } from '../../utils/auth';
@@ -75,7 +79,7 @@ export function setupChatHandlers(socket: Socket): void {
           conversation_id,
           agent_ids,
           initial_message,
-          max_turns = 50, // Safety limit - intelligent termination will typically end conversations before this
+          max_turns = 50,
           token,
           project_id,
         } = data;
@@ -196,7 +200,6 @@ export function setupChatHandlers(socket: Socket): void {
               break;
             }
 
-            // Only log errors and important events
             if (event.type === 'error' || process.env.DEBUG_SOCKET) {
               console.log(`[Socket Handler] Event received: ${event.type}`, {
                 conversationId: conversation_id,

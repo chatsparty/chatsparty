@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AgentId, ConversationId, UserId, Message } from '../core/types';
+import { ConversationEventType } from './constants';
 
 const ConversationIdSchema = z
   .string()
@@ -22,7 +23,7 @@ const BaseEventSchema = z.object({
 });
 
 export const ConversationStartedEventSchema = BaseEventSchema.extend({
-  type: z.literal('ConversationStarted'),
+  type: z.literal(ConversationEventType.ConversationStarted),
   userId: UserIdSchema,
   agentIds: z.array(AgentIdSchema),
   maxTurns: z.number(),
@@ -30,28 +31,28 @@ export const ConversationStartedEventSchema = BaseEventSchema.extend({
 });
 
 export const AgentSelectedEventSchema = BaseEventSchema.extend({
-  type: z.literal('AgentSelected'),
+  type: z.literal(ConversationEventType.AgentSelected),
   agentId: AgentIdSchema,
   reasoning: z.string().optional(),
 });
 
 export const MessageGeneratedEventSchema = BaseEventSchema.extend({
-  type: z.literal('MessageGenerated'),
+  type: z.literal(ConversationEventType.MessageGenerated),
   message: MessageSchema,
 });
 
 export const ConversationTerminatedEventSchema = BaseEventSchema.extend({
-  type: z.literal('ConversationTerminated'),
+  type: z.literal(ConversationEventType.ConversationTerminated),
   reason: z.string(),
 });
 
 export const TurnCompletedEventSchema = BaseEventSchema.extend({
-  type: z.literal('TurnCompleted'),
+  type: z.literal(ConversationEventType.TurnCompleted),
   turnNumber: z.number(),
 });
 
 export const ErrorOccurredEventSchema = BaseEventSchema.extend({
-  type: z.literal('ErrorOccurred'),
+  type: z.literal(ConversationEventType.ErrorOccurred),
   error: z.string(),
   agentId: AgentIdSchema.optional(),
 });
@@ -84,7 +85,7 @@ export const createConversationStartedEvent = (
   >
 ): ConversationStartedEvent => ({
   ...params,
-  type: 'ConversationStarted',
+  type: ConversationEventType.ConversationStarted,
   eventId: crypto.randomUUID(),
   timestamp: Date.now(),
   version: 1,
@@ -95,7 +96,7 @@ export const createAgentSelectedEvent = (
   agentId: AgentId,
   reasoning?: string
 ): AgentSelectedEvent => ({
-  type: 'AgentSelected',
+  type: ConversationEventType.AgentSelected,
   eventId: crypto.randomUUID(),
   conversationId,
   agentId,
@@ -108,7 +109,7 @@ export const createMessageGeneratedEvent = (
   conversationId: ConversationId,
   message: Message
 ): MessageGeneratedEvent => ({
-  type: 'MessageGenerated',
+  type: ConversationEventType.MessageGenerated,
   eventId: crypto.randomUUID(),
   conversationId,
   message,
@@ -120,7 +121,7 @@ export const createConversationTerminatedEvent = (
   conversationId: ConversationId,
   reason: string
 ): ConversationTerminatedEvent => ({
-  type: 'ConversationTerminated',
+  type: ConversationEventType.ConversationTerminated,
   eventId: crypto.randomUUID(),
   conversationId,
   reason,
@@ -132,7 +133,7 @@ export const createTurnCompletedEvent = (
   conversationId: ConversationId,
   turnNumber: number
 ): TurnCompletedEvent => ({
-  type: 'TurnCompleted',
+  type: ConversationEventType.TurnCompleted,
   eventId: crypto.randomUUID(),
   conversationId,
   turnNumber,
@@ -145,7 +146,7 @@ export const createErrorOccurredEvent = (
   error: string,
   agentId?: AgentId
 ): ErrorOccurredEvent => ({
-  type: 'ErrorOccurred',
+  type: ConversationEventType.ErrorOccurred,
   eventId: crypto.randomUUID(),
   conversationId,
   error,

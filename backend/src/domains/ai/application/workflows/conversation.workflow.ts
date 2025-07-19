@@ -27,6 +27,8 @@ import {
 } from '../../domain/events';
 import { selectControllerAgent } from '../../domain/agent';
 import { EventStore } from '../../infrastructure/persistence/event.store';
+import { AgentNotFoundError } from '../../core/errors';
+import { InvalidStateTransitionError } from '../../core/domain-errors';
 import {
   createConversationStream,
   ConversationStreamHandles,
@@ -36,10 +38,7 @@ import { AIProvider } from '../../infrastructure/providers/provider.interface';
 
 export interface WorkflowDependencies {
   eventStore: EventStore;
-  agentSelector: (
-    agents: Agent[],
-    messages: Message[]
-  ) => Effect<string>;
+  agentSelector: (agents: Agent[], messages: Message[]) => Effect<string>;
   responseGenerator: (
     agent: Agent,
     messages: Message[],
@@ -89,10 +88,12 @@ const generateResponse = async (
 ): Promise<ConversationEvent> => {
   const agent = context.agents.find(a => a.agentId === state.selectedAgent);
   if (!agent) {
-    throw new Error(`Agent not found: ${state.selectedAgent}`);
+    throw new AgentNotFoundError(state.selectedAgent);
   }
 
-  console.log(`[Workflow] Generating response for agent: ${agent.name} (${agent.agentId})`);
+  console.log(
+    `[Workflow] Generating response for agent: ${agent.name} (${agent.agentId})`
+  );
 
   const providerResult = await runEffect(context.deps.providerFactory(agent));
   if (providerResult.kind === 'error') {
@@ -101,7 +102,9 @@ const generateResponse = async (
   }
 
   try {
-    console.log(`[Workflow] Calling response generator for agent: ${agent.name}`);
+    console.log(
+      `[Workflow] Calling response generator for agent: ${agent.name}`
+    );
     const responseResult = await runEffect(
       context.deps.responseGenerator(
         agent,
@@ -111,14 +114,17 @@ const generateResponse = async (
     );
 
     if (responseResult.kind === 'error') {
-      console.error(`[Workflow] Response generator error:`, responseResult.error);
+      console.error(
+        `[Workflow] Response generator error:`,
+        responseResult.error
+      );
       throw responseResult.error;
     }
 
     console.log(`[Workflow] Response generated successfully:`, {
       agentName: agent.name,
       contentLength: responseResult.value?.length,
-      contentPreview: responseResult.value?.substring(0, 100)
+      contentPreview: responseResult.value?.substring(0, 100),
     });
 
     const message: Message = {
@@ -131,8 +137,10 @@ const generateResponse = async (
 
     return createMessageGeneratedEvent(state.context.conversationId, message);
   } catch (error) {
-    // Log the specific error for debugging
-    console.error(`[Workflow] Response generation error for agent ${agent.name}:`, error);
+    console.error(
+      `[Workflow] Response generation error for agent ${agent.name}:`,
+      error
+    );
     throw error;
   }
 };
@@ -194,7 +202,9 @@ const runConversationLoop = async (
   context: ConversationContext
 ): Promise<void> => {
   let state = initialState;
-  console.log(`[Workflow] Starting conversation loop for ${context.conversationId}`);
+  console.log(
+    `[Workflow] Starting conversation loop for ${context.conversationId}`
+  );
 
   while (!isTerminated(state)) {
     try {
@@ -208,7 +218,7 @@ const runConversationLoop = async (
       console.log(`[Workflow] Event generated: ${event.type}`, {
         conversationId: context.conversationId,
         eventType: event.type,
-        event
+        event,
       });
 
       context.stream.pushEvent(event);
@@ -244,7 +254,9 @@ export const createConversationWorkflow = (deps: WorkflowDependencies) => {
     if (!isNonEmpty(agents)) {
       return pure(
         new Observable(subscriber => {
-          subscriber.error(new Error('No agents provided'));
+          subscriber.error(
+            new InvalidStateTransitionError('Idle', 'startConversation')
+          );
         })
       );
     }
@@ -266,9 +278,9 @@ export const createConversationWorkflow = (deps: WorkflowDependencies) => {
     });
 
     return flatMap(deps.eventStore.append(startEvent), () => {
-      const stream = createConversationStream({ 
-        initialState, 
-        applyEvent: applyEventToDomain 
+      const stream = createConversationStream({
+        initialState,
+        applyEvent: applyEventToDomain,
       });
 
       const context: ConversationContext = {
