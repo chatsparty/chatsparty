@@ -1,5 +1,5 @@
 import { getDefaultConnectionConfig } from './fallback.config';
-import { ModelConfigurationSchema } from '../domains/ai/core/types';
+import { ModelConfigurationSchema } from '../domains/multiagent/core/types';
 import { z } from 'zod';
 
 const fallbackConfig = getDefaultConnectionConfig();

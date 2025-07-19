@@ -11,7 +11,7 @@ import {
   Message,
 } from './types';
 import { ServiceResponse } from '../../types/service.types';
-import { Message as AIMessage } from '../ai/core/types';
+import { Message as AIMessage } from '../multiagent/core/types';
 
 export const createConversation = async (
   data: CreateConversationData,

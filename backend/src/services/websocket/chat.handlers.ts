@@ -6,11 +6,11 @@ import {
   addMessage,
 } from '../../domains/conversations';
 import * as agentManager from '../../domains/agents/orchestration/agent.manager';
-import { aiService } from '../../domains/ai/application/services/ai.service';
+import { aiService } from '../../domains/multiagent/application/services/ai.service';
 import { verifyToken } from '../../utils/auth';
 import type { JwtPayload } from 'jsonwebtoken';
-import type { StreamEvent } from '../../domains/ai/infrastructure/streaming/conversation.stream';
-import type { Agent } from '../../domains/ai/core/types';
+import type { StreamEvent } from '../../domains/multiagent/infrastructure/streaming/conversation.stream';
+import type { Agent } from '../../domains/multiagent/core/types';
 
 interface MultiAgentConversationData {
   conversation_id: string;

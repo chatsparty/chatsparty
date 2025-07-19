@@ -3,8 +3,8 @@ import {
   TestConnectionResponse,
   ServiceResponse,
 } from '../types';
-import { createMastraProvider } from '../../ai/infrastructure/providers/mastra.provider';
-import { runEffect } from '../../ai/core/effects';
+import { createMastraProvider } from '../../multiagent/infrastructure/providers/mastra.provider';
+import { runEffect } from '../../multiagent/core/effects';
 
 export async function testConnection(
   request: TestConnectionRequest

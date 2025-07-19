@@ -17,7 +17,7 @@ import {
   AgentValidationError,
   ConnectionNotFoundError,
 } from '../../../utils/errors';
-import { Agent as AIAgent } from '../../ai/core/types';
+import { Agent as AIAgent } from '../../multiagent/core/types';
 
 const AGENT_LIMITS = {
   MAX_AGENTS_PER_USER: 50,
@@ -227,10 +227,10 @@ export async function getAgentWithFullConfig(
 
     // Get the connection to retrieve API key
     const connection = await findUserConnection(userId, agent.connectionId);
-    
+
     let apiKey: string | undefined;
     let baseUrl: string | undefined;
-    
+
     if (connection) {
       apiKey = connection.apiKey || undefined;
       baseUrl = connection.baseUrl || undefined;
@@ -245,10 +245,14 @@ export async function getAgentWithFullConfig(
         baseUrl = fallbackResponse.data.baseUrl || undefined;
       } else if (agent.connectionId.startsWith('system-fallback-')) {
         // If no fallback config but using system-fallback, check if it's Vertex AI
-        const provider = Fallback.getProviderFromConnectionId(agent.connectionId);
+        const provider = Fallback.getProviderFromConnectionId(
+          agent.connectionId
+        );
         if (provider === 'vertex_ai') {
           // For Vertex AI without config, we'll rely on default Google Cloud credentials
-          console.log('[Agent Manager] Using default Google Cloud credentials for Vertex AI');
+          console.log(
+            '[Agent Manager] Using default Google Cloud credentials for Vertex AI'
+          );
           // Leave apiKey and baseUrl undefined - Vertex AI SDK will use default credentials
         }
       }
