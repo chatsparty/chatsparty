@@ -3,7 +3,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGroq } from '@ai-sdk/groq';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createVertex } from '@ai-sdk/google-vertex';
-import { generateText } from 'ai';
+import { generateText, generateObject } from 'ai';
 import { Message } from '../../core/types';
 import { Effect, fromPromise, mapError } from '../../core/effects';
 import { ProviderError } from '../../core/errors';

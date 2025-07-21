@@ -86,22 +86,25 @@ const MultiAgentChatPage: React.FC = () => {
 
   const handleCreateNewConversation = () => {
     setActiveConversation(null);
-    navigate("/chat");
+    navigate("/chat", { replace: true });
   };
 
   useEffect(() => {
-    if (conversationId && conversationId !== activeConversation) {
-      setActiveConversation(conversationId);
+    if (conversationId) {
+      if (conversationId !== activeConversation) {
+        setActiveConversation(conversationId);
+      }
+    } else {
+      // Only clear activeConversation if we're on /chat (new chat route)
+      if (activeConversation) {
+        setActiveConversation(null);
+      }
     }
   }, [conversationId, activeConversation, setActiveConversation]);
 
-  useEffect(() => {
-    if (activeConversation && activeConversation !== conversationId) {
-      navigate(`/chat/${activeConversation}`, { replace: true });
-    } else if (!activeConversation && conversationId) {
-      navigate("/chat", { replace: true });
-    }
-  }, [activeConversation, conversationId, navigate]);
+  const handleDeleteConversation = async (id: string) => {
+    await deleteConversation(id);
+  };
 
   const activeConv = conversations.find((c) => c.id === activeConversation);
 

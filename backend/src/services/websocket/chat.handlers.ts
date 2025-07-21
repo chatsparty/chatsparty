@@ -200,12 +200,10 @@ export function setupChatHandlers(socket: Socket): void {
               break;
             }
 
-            if (event.type === 'error' || process.env.DEBUG_SOCKET) {
-              console.log(`[Socket Handler] Event received: ${event.type}`, {
-                conversationId: conversation_id,
-                event,
-              });
-            }
+            console.log(`[Socket Handler] Event received: ${event.type}`, {
+              conversationId: conversation_id,
+              event,
+            });
 
             switch (event.type) {
               case 'thinking':
@@ -390,7 +388,6 @@ export function setupChatHandlers(socket: Socket): void {
         conversationId: databaseConversationId,
         userId,
         message,
-        agents,
       });
 
       for await (const event of observableToAsyncIterable<StreamEvent>(

@@ -5,20 +5,14 @@ import { runEffect } from '../../core/effects';
 import { StreamEvent } from '../../infrastructure/streaming/conversation.stream';
 import {
   createConversationWorkflow,
-  WorkflowDependencies,
-} from '../workflows/conversation.workflow';
+  WorkflowFactoryConfig,
+} from '../factories/workflow.factories';
 import {
   EventStore,
   CachedEventStore,
 } from '../../infrastructure/persistence/event.store';
 import { createPrismaEventStore } from '../../infrastructure/persistence/prisma-event.store';
 import { getPrismaClient } from '../../../../config/database';
-import {
-  createProviderForAgent,
-  createAgentSelector,
-  createResponseGenerator,
-  createTerminationChecker,
-} from '../factories/workflow.factories';
 import { getAIConfig } from '../../config/ai.config';
 
 let eventStore: EventStore | null = null;
@@ -33,19 +27,16 @@ const getEventStore = (): EventStore => {
   return eventStore;
 };
 
-const createWorkflowDependencies = (): WorkflowDependencies => {
+const createWorkflowConfig = (): WorkflowFactoryConfig => {
   const config = getAIConfig();
   return {
     eventStore: getEventStore(),
-    agentSelector: createAgentSelector({
-      defaultTimeout: config.agentSelection.timeout,
-      maxTokens: config.agentSelection.maxTokens,
-    }),
-    responseGenerator: createResponseGenerator({
-      defaultTimeout: config.conversation.defaultTimeout,
-    }),
-    terminationChecker: createTerminationChecker(),
-    providerFactory: createProviderForAgent,
+    orchestratorConfig: {
+      maxConversationDuration: 30 * 60 * 1000, // 30 minutes
+      maxMessages: config.conversation.defaultMaxTurns || 100,
+      loopDetectionThreshold: 5,
+      staleConversationTimeout: 60 * 1000, // 1 minute
+    },
   };
 };
 
@@ -56,16 +47,20 @@ export const startConversation = (params: {
   initialMessage: string;
   maxTurns?: number;
 }): Observable<StreamEvent> => {
-  const config = getAIConfig();
-  const deps = createWorkflowDependencies();
-  const workflow = createConversationWorkflow(deps);
+  const workflowConfig = createWorkflowConfig();
+  
+  // Update the config with maxTurns if provided
+  if (params.maxTurns && workflowConfig.orchestratorConfig) {
+    workflowConfig.orchestratorConfig.maxMessages = params.maxTurns;
+  }
+  
+  const workflow = createConversationWorkflow(workflowConfig);
 
   const effect = workflow.startConversation(
     params.conversationId as ConversationId,
     params.userId as UserId,
     params.agents,
-    params.initialMessage,
-    params.maxTurns ?? config.conversation.defaultMaxTurns
+    params.initialMessage
   );
 
   return from(runEffect(effect)).pipe(
@@ -84,10 +79,10 @@ export const continueConversation = (params: {
   userId: string;
   message: string;
 }): Observable<StreamEvent> => {
-  const deps = createWorkflowDependencies();
-  const workflow = createConversationWorkflow(deps);
+  const workflowConfig = createWorkflowConfig();
+  const workflow = createConversationWorkflow(workflowConfig);
 
-  const effect = workflow.loadAndContinueConversation(
+  const effect = workflow.continueConversation(
     params.conversationId as ConversationId,
     params.userId as UserId,
     params.message
