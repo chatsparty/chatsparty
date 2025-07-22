@@ -3,15 +3,19 @@ import {
   TestConnectionResponse,
   ServiceResponse,
 } from '../types';
-import { createMastraProvider } from '../../multiagent/infrastructure/providers/mastra.provider';
+import { getProvider } from '../../multiagent/infrastructure/providers/registry';
 import { runEffect } from '../../multiagent/core/effects';
 
 export async function testConnection(
   request: TestConnectionRequest
 ): Promise<ServiceResponse<TestConnectionResponse>> {
   try {
-    const provider = createMastraProvider(
-      request.provider,
+    const providerFactory = getProvider(request.provider);
+    if (!providerFactory) {
+      throw new Error(`Provider ${request.provider} not found`);
+    }
+    
+    const provider = providerFactory(
       request.modelName || 'default',
       {
         apiKey: request.apiKey,

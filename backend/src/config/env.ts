@@ -29,9 +29,6 @@ const envSchema = z.object({
   VERTEX_LOCATION: z.string().optional(),
   OLLAMA_BASE_URL: z.string().optional(),
 
-  // Mastra Configuration
-  MASTRA_API_KEY: z.string().optional(),
-
   // Storage
   STORAGE_PROVIDER: z.enum(['local', 's3', 'r2']).default('local'),
   STORAGE_PATH: z.string().default('./storage'),

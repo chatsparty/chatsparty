@@ -1,27 +1,16 @@
 import { ProviderFactory } from './provider.interface';
-import { createMastraProvider } from './mastra.provider';
+import { openaiProviderFactory } from './openai.provider';
+import { anthropicProviderFactory } from './anthropic.provider';
+import { groqProviderFactory } from './groq.provider';
+import { googleProviderFactory } from './google.provider';
+import { vertexAIProviderFactory } from './vertex-ai.provider';
 
 const providerFactories = new Map<string, ProviderFactory>([
-  [
-    'openai',
-    (modelName, config) => createMastraProvider('openai', modelName, config),
-  ],
-  [
-    'anthropic',
-    (modelName, config) => createMastraProvider('anthropic', modelName, config),
-  ],
-  [
-    'groq',
-    (modelName, config) => createMastraProvider('groq', modelName, config),
-  ],
-  [
-    'google',
-    (modelName, config) => createMastraProvider('google', modelName, config),
-  ],
-  [
-    'vertex_ai',
-    (modelName, config) => createMastraProvider('vertex_ai', modelName, config),
-  ],
+  ['openai', openaiProviderFactory],
+  ['anthropic', anthropicProviderFactory],
+  ['groq', groqProviderFactory],
+  ['google', googleProviderFactory],
+  ['vertex_ai', vertexAIProviderFactory],
 ]);
 
 export const providerRegistry: ReadonlyMap<string, ProviderFactory> =

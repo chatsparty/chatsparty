@@ -77,36 +77,20 @@ export const createPatternRecognizer = (provider: AIProvider) => {
     return fromPromise(async () => {
       const recentMessages = memory.recentMessages.slice(-7); // Last 7 messages for context
       
-      const systemPrompt = `You are a conversation analyzer. DO NOT generate conversation dialogue. DO NOT continue the conversation.
+      const systemPrompt = `Analyze pattern. Phase: ${memory.conversationPhase}
 
-Your ONLY task is to analyze the existing conversation and return a JSON object.
-
-Current conversation state:
-- Phase: ${memory.conversationPhase}
-- Active topic: ${memory.activeTopic || 'Unknown'}
-- Silence duration: ${memory.silenceDuration}ms
-- Last speakers: ${memory.lastSpeakers.join(', ')}
-
-Analyze the conversation flow and identify:
-1. The primary conversational pattern
-2. The mood and context
-3. Whether someone should naturally speak next
-4. Any pending questions or topics
-
-IMPORTANT: Return ONLY a JSON object with NO other text. Do not generate dialogue or continue the conversation.
-
-Return this exact JSON structure:
+Return JSON:
 {
-  "pattern": "greeting_exchange" | "qa_in_progress" | "new_topic" | "consensus_forming" | "debate_active" | "conversation_stalled" | "topic_transition" | "casual_discussion" | "problem_solving" | "storytelling",
+  "pattern": "greeting_exchange|qa_in_progress|new_topic|consensus_forming|debate_active|conversation_stalled|topic_transition|casual_discussion|problem_solving|storytelling",
   "confidence": 0.0-1.0,
   "context": {
-    "topicSummary": "string",
-    "conversationMood": "friendly" | "formal" | "tense" | "excited" | "neutral",
-    "expectedNextSpeaker": "optional string",
+    "topicSummary": "brief",
+    "conversationMood": "friendly|formal|tense|excited|neutral",
+    "expectedNextSpeaker": "who",
     "isQuestionPending": boolean,
-    "questioner": "optional string"
+    "questioner": "who asked if pending"
   },
-  "reasoning": "string"
+  "reasoning": "brief"
 }`;
 
       const messages: Message[] = [
@@ -123,7 +107,7 @@ Return this exact JSON structure:
           messages,
           'CRITICAL: Return ONLY a JSON object analyzing the conversation pattern. Do NOT generate dialogue. Do NOT continue the conversation. Output must be valid JSON only.',
           ConversationPatternSchema,
-          { maxTokens: 300, temperature: 0.3 }
+          { temperature: 0.3 }
         )
       );
 
@@ -140,54 +124,39 @@ Return this exact JSON structure:
       agentId: AgentId;
       agentName: string;
       agentRole: string;
-      responseThreshold: number;
+      agentCharacteristics: string;
+      chatStyle: string;
     },
     pattern: ConversationPattern,
     memory: ConversationMemory
   ): Effect<ResponseIntent> => {
     return fromPromise(async () => {
+      // Calculate time since this agent last spoke
       const timeSinceLastSpoke = memory.myLastSpeakTime 
         ? Date.now() - memory.myLastSpeakTime 
         : Infinity;
+      
+      const hasAgentResponded = memory.recentMessages.some(m => m.role === 'assistant');
+      
+      const systemPrompt = `Agent ${agentContext.agentName} must decide whether to speak.
+Current pattern: ${pattern.pattern}
+Has any agent responded yet: ${hasAgentResponded}
+Your style: ${agentContext.chatStyle}
+Your role: ${agentContext.agentRole}
+Time since you last spoke: ${timeSinceLastSpoke}ms
 
-      const systemPrompt = `You are a decision analyzer for ${agentContext.agentName}. DO NOT generate conversation dialogue.
+Important: In conversations, agents should respond naturally. Don't all wait forever.
 
-Your ONLY task is to analyze whether this agent should speak and return a JSON object.
-
-Agent details:
-- Name: ${agentContext.agentName}
-- Role: ${agentContext.agentRole}
-- Response threshold: ${agentContext.responseThreshold} (0=rarely speak, 1=eager to speak)
-- Time since last spoke: ${timeSinceLastSpoke}ms
-
-Current conversation pattern: ${pattern.pattern}
-Pattern confidence: ${pattern.confidence}
-Context: ${JSON.stringify(pattern.context)}
-
-Based on:
-1. Your role and expertise
-2. The conversation pattern and context  
-3. Your response threshold
-4. Social conversation norms
-
-Decide if you should speak and with what intent. Consider:
-- Is it natural for you to speak now?
-- Would your contribution add value?
-- Are you the best agent to respond?
-- Should you wait for others to speak first?
-
-IMPORTANT: Return ONLY a JSON object with NO other text. Do not generate dialogue.
-
-Return this exact JSON structure:
+Return JSON:
 {
   "shouldSpeak": boolean,
-  "priority": "high" | "medium" | "low" | "none",
-  "intent": "answer_question" | "ask_clarification" | "share_opinion" | "agree_elaborate" | "disagree_respectfully" | "change_topic" | "summarize_discussion" | "make_joke" | "provide_example" | "stay_silent",
-  "reasoning": "string",
-  "suggestedDelay": number (100-5000)
+  "priority": "high|medium|low|none", 
+  "intent": "answer_question|share_opinion|stay_silent",
+  "reasoning": "brief",
+  "suggestedDelay": number
 }`;
 
-      const recentMessages = memory.recentMessages.slice(-5);
+      const recentMessages = memory.recentMessages.slice(-7);
       const messages: Message[] = [
         { role: 'system', content: systemPrompt, timestamp: Date.now() },
         ...recentMessages.map(m => ({
@@ -202,7 +171,7 @@ Return this exact JSON structure:
           messages,
           'CRITICAL: Return ONLY a JSON object deciding if the agent should speak. Do NOT generate dialogue. Output must be valid JSON only.',
           ResponseIntentSchema,
-          { maxTokens: 200, temperature: 0.3 }
+          { temperature: 0.3 }
         )
       );
 
