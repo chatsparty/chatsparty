@@ -8,11 +8,14 @@ export const ModelConfigurationSchema = z.object({
     'vertex_ai',
     'groq',
     'ollama',
+    'azure-openai',
   ]),
   modelName: z.string(),
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
   connectionId: z.string().optional(),
+  resourceName: z.string().optional(), // Azure-specific
+  apiVersion: z.string().optional(), // Azure-specific
 });
 
 export type ModelConfiguration = z.infer<typeof ModelConfigurationSchema>;

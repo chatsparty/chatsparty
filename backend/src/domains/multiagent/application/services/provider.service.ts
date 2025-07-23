@@ -17,5 +17,7 @@ export const createProviderForAgent = (agent: Agent): Effect<AIProvider> =>
     return factory(agent.aiConfig.modelName, {
       apiKey: agent.aiConfig.apiKey,
       baseUrl: agent.aiConfig.baseUrl,
+      resourceName: agent.aiConfig.resourceName,
+      apiVersion: agent.aiConfig.apiVersion,
     });
   });

@@ -14,6 +14,8 @@ export interface ProviderConfig {
   baseUrl?: string;
   timeout?: number;
   retryAttempts?: number;
+  resourceName?: string; // Azure-specific
+  apiVersion?: string; // Azure-specific
 }
 
 export interface AIProvider {

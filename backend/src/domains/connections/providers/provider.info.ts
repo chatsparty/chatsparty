@@ -132,4 +132,37 @@ export const PROVIDER_CONFIGS: Record<AIProvider, ProviderConfig> = {
       },
     ],
   },
+  'azure-openai': {
+    name: 'azure-openai',
+    displayName: 'Azure OpenAI',
+    requiresApiKey: true,
+    defaultModel: 'gpt-4',
+    customizable: true,
+    supportedModels: [
+      {
+        id: 'gpt-4',
+        name: 'GPT-4',
+        contextWindow: 8192,
+        maxTokens: 4096,
+      },
+      {
+        id: 'gpt-4-32k',
+        name: 'GPT-4 32K',
+        contextWindow: 32768,
+        maxTokens: 4096,
+      },
+      {
+        id: 'gpt-35-turbo',
+        name: 'GPT-3.5 Turbo',
+        contextWindow: 16385,
+        maxTokens: 4096,
+      },
+      {
+        id: 'gpt-35-turbo-16k',
+        name: 'GPT-3.5 Turbo 16K',
+        contextWindow: 16384,
+        maxTokens: 4096,
+      },
+    ],
+  },
 };

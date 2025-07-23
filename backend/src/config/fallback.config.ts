@@ -7,6 +7,8 @@ export interface DefaultConnectionConfig {
   projectId?: string;
   location?: string;
   baseUrl?: string;
+  resourceName?: string;
+  apiVersion?: string;
   enabled: boolean;
 }
 
@@ -17,6 +19,8 @@ export const DEFAULT_CONNECTION_ENV_VARS = {
   PROJECT_ID: 'DEFAULT_CONNECTION_PROJECT_ID',
   LOCATION: 'DEFAULT_CONNECTION_LOCATION',
   BASE_URL: 'DEFAULT_CONNECTION_BASE_URL',
+  RESOURCE_NAME: 'DEFAULT_CONNECTION_RESOURCE_NAME',
+  API_VERSION: 'DEFAULT_CONNECTION_API_VERSION',
   ENABLED: 'DEFAULT_CONNECTION_ENABLED',
 } as const;
 
@@ -46,6 +50,8 @@ export function getDefaultConnectionConfig(): DefaultConnectionConfig | null {
     projectId: process.env[DEFAULT_CONNECTION_ENV_VARS.PROJECT_ID],
     location: process.env[DEFAULT_CONNECTION_ENV_VARS.LOCATION],
     baseUrl: process.env[DEFAULT_CONNECTION_ENV_VARS.BASE_URL],
+    resourceName: process.env[DEFAULT_CONNECTION_ENV_VARS.RESOURCE_NAME],
+    apiVersion: process.env[DEFAULT_CONNECTION_ENV_VARS.API_VERSION],
     enabled: true,
   };
 }
@@ -67,6 +73,14 @@ export function validateDefaultConnectionConfig(
         return {
           valid: false,
           error: 'Vertex AI requires projectId and location',
+        };
+      }
+      break;
+    case 'azure-openai':
+      if (!config.apiKey || !config.resourceName) {
+        return {
+          valid: false,
+          error: 'Azure OpenAI requires an API key and resource name',
         };
       }
       break;

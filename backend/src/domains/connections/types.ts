@@ -9,6 +9,7 @@ export const AIProviderSchema = z.enum([
   'groq',
   'ollama',
   'vertex_ai',
+  'azure-openai',
 ] as const);
 
 export type AIProvider = z.infer<typeof AIProviderSchema>;

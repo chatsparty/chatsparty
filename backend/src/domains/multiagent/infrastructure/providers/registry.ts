@@ -4,6 +4,7 @@ import { anthropicProviderFactory } from './anthropic.provider';
 import { groqProviderFactory } from './groq.provider';
 import { googleProviderFactory } from './google.provider';
 import { vertexAIProviderFactory } from './vertex-ai.provider';
+import { azureOpenAIProviderFactory } from './azure-openai.provider';
 
 const providerFactories = new Map<string, ProviderFactory>([
   ['openai', openaiProviderFactory],
@@ -11,6 +12,7 @@ const providerFactories = new Map<string, ProviderFactory>([
   ['groq', groqProviderFactory],
   ['google', googleProviderFactory],
   ['vertex_ai', vertexAIProviderFactory],
+  ['azure-openai', azureOpenAIProviderFactory],
 ]);
 
 export const providerRegistry: ReadonlyMap<string, ProviderFactory> =
